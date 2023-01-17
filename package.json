@@ -1,0 +1,8 @@
+{
+	"name": "proxmoxaas-api",
+	"version": "0.0.1",
+	"description": "REST API for ProxmoxAAS",
+	"dependencies": {
+		"express": "^4.18.2"
+	}
+}
