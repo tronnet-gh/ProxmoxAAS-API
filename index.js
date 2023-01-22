@@ -6,6 +6,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const https = require("https");
 var package = require("./package.json");
+const { request } = require("http");
 
 const app = express();
 app.use(helmet());
@@ -56,20 +57,37 @@ function requestPVE (path, method, cookies, callback, body = null, auth = true) 
 		content.body = prms.toString();
 		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
 	}
-	https.request(content, (res) => {
-		let data = "";
-		res.on("data", (d) => {
-			data += d.toString();
+
+	const promiseResponse = new Promise((resolve, reject) => {
+		const fullResponse = {
+			status: '',
+			body: '',
+			headers: ''
+		};
+	  
+		const request = https.request(content);
+	  
+		request.on('error', reject);
+		request.on('response', response => {
+			response.setEncoding('utf8');
+			fullResponse.status = response.statusCode;
+			fullResponse.headers = response.headers;
+			response.on('data', chunk => { fullResponse.body += chunk; });
+			response.on('end', () => {
+				if(fullResponse.body){
+					fullResponse.body = JSON.parse(fullResponse.body);
+				}
+				resolve(fullResponse);
+			});
 		});
-		res.on("end", () => {
-			try{
-				callback(JSON.parse(data));
-			}
-			catch (e) {
-				callback(e);
-			}
-		});
-	}).on("error", (e) => {callback(e)}).end();
+	  
+		request.end();
+	});
+		
+	promiseResponse.then(
+		response => {callback(response);},
+		error => {callback(error);}
+	);
 }
 
 app.listen(80, () => {
