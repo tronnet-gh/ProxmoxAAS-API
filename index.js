@@ -26,20 +26,34 @@ app.get("/api/echo", (req, res) => {
 
 app.get("/api/auth", (req, res) => {
 	checkAuth(req.cookies, (result) => {
-		res.send(result);
-	});
+		res.send({auth: result});
+	}, req.body.vmpath);
 });
 
 function checkAuth (cookies, callback, vmpath = null) {
-	if (vmpath) {}
+	if (vmpath) {
+		requestPVE(vmpath, "GET", cookies, (result) => {
+			if(result.status === 200){
+				callback(true);
+			}
+			else {
+				callback(false);
+			}
+		})
+	}
 	else { // if no path is specified, then do a simple authentication
 		requestPVE("/version", "GET", cookies, (result) => {
-			callback(result);
+			if(result.status === 200){
+				callback(true);
+			}
+			else {
+				callback(false);
+			}
 		});
 	}
 }
 
-function requestPVE (path, method, cookies, callback, body = null, auth = true) {
+function requestPVE (path, method, cookies, callback, body = null, token = null) {
 	let prms = new URLSearchParams(body);
 	let content = {
 		hostname: "pve.tronnet.net",
@@ -49,13 +63,18 @@ function requestPVE (path, method, cookies, callback, body = null, auth = true) 
 		mode: "cors",
 		credentials: "include",
 		headers: {
-			"Content-Type": "application/x-www-form-urlencoded",
-			Cookie: `PVEAuthCookie=${cookies.PVEAuthCookie}; CSRFPreventionToken=${cookies.CSRFPreventionToken}`
+			"Content-Type": "application/x-www-form-urlencoded"
 		}
 	}
 	if (method === "POST") {
 		content.body = prms.toString();
 		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
+	}
+	if(token) {
+		content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${TOKENID}=${token.uuid}`;
+	}
+	else {
+		content.headers.Cookie = `PVEAuthCookie=${cookies.PVEAuthCookie}; CSRFPreventionToken=${cookies.CSRFPreventionToken}`;
 	}
 
 	const promiseResponse = new Promise((resolve, reject) => {
