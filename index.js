@@ -7,7 +7,7 @@ const morgan = require("morgan");
 const https = require("https");
 var package = require("./package.json");
 
-const {pveAPI, listenPort} = require("./vars.js")
+const {pveAPI, pveAPIToken, listenPort} = require("./vars.js")
 
 const app = express();
 app.use(helmet());
@@ -31,9 +31,22 @@ app.get("/api/auth", (req, res) => {
 	}, req.body.vmpath);
 });
 
+app.get("/api/disk/detach", (req, res) => {
+	checkAuth(req.cookies, (result) => {
+		if (result) {
+			requestPVE(`${body.vmpath}/config`, "PUT", null, (result) => {
+				res.send(result);
+			}, body = req.body.action, token = pveAPIToken);
+		}
+		else {
+			res.send({auth: result});
+		}
+	}, req.body.vmpath);
+});
+
 function checkAuth (cookies, callback, vmpath = null) {
 	if (vmpath) {
-		requestPVE(vmpath, "GET", cookies, (result) => {
+		requestPVE(`${vmpath}/config`, "GET", cookies, (result) => {
 			if(result.status === 200){
 				callback(true);
 			}
@@ -70,7 +83,7 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
 	}
 	if(token) {
-		content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${TOKENID}=${token.uuid}`;
+		content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
 	}
 	else {
 		content.headers.Cookie = `PVEAuthCookie=${cookies.PVEAuthCookie}; CSRFPreventionToken=${cookies.CSRFPreventionToken}`;
@@ -78,20 +91,20 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 
 	const promiseResponse = new Promise((resolve, reject) => {
 		const fullResponse = {
-			status: '',
-			body: '',
-			headers: ''
+			status: "",
+			body: "",
+			headers: ""
 		};
 	  
 		const request = https.request(url, content);
 	  
-		request.on('error', reject);
-		request.on('response', response => {
-			response.setEncoding('utf8');
+		request.on("error", reject);
+		request.on("response", response => {
+			response.setEncoding("utf8");
 			fullResponse.status = response.statusCode;
 			fullResponse.headers = response.headers;
-			response.on('data', chunk => { fullResponse.body += chunk; });
-			response.on('end', () => {
+			response.on("data", chunk => { fullResponse.body += chunk; });
+			response.on("end", () => {
 				if(fullResponse.body){
 					fullResponse.body = JSON.parse(fullResponse.body);
 				}
@@ -109,5 +122,5 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 }
 
 app.listen(listenPort, () => {
-	console.log("listening on port 80");
+	console.log(`listening on port ${listenPort}`);
 });
