@@ -1,4 +1,10 @@
 const pveAPI = "";
+const pveAPIToken = {
+	user: "",
+	realm: "",
+	id: "",
+	uuid: ""
+};
 const listenPort = 80;
 
-module.exports = {pveAPI, listenPort};
+module.exports = {pveAPI, listenPort, pveAPIToken};
