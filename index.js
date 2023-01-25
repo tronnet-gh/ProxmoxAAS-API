@@ -6,7 +6,8 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const https = require("https");
 var package = require("./package.json");
-const { request } = require("http");
+
+const {pveAPI, listenPort} = require("./vars.js")
 
 const app = express();
 app.use(helmet());
@@ -55,10 +56,8 @@ function checkAuth (cookies, callback, vmpath = null) {
 
 function requestPVE (path, method, cookies, callback, body = null, token = null) {
 	let prms = new URLSearchParams(body);
+	let url = `${pveAPI}${path}`;
 	let content = {
-		hostname: "pve.tronnet.net",
-		port: 443,
-		path: `/api2/json${path}`,
 		method: method,
 		mode: "cors",
 		credentials: "include",
@@ -84,7 +83,7 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 			headers: ''
 		};
 	  
-		const request = https.request(content);
+		const request = https.request(url, content);
 	  
 		request.on('error', reject);
 		request.on('response', response => {
@@ -109,6 +108,6 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 	);
 }
 
-app.listen(80, () => {
+app.listen(listenPort, () => {
 	console.log("listening on port 80");
 });
