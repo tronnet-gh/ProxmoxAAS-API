@@ -1,0 +1,4 @@
+const pveAPI = "";
+const listenPort = 80;
+
+module.exports = {pveAPI, listenPort};
