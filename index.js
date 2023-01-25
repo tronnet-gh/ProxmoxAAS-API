@@ -11,7 +11,7 @@ const {pveAPI, pveAPIToken, listenPort} = require("./vars.js")
 
 const app = express();
 app.use(helmet());
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser())
 app.use(cors());
 app.use(morgan("combined"));
@@ -28,25 +28,26 @@ app.get("/api/echo", (req, res) => {
 app.get("/api/auth", (req, res) => {
 	checkAuth(req.cookies, (result) => {
 		res.send({auth: result});
-	}, req.body.vmpath);
+	});
 });
 
-app.get("/api/disk/detach", (req, res) => {
+app.post("/api/disk/detach", (req, res) => {
+	let vmpath = `nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	checkAuth(req.cookies, (result) => {
 		if (result) {
-			requestPVE(`${body.vmpath}/config`, "PUT", null, (result) => {
+			requestPVE(`/${vmpath}/config`, "POST", req.cookies, (result) => {
 				res.send(result);
 			}, body = req.body.action, token = pveAPIToken);
 		}
 		else {
 			res.send({auth: result});
 		}
-	}, req.body.vmpath);
+	}, vmpath);
 });
 
 function checkAuth (cookies, callback, vmpath = null) {
 	if (vmpath) {
-		requestPVE(`${vmpath}/config`, "GET", cookies, (result) => {
+		requestPVE(`/${vmpath}/config`, "GET", cookies, (result) => {
 			if(result.status === 200){
 				callback(true);
 			}
@@ -68,7 +69,6 @@ function checkAuth (cookies, callback, vmpath = null) {
 }
 
 function requestPVE (path, method, cookies, callback, body = null, token = null) {
-	let prms = new URLSearchParams(body);
 	let url = `${pveAPI}${path}`;
 	let content = {
 		method: method,
@@ -79,10 +79,10 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 		}
 	}
 	if (method === "POST") {
-		content.body = prms.toString();
 		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
 	}
-	if(token) {
+
+	if (token) {
 		content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
 	}
 	else {
@@ -97,7 +97,6 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 		};
 	  
 		const request = https.request(url, content);
-	  
 		request.on("error", reject);
 		request.on("response", response => {
 			response.setEncoding("utf8");
@@ -111,6 +110,10 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 				resolve(fullResponse);
 			});
 		});
+
+		if (method === "POST") {
+			request.write(body);
+		}
 	  
 		request.end();
 	});
