@@ -35,7 +35,8 @@ app.post("/api/disk/detach", (req, res) => {
 	let vmpath = `nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	checkAuth(req.cookies, (result) => {
 		if (result) {
-			requestPVE(`/${vmpath}/config`, "POST", req.cookies, (result) => {
+			let method = req.body.type === "qemu" ? "POST" : "PUT";
+			requestPVE(`/${vmpath}/config`, method, req.cookies, (result) => {
 				res.send(result);
 			}, body = req.body.action, token = pveAPIToken);
 		}
@@ -75,11 +76,9 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 		mode: "cors",
 		credentials: "include",
 		headers: {
-			"Content-Type": "application/x-www-form-urlencoded"
+			"Content-Type": "application/x-www-form-urlencoded",
+			"CSRFPreventionToken": cookies.CSRFPreventionToken
 		}
-	}
-	if (method === "POST") {
-		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
 	}
 
 	if (token) {
@@ -111,7 +110,7 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 			});
 		});
 
-		if (method === "POST") {
+		if (body) {
 			request.write(body);
 		}
 	  
