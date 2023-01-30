@@ -46,6 +46,21 @@ app.post("/api/disk/detach", (req, res) => {
 	}, vmpath);
 });
 
+app.post("/api/disk/resize", (req, res) => {
+	let vmpath = `nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	checkAuth(req.cookies, (result) => {
+		if (result) {
+			let method = "PUT";
+			requestPVE(`/${vmpath}/resize`, method, req.cookies, (result) => {
+				res.send(result);
+			}, body = req.body.action, token = pveAPIToken);
+		}
+		else {
+			res.send({auth: result});
+		}
+	}, vmpath);
+});
+
 function checkAuth (cookies, callback, vmpath = null) {
 	if (vmpath) {
 		requestPVE(`/${vmpath}/config`, "GET", cookies, (result) => {
@@ -111,7 +126,8 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 		});
 
 		if (body) {
-			request.write(body);
+			let prms = new URLSearchParams(JSON.parse(body));
+			request.write(prms.toString());
 		}
 	  
 		request.end();
