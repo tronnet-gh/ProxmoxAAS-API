@@ -61,6 +61,22 @@ app.post("/api/disk/resize", (req, res) => {
 	}, vmpath);
 });
 
+app.post("/api/disk/move", (req, res) => {
+	let vmpath = `nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let route = req.body.type === "qemu" ? "move_disk" : "move_volume";
+	checkAuth(req.cookies, (result) => {
+		if (result) {
+			let method = "POST";
+			requestPVE(`/${vmpath}/${route}`, method, req.cookies, (result) => {
+				res.send(result);
+			}, body = req.body.action, token = pveAPIToken);
+		}
+		else {
+			res.send({auth: result});
+		}
+	}, vmpath);
+});
+
 function checkAuth (cookies, callback, vmpath = null) {
 	if (vmpath) {
 		requestPVE(`/${vmpath}/config`, "GET", cookies, (result) => {
