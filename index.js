@@ -32,11 +32,26 @@ app.get("/api/auth", (req, res) => {
 });
 
 app.post("/api/disk/detach", (req, res) => {
-	let vmpath = `nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	checkAuth(req.cookies, (result) => {
 		if (result) {
 			let method = req.body.type === "qemu" ? "POST" : "PUT";
-			requestPVE(`/${vmpath}/config`, method, req.cookies, (result) => {
+			requestPVE(`${vmpath}/config`, method, req.cookies, (result) => {
+				res.send(result);
+			}, body = req.body.action, token = pveAPIToken);
+		}
+		else {
+			res.send({auth: result});
+		}
+	}, vmpath);
+});
+
+app.post("/api/disk/attach", (req, res) => {
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	checkAuth(req.cookies, (result) => {
+		if (result) {
+			let method = req.body.type === "qemu" ? "POST" : "PUT";
+			requestPVE(`${vmpath}/config`, method, req.cookies, (result) => {
 				res.send(result);
 			}, body = req.body.action, token = pveAPIToken);
 		}
@@ -47,11 +62,11 @@ app.post("/api/disk/detach", (req, res) => {
 });
 
 app.post("/api/disk/resize", (req, res) => {
-	let vmpath = `nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	checkAuth(req.cookies, (result) => {
 		if (result) {
 			let method = "PUT";
-			requestPVE(`/${vmpath}/resize`, method, req.cookies, (result) => {
+			requestPVE(`${vmpath}/resize`, method, req.cookies, (result) => {
 				res.send(result);
 			}, body = req.body.action, token = pveAPIToken);
 		}
@@ -62,12 +77,27 @@ app.post("/api/disk/resize", (req, res) => {
 });
 
 app.post("/api/disk/move", (req, res) => {
-	let vmpath = `nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	let route = req.body.type === "qemu" ? "move_disk" : "move_volume";
 	checkAuth(req.cookies, (result) => {
 		if (result) {
 			let method = "POST";
-			requestPVE(`/${vmpath}/${route}`, method, req.cookies, (result) => {
+			requestPVE(`${vmpath}/${route}`, method, req.cookies, (result) => {
+				res.send(result);
+			}, body = req.body.action, token = pveAPIToken);
+		}
+		else {
+			res.send({auth: result});
+		}
+	}, vmpath);
+});
+
+app.post("/api/disk/delete", (req, res) => {
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	checkAuth(req.cookies, (result) => {
+		if (result) {
+			let method = req.body.type === "qemu" ? "POST" : "PUT";
+			requestPVE(`${vmpath}/config`, method, req.cookies, (result) => {
 				res.send(result);
 			}, body = req.body.action, token = pveAPIToken);
 		}
@@ -156,5 +186,5 @@ function requestPVE (path, method, cookies, callback, body = null, token = null)
 }
 
 app.listen(listenPort, () => {
-	console.log(`listening on port ${listenPort}`);
+	console.log(`proxmoxaas-api v${package.version} listening on port ${listenPort}`);
 });
