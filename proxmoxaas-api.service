@@ -1,0 +1,11 @@
+[Unit]
+Description=proxmoxaas-api
+After=network.target
+[Service]
+WorkingDirectory=/<path to dir>/ProxmoxAAS-API/
+ExecStart=/<path to dir>/ProxmoxAAS-API/start.sh
+Restart=always
+RestartSec=10
+Type=simple
+[Install]
+WantedBy=default.target
