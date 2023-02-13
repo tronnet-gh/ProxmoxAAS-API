@@ -38,6 +38,7 @@ app.post("/api/disk/detach", async (req, res) => {
 	if (auth) {
 		let method = req.body.type === "qemu" ? "POST" : "PUT";
 		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+		await handleResponse(req.body.node, result);
 		res.send({auth: auth, status: result.status, data: result.data.data});
 	}
 	else {
@@ -52,6 +53,7 @@ app.post("/api/disk/attach", async (req, res) => {
 	if (auth) {
 		let method = req.body.type === "qemu" ? "POST" : "PUT";
 		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+		await handleResponse(req.body.node, result);
 		res.send({auth: auth, status: result.status, data: result.data.data});
 	}
 	else {
@@ -66,6 +68,7 @@ app.post("/api/disk/resize", async (req, res) => {
 	if (auth) {
 		let method = "PUT";
 		let result = await requestPVE(`${vmpath}/resize`, method, req.cookies, req.body.action, pveAPIToken);
+		await handleResponse(req.body.node, result);
 		res.send({auth: auth, status: result.status, data: result.data.data});
 	}
 	else {
@@ -81,6 +84,7 @@ app.post("/api/disk/move", async (req, res) => {
 	if (auth) {
 		let method = "POST";
 		let result = await requestPVE(`${vmpath}/${route}`, method, req.cookies, req.body.action, pveAPIToken);
+		await handleResponse(req.body.node, result);
 		res.send({auth: auth, status: result.status, data: result.data.data});
 	}
 	else {
@@ -95,6 +99,7 @@ app.post("/api/disk/delete", async (req, res) => {
 	if (auth) {
 		let method = req.body.type === "qemu" ? "POST" : "PUT";
 		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+		await handleResponse(req.body.node, result);
 		res.send({auth: auth, status: result.status, data: result.data.data});
 	}
 	else {
@@ -147,6 +152,28 @@ async function requestPVE (path, method, cookies, body = null, token = null) {
 	}
 	catch (error) {
 		return error;
+	}
+}
+
+async function handleResponse (node, response) {
+	const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
+	if (response.data.data) {
+		let upid = response.data.data;
+		while (true) {
+			let taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", null, null, pveAPIToken);
+			if (taskStatus.data.data.status === "stopped" && taskStatus.data.data.exitStatus === "OK") {
+				return true;
+			}
+			else if (taskStatus.data.data.status === "stopped") {
+				return false;
+			}
+			else {
+				await waitFor(1000);
+			}
+		}
+	}
+	else {
+		return true;
 	}
 }
 
