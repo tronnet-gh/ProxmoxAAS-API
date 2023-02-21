@@ -9,6 +9,7 @@ var api = require("./package.json");
 
 const {pveAPI, pveAPIToken, listenPort} = require("./vars.js");
 const { token } = require("morgan");
+const { response } = require("express");
 
 const app = express();
 app.use(helmet());
@@ -115,6 +116,22 @@ app.post("/api/resources", async (req, res) => {
 		let method = req.body.type === "qemu" ? "POST" : "PUT";
 		action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
 		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+		result = await handleResponse(req.body.node, result);
+		res.send({auth: auth, status: result.status, data: result.data.data});
+	}
+	else {
+		res.send({auth: auth});
+	}
+});
+
+//app.post("/api/instance", async (req, res) => {});
+
+app.delete("/api/instance", async (req, res) => {
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+
+	let auth = await checkAuth(req.cookies, vmpath);
+	if (auth) {
+		let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
 		result = await handleResponse(req.body.node, result);
 		res.send({auth: auth, status: result.status, data: result.data.data});
 	}
