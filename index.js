@@ -108,6 +108,21 @@ app.post("/api/disk/delete", async (req, res) => {
 	}
 });
 
+app.post("/api/disk/create", async (req, res) => {
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+
+	let auth = await checkAuth(req.cookies, vmpath);
+	if (auth) {
+		let method = req.body.type === "qemu" ? "POST" : "PUT";
+		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+		result = await handleResponse(req.body.node, result);
+		res.send({auth: auth, status: result.status, data: result.data.data});
+	}
+	else {
+		res.send({auth: auth});
+	}
+});
+
 app.post("/api/resources", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
