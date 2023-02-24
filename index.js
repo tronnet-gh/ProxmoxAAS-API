@@ -32,9 +32,15 @@ app.get("/api/auth", async (req, res) => {
 	res.send({auth: result});
 });
 
-app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for proxmox api with no token
+app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for GET proxmox api with no token
 	path = req.url.replace("/api/proxmox", "");
 	let result = await requestPVE(path, "GET", req.cookies);
+	res.send(result.data, result.status);
+});
+
+app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST proxmox api with no token
+	path = req.url.replace("/api/proxmox", "");
+	let result = await requestPVE(path, "POST", req.cookies, req.body);
 	res.send(result.data, result.status);
 });
 
