@@ -36,45 +36,45 @@ app.post("/api/disk/detach", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
 	let auth = await checkAuth(req.cookies, vmpath);
-	if (auth) {
-		let method = req.body.type === "qemu" ? "POST" : "PUT";
-		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
-		result = await handleResponse(req.body.node, result);
-		res.send({auth: auth, status: result.status, data: result.data.data});
-	}
-	else {
+	if (!auth) {
 		res.send({auth: auth});
+		return;
 	}
+
+	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data.data});
 });
 
 app.post("/api/disk/attach", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
 	let auth = await checkAuth(req.cookies, vmpath);
-	if (auth) {
-		let method = req.body.type === "qemu" ? "POST" : "PUT";
-		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
-		result = await handleResponse(req.body.node, result);
-		res.send({auth: auth, status: result.status, data: result.data.data});
-	}
-	else {
+	if (!auth) {
 		res.send({auth: auth});
+		return;
 	}
+
+	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data.data});
 });
 
 app.post("/api/disk/resize", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
 	let auth = await checkAuth(req.cookies, vmpath);
-	if (auth) {
-		let method = "PUT";
-		let result = await requestPVE(`${vmpath}/resize`, method, req.cookies, req.body.action, pveAPIToken);
-		result = await handleResponse(req.body.node, result);
-		res.send({auth: auth, status: result.status, data: result.data.data});
-	}
-	else {
+	if (!auth) {
 		res.send({auth: auth});
+		return;
 	}
+
+	let method = "PUT";
+	let result = await requestPVE(`${vmpath}/resize`, method, req.cookies, req.body.action, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data.data});
 });
 
 app.post("/api/disk/move", async (req, res) => {
@@ -82,88 +82,91 @@ app.post("/api/disk/move", async (req, res) => {
 	let route = req.body.type === "qemu" ? "move_disk" : "move_volume";
 
 	let auth = await checkAuth(req.cookies, vmpath);
-	if (auth) {
-		let method = "POST";
-		let result = await requestPVE(`${vmpath}/${route}`, method, req.cookies, req.body.action, pveAPIToken);
-		result = await handleResponse(req.body.node, result);
-		res.send({auth: auth, status: result.status, data: result.data.data});
-	}
-	else {
+	if (!auth) {
 		res.send({auth: auth});
+		return;
 	}
+
+	let method = "POST";
+	let result = await requestPVE(`${vmpath}/${route}`, method, req.cookies, req.body.action, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data.data});
 });
 
 app.post("/api/disk/delete", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
 	let auth = await checkAuth(req.cookies, vmpath);
-	if (auth) {
-		let method = req.body.type === "qemu" ? "POST" : "PUT";
-		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
-		result = await handleResponse(req.body.node, result);
-		res.send({auth: auth, status: result.status, data: result.data.data});
-	}
-	else {
+	if (!auth) {
 		res.send({auth: auth});
+		return;
 	}
+
+	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data.data});
 });
 
 app.post("/api/disk/create", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
 	let auth = await checkAuth(req.cookies, vmpath);
-	if (auth) {
-		let method = req.body.type === "qemu" ? "POST" : "PUT";
-		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
-		result = await handleResponse(req.body.node, result);
-		res.send({auth: auth, status: result.status, data: result.data.data});
-	}
-	else {
+	if (!auth) {
 		res.send({auth: auth});
+		return;
 	}
+
+	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data.data});
 });
 
 app.post("/api/resources", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
 	let auth = await checkAuth(req.cookies, vmpath);
-	if (auth) {
-		let method = req.body.type === "qemu" ? "POST" : "PUT";
-		action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
-		let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
-		result = await handleResponse(req.body.node, result);
-		res.send({auth: auth, status: result.status, data: result.data.data});
-	}
-	else {
+	if (!auth) {
 		res.send({auth: auth});
+		return;
 	}
+
+	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data.data});
 });
 
-//app.post("/api/instance", async (req, res) => {});
+app.post("/api/instance", async (req, res) => {
+	let auth = await checkAuth(req.cookies);
+	if (!auth) {
+		res.send({auth: auth});
+		return;
+	}
+
+	// do stuff
+});
 
 app.delete("/api/instance", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
 	let auth = await checkAuth(req.cookies, vmpath);
-	if (auth) {
-		let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
-		result = await handleResponse(req.body.node, result);
-		res.send({auth: auth, status: result.status, data: result.data.data});
-	}
-	else {
+	if (!auth) {
 		res.send({auth: auth});
+		return;
 	}
+
+	let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data.data});
 });
 
 async function checkAuth (cookies, vmpath = null) {
 	if (vmpath) {
 		let result = await requestPVE(`/${vmpath}/config`, "GET", cookies);
-		if (result) {
-			return result.status === 200;
-		}
-		else {
-			return false;
-		}
+		return result.status === 200;
 	}
 	else { // if no path is specified, then do a simple authentication
 		let result = await requestPVE("/version", "GET", cookies);
