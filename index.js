@@ -32,6 +32,12 @@ app.get("/api/auth", async (req, res) => {
 	res.send({auth: result});
 });
 
+app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for proxmox api with no token
+	path = req.url.replace("/api/proxmox", "");
+	let result = await requestPVE(path, "GET", req.cookies);
+	res.send(result.data, result.status);
+});
+
 app.post("/api/disk/detach", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
@@ -188,7 +194,7 @@ async function requestPVE (path, method, cookies, body = null, token = null) {
 	if (token) {
 		content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
 	}
-	else {
+	else if (cookies) {
 		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
 		content.headers.Cookie = `PVEAuthCookie=${cookies.PVEAuthCookie}; CSRFPreventionToken=${cookies.CSRFPreventionToken}`;
 	}
@@ -202,7 +208,7 @@ async function requestPVE (path, method, cookies, body = null, token = null) {
 		return response;
 	}
 	catch (error) {
-		return error;
+		return error.response;
 	}
 }
 
