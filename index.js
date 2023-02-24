@@ -40,7 +40,7 @@ app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for GET proxmo
 
 app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST proxmox api with no token
 	path = req.url.replace("/api/proxmox", "");
-	let result = await requestPVE(path, "POST", req.cookies, req.body);
+	let result = await requestPVE(path, "POST", req.cookies, JSON.stringify(req.body)); // need to stringify body because of other issues
 	res.send(result.data, result.status);
 });
 
