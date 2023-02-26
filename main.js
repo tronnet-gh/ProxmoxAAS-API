@@ -8,8 +8,7 @@ const axios = require('axios');
 var api = require("./package.json");
 
 const {pveAPI, pveAPIToken, listenPort} = require("./vars.js");
-const { token } = require("morgan");
-const { response } = require("express");
+const {init, requestResources, releaseResources} = require("./db.js");
 
 const app = express();
 app.use(helmet());
