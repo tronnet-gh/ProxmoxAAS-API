@@ -23,7 +23,7 @@ function init () {
  * @returns {boolean} whether the user is approved to allocate requested resources
  */
 function requestResources (user, resources) {
-	Object.keys(resources).forEach((element) => {
+	Object.keys(db[user]).forEach((element) => {
 		if (db[user][element] < resources[element]) {
 			return false;
 		}
@@ -38,14 +38,18 @@ function requestResources (user, resources) {
  * @returns {boolean} true if resources were successfully allocated, false otherwise
  */
 function allocateResources (user, resources) {
-	Object.keys(resources).forEach((element) => {
-		db[user][element] -= resource[element];
+	let newdb = {};
+	Object.assign(newdb, db);
+	Object.keys(db[user]).forEach((element) => {
+		newdb[user][element] -= resource[element];
 	});
 	try {
-		fs.writeFileSync(filename, db);
+		fs.writeFileSync(filename, newdb);
+		Object.assign(db, newdb);
 		return true;
 	}
 	catch {
+		fs.writeFileSync(filename, db)
 		return false;
 	}
 }
@@ -57,14 +61,18 @@ function allocateResources (user, resources) {
  * @returns {boolean} true if resources were successfully deallocated, false otherwise
  */
 function releaseResources (user, resources) {
-	Object.keys(resources).forEach((element) => {
-		db[user][element] += resource[element];
+	let newdb = {};
+	Object.assign(newdb, db);
+	Object.keys(db[user]).forEach((element) => {
+		newdb[user][element] += resource[element];
 	});
 	try {
-		fs.writeFileSync(filename, db);
+		fs.writeFileSync(filename, newdb);
+		Object.assign(db, newdb);
 		return true;
 	}
 	catch {
+		fs.writeFileSync(filename, db)
 		return false;
 	}
 }
