@@ -57,7 +57,7 @@ app.post("/api/disk/detach", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data.data});
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 app.post("/api/disk/attach", async (req, res) => {
@@ -76,7 +76,7 @@ app.post("/api/disk/attach", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data.data});
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 app.post("/api/disk/resize", async (req, res) => {
@@ -90,10 +90,9 @@ app.post("/api/disk/resize", async (req, res) => {
 
 	let action = JSON.stringify({disk: req.body.disk, size: `+${req.body.size}G`});
 
-	let method = "PUT";
-	let result = await requestPVE(`${vmpath}/resize`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/resize`, "PUT", req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data.data});
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 app.post("/api/disk/move", async (req, res) => {
@@ -115,10 +114,9 @@ app.post("/api/disk/move", async (req, res) => {
 	}
 	action = JSON.stringify(action);
 
-	let method = "POST";
-	let result = await requestPVE(`${vmpath}/${route}`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/${route}`, "POST", req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data.data});
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 app.post("/api/disk/delete", async (req, res) => {
@@ -135,7 +133,7 @@ app.post("/api/disk/delete", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data.data});
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 app.post("/api/disk/create", async (req, res) => {
@@ -162,7 +160,7 @@ app.post("/api/disk/create", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data.data});
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 app.post("/api/resources", async (req, res) => {
@@ -178,7 +176,7 @@ app.post("/api/resources", async (req, res) => {
 	action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data.data});
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 app.post("/api/instance", async (req, res) => {
@@ -188,7 +186,29 @@ app.post("/api/instance", async (req, res) => {
 		return;
 	}
 
-	// do stuff
+	let action = {
+		vmid: req.body.vmid,
+		cores: req.body.cores,
+		memory: req.body.memory,
+		pool: req.cookies.username.replace("@ldap", "")
+	};
+	if (req.body.type === "lxc") {
+		action.swap = req.body.swap;
+		action.hostname = req.body.name;
+		action.unprivileged = 1;
+		action.features = "nesting=1";
+		action.password = req.body.password;
+		action.ostemplate = req.body.ostemplate;
+		action.rootfs = `${req.body.rootfslocation}:${req.body.rootfssize}`;
+	}
+	else {
+		action.name = req.body.name;
+	}
+	action = JSON.stringify(action);
+
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}`, "POST", req.cookies, action, pveAPIToken);
+	result = await handleResponse(req.body.node, result);
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 app.delete("/api/instance", async (req, res) => {
@@ -202,7 +222,7 @@ app.delete("/api/instance", async (req, res) => {
 
 	let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data.data});
+	res.send({auth: auth, status: result.status, data: result.data});
 });
 
 async function checkAuth (cookies, vmpath = null) {
