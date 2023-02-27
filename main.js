@@ -52,8 +52,10 @@ app.post("/api/disk/detach", async (req, res) => {
 		return;
 	}
 
+	let action = JSON.stringify({delete: req.body.disk});
+
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
 	res.send({auth: auth, status: result.status, data: result.data.data});
 });
@@ -67,8 +69,12 @@ app.post("/api/disk/attach", async (req, res) => {
 		return;
 	}
 
+	let action = {};
+	action[req.body.disk] = req.body.data;
+	action = JSON.stringify(action);
+
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
 	res.send({auth: auth, status: result.status, data: result.data.data});
 });
@@ -82,8 +88,10 @@ app.post("/api/disk/resize", async (req, res) => {
 		return;
 	}
 
+	let action = JSON.stringify({disk: req.body.disk, size: `+${req.body.size}G`});
+
 	let method = "PUT";
-	let result = await requestPVE(`${vmpath}/resize`, method, req.cookies, req.body.action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/resize`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
 	res.send({auth: auth, status: result.status, data: result.data.data});
 });
@@ -98,8 +106,17 @@ app.post("/api/disk/move", async (req, res) => {
 		return;
 	}
 
+	let action = {storage: req.body.storage, delete: req.body.delete};
+	if (req.body.type === "qemu") {
+		action.disk = req.body.disk
+	}
+	else {
+		action.volume = req.body.disk
+	}
+	action = JSON.stringify(action);
+
 	let method = "POST";
-	let result = await requestPVE(`${vmpath}/${route}`, method, req.cookies, req.body.action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/${route}`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
 	res.send({auth: auth, status: result.status, data: result.data.data});
 });
@@ -113,8 +130,10 @@ app.post("/api/disk/delete", async (req, res) => {
 		return;
 	}
 
+	let action = JSON.stringify({delete: req.body.disk});
+
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
 	res.send({auth: auth, status: result.status, data: result.data.data});
 });
@@ -128,8 +147,20 @@ app.post("/api/disk/create", async (req, res) => {
 		return;
 	}
 
+	let action = {};
+	if (req.body.disk.includes("ide") && req.body.iso) {
+		action[req.body.disk] = `${req.body.iso},media=cdrom`;
+	}
+	else if (req.body.type === "qemu") { // type is qemu, use sata
+		action[req.body.disk] = `${req.body.storage}:${req.body.size}`;
+	}
+	else { // type is lxc, use mp and add mp and backup values
+		action[req.body.disk] = `${req.body.storage}:${req.body.size},mp=/mp${req.body.device}/,backup=1`;
+	}
+	action = JSON.stringify(action);
+
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, req.body.action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
 	res.send({auth: auth, status: result.status, data: result.data.data});
 });
