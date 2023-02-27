@@ -240,5 +240,6 @@ async function handleResponse (node, response) {
 }
 
 app.listen(listenPort, () => {
+	init();
 	console.log(`proxmoxaas-api v${api.version} listening on port ${listenPort}`);
 });
