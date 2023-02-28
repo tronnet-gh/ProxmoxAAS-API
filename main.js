@@ -7,7 +7,7 @@ const morgan = require("morgan");
 var api = require("./package.json");
 
 const {pveAPIToken, listenPort, domain} = require("./vars.js");
-const {checkAuth, requestPVE, handleResponse, getUnusedDiskData, getDiskByConfig} = require("./pveutils.js");
+const {checkAuth, requestPVE, handleResponse, getUnusedDiskData, getDiskConfig} = require("./pveutils.js");
 const {init, requestResources, allocateResources, releaseResources} = require("./db.js");
 
 const app = express();
@@ -88,7 +88,7 @@ app.post("/api/disk/resize", async (req, res) => {
 		return;
 	}
 
-	let diskConfig = await getDiskByConfig(req.body.node, req.body.type, req.body.vmid, req.body.disk);
+	let diskConfig = await getDiskConfig(req.body.node, req.body.type, req.body.vmid, req.body.disk);
 	if (!diskConfig) {
 		res.status(500).send({auth: auth, data:{error: `requested disk ${req.body.disk} does not exist`}});
 	}	
