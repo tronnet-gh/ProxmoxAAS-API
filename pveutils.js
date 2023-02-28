@@ -77,10 +77,10 @@ async function getUnusedDiskData (node, disk) {
 	return null;
 }
 
-async function getDiskByConfig (node, type, vmid, disk) {
+async function getDiskConfig (node, type, vmid, disk) {
 	let config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
 
 	return config.data.data[disk];
 }
 
-module.exports = {checkAuth, requestPVE, handleResponse, getUnusedDiskData, getDiskByConfig};
+module.exports = {checkAuth, requestPVE, handleResponse, getUnusedDiskData, getDiskConfig};
