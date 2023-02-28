@@ -9,7 +9,7 @@ let db = {};
  */
 function init () {
 	try {
-		db = fs.readFileSync(filename);
+		db = JSON.parse(fs.readFileSync(filename));
 	}
 	catch {
 		fs.writeFileSync(filename, JSON.stringify(db));
@@ -23,12 +23,13 @@ function init () {
  * @returns {boolean} whether the user is approved to allocate requested resources
  */
 function requestResources (user, resources) {
-	Object.keys(db[user]).forEach((element) => {
-		if (db[user][element] < resources[element]) {
-			return false;
+	let approved = true;
+	Object.keys(resources).forEach((element) => {
+		if (db[user][element] - resources[element] < 0) {
+			approved = false;
 		}
 	});
-	return true;
+	return approved;
 }
 
 /**
@@ -40,16 +41,16 @@ function requestResources (user, resources) {
 function allocateResources (user, resources) {
 	let newdb = {};
 	Object.assign(newdb, db);
-	Object.keys(db[user]).forEach((element) => {
-		newdb[user][element] -= resource[element];
+	Object.keys(resources).forEach((element) => {
+		newdb[user][element] -= resources[element];
 	});
 	try {
-		fs.writeFileSync(filename, newdb);
+		fs.writeFileSync(filename, JSON.stringify(newdb));
 		Object.assign(db, newdb);
 		return true;
 	}
 	catch {
-		fs.writeFileSync(filename, db)
+		fs.writeFileSync(filename, JSON.stringify(db))
 		return false;
 	}
 }
@@ -63,18 +64,18 @@ function allocateResources (user, resources) {
 function releaseResources (user, resources) {
 	let newdb = {};
 	Object.assign(newdb, db);
-	Object.keys(db[user]).forEach((element) => {
-		newdb[user][element] += resource[element];
+	Object.keys(resources).forEach((element) => {
+		newdb[user][element] += resources[element];
 	});
 	try {
-		fs.writeFileSync(filename, newdb);
+		fs.writeFileSync(filename, JSON.stringify(newdb));
 		Object.assign(db, newdb);
 		return true;
 	}
 	catch {
-		fs.writeFileSync(filename, db)
+		fs.writeFileSync(filename, JSON.stringify(db))
 		return false;
 	}
 }
 
-module.exports = {init, requestResources, releaseResources};
+module.exports = {init, requestResources, allocateResources, releaseResources};

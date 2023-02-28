@@ -4,11 +4,11 @@ const cookieParser = require("cookie-parser")
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
-const axios = require('axios');
 var api = require("./package.json");
 
-const {pveAPI, pveAPIToken, listenPort, domain} = require("./vars.js");
-const {init, requestResources, releaseResources} = require("./db.js");
+const {pveAPIToken, listenPort, domain} = require("./vars.js");
+const {checkAuth, requestPVE, handleResponse, getUnusedDiskData, getDiskByConfig} = require("./pveutils.js");
+const {init, requestResources, allocateResources, releaseResources} = require("./db.js");
 
 const app = express();
 app.use(helmet());
@@ -48,7 +48,7 @@ app.post("/api/disk/detach", async (req, res) => {
 
 	let auth = await checkAuth(req.cookies, vmpath);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
 		return;
 	}
 
@@ -65,7 +65,7 @@ app.post("/api/disk/attach", async (req, res) => {
 
 	let auth = await checkAuth(req.cookies, vmpath);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
 		return;
 	}
 
@@ -84,7 +84,19 @@ app.post("/api/disk/resize", async (req, res) => {
 
 	let auth = await checkAuth(req.cookies, vmpath);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
+		return;
+	}
+
+	let diskConfig = await getDiskByConfig(req.body.node, req.body.type, req.body.vmid, req.body.disk);
+	if (!diskConfig) {
+		res.status(500).send({auth: auth, data:{error: `requested disk ${req.body.disk} does not exist`}});
+	}	
+	let storage = diskConfig.split(":")[0];
+	let request = {};
+	request[storage] = req.body.size;
+	if (!requestResources(req.cookies.username, request)) {
+		res.status(500).send({auth: auth, data:{request: request, error: `${storage} could not fulfill request`}});
 		return;
 	}
 
@@ -92,7 +104,10 @@ app.post("/api/disk/resize", async (req, res) => {
 
 	let result = await requestPVE(`${vmpath}/resize`, "PUT", req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	if (result.status === 200) {
+		allocateResources(req.cookies.username, request);
+	}
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.post("/api/disk/move", async (req, res) => {
@@ -116,7 +131,7 @@ app.post("/api/disk/move", async (req, res) => {
 
 	let result = await requestPVE(`${vmpath}/${route}`, "POST", req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	res.send({auth: auth, data: result.data}, result.status);
 });
 
 app.post("/api/disk/delete", async (req, res) => {
@@ -133,7 +148,7 @@ app.post("/api/disk/delete", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	res.send({auth: auth, data: result.data}, result.status);
 });
 
 app.post("/api/disk/create", async (req, res) => {
@@ -160,7 +175,7 @@ app.post("/api/disk/create", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	res.send({auth: auth, data: result.data}, result.status);
 });
 
 app.post("/api/resources", async (req, res) => {
@@ -176,7 +191,7 @@ app.post("/api/resources", async (req, res) => {
 	action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	res.send({auth: auth, data: result.data}, result.status);
 });
 
 app.post("/api/instance", async (req, res) => {
@@ -214,7 +229,7 @@ app.post("/api/instance", async (req, res) => {
 
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}`, "POST", req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	res.send({auth: auth, data: result.data}, result.status);
 });
 
 app.delete("/api/instance", async (req, res) => {
@@ -228,73 +243,8 @@ app.delete("/api/instance", async (req, res) => {
 
 	let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	res.send({auth: auth, data: result.data}, result.status);
 });
-
-async function checkAuth (cookies, vmpath = null) {
-	if (vmpath) {
-		let result = await requestPVE(`/${vmpath}/config`, "GET", cookies);
-		return result.status === 200;
-	}
-	else { // if no path is specified, then do a simple authentication
-		let result = await requestPVE("/version", "GET", cookies);
-		return result.status === 200;
-	}
-}
-
-async function requestPVE (path, method, cookies, body = null, token = null) {
-	let url = `${pveAPI}${path}`;
-	let content = {
-		method: method,
-		mode: "cors",
-		credentials: "include",
-		headers: {
-			"Content-Type": "application/x-www-form-urlencoded"
-		},
-	}
-
-	if (token) {
-		content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
-	}
-	else if (cookies) {
-		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
-		content.headers.Cookie = `PVEAuthCookie=${cookies.PVEAuthCookie}; CSRFPreventionToken=${cookies.CSRFPreventionToken}`;
-	}
-
-	if (body) {
-		content.data = JSON.parse(body);
-	}
-
-	try {
-		let response = await axios.request(url, content);
-		return response;
-	}
-	catch (error) {
-		return error.response;
-	}
-}
-
-async function handleResponse (node, response) {
-	const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
-	if (response.data.data) {
-		let upid = response.data.data;
-		while (true) {
-			let taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", null, null, pveAPIToken);
-			if (taskStatus.data.data.status === "stopped" && taskStatus.data.data.exitStatus === "OK") {
-				return taskStatus;
-			}
-			else if (taskStatus.data.data.status === "stopped") {
-				return taskStatus;
-			}
-			else {
-				await waitFor(1000);
-			}
-		}
-	}
-	else {
-		return response;
-	}
-}
 
 app.listen(listenPort, () => {
 	init();
