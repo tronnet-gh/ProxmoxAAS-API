@@ -14,7 +14,7 @@ const app = express();
 app.use(helmet());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser())
-app.use(cors());
+app.use(cors({origin: "https://client.tronnet.net"}));
 app.use(morgan("combined"));
 
 
