@@ -57,7 +57,7 @@ app.post("/api/disk/detach", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.post("/api/disk/attach", async (req, res) => {
@@ -76,7 +76,7 @@ app.post("/api/disk/attach", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, status: result.status, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.post("/api/disk/resize", async (req, res) => {
@@ -116,7 +116,7 @@ app.post("/api/disk/move", async (req, res) => {
 
 	let auth = await checkAuth(req.cookies, vmpath);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
 		return;
 	}
 
@@ -131,7 +131,7 @@ app.post("/api/disk/move", async (req, res) => {
 
 	let result = await requestPVE(`${vmpath}/${route}`, "POST", req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, data: result.data}, result.status);
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.post("/api/disk/delete", async (req, res) => {
@@ -139,7 +139,7 @@ app.post("/api/disk/delete", async (req, res) => {
 
 	let auth = await checkAuth(req.cookies, vmpath);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
 		return;
 	}
 
@@ -148,7 +148,7 @@ app.post("/api/disk/delete", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, data: result.data}, result.status);
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.post("/api/disk/create", async (req, res) => {
@@ -156,7 +156,7 @@ app.post("/api/disk/create", async (req, res) => {
 
 	let auth = await checkAuth(req.cookies, vmpath);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
 		return;
 	}
 
@@ -175,7 +175,7 @@ app.post("/api/disk/create", async (req, res) => {
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, data: result.data}, result.status);
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.post("/api/resources", async (req, res) => {
@@ -183,7 +183,7 @@ app.post("/api/resources", async (req, res) => {
 
 	let auth = await checkAuth(req.cookies, vmpath);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
 		return;
 	}
 
@@ -191,20 +191,20 @@ app.post("/api/resources", async (req, res) => {
 	action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, data: result.data}, result.status);
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.post("/api/instance", async (req, res) => {
 	let auth = await checkAuth(req.cookies);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
 		return;
 	}
 
 	let user = await requestPVE(`/access/users/${req.cookies.username}`, "GET", null, null, pveAPIToken);
 	let group = user.data.data.groups[0];
 	if (!group) {
-		res.send({auth: auth, data: {error: `user ${req.cookies.username} has no group membership`}});
+		res.status(500).send({auth: auth, data: {error: `user ${req.cookies.username} has no group membership`}});
 	}	
 
 	let action = {
@@ -229,7 +229,7 @@ app.post("/api/instance", async (req, res) => {
 
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}`, "POST", req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, data: result.data}, result.status);
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.delete("/api/instance", async (req, res) => {
@@ -237,13 +237,13 @@ app.delete("/api/instance", async (req, res) => {
 
 	let auth = await checkAuth(req.cookies, vmpath);
 	if (!auth) {
-		res.send({auth: auth});
+		res.status(401).send({auth: auth});
 		return;
 	}
 
 	let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
-	res.send({auth: auth, data: result.data}, result.status);
+	res.status(result.status).send({auth: auth, data: result.data});
 });
 
 app.listen(listenPort, () => {
