@@ -5,5 +5,6 @@
 3. Create a new role `proxmoxaas-api` with at least the following permissions: 
 - VM.* except VM.Audit, VM.Backup, VM.Clone, VM.Console, VM.Monitor, VM.PowerMgmt, VM.Snapshot, VM.Snapshot.Rollback
 - Datastore.Allocate, Datastore.AllocateSpace, Datastore.Audit
+- User.Modify
 4. Add a new API Token Permission with path: `/`, select the API token created previously, and role: `proxmoxaas-api`
 5. Add a new User Permission with  path: `/`, select the `proxmoxaas-api` user, and role: `proxmoxaas-api`
