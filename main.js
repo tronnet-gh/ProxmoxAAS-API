@@ -186,11 +186,17 @@ app.post("/api/instance", async (req, res) => {
 		return;
 	}
 
+	let user = await requestPVE(`/access/users/${req.cookies.username}`, "GET", null, null, pveAPIToken);
+	let group = user.data.data.groups[0];
+	if (!group) {
+		res.send({auth: auth, data: {error: `user ${req.cookies.username} has no group membership`}});
+	}	
+
 	let action = {
 		vmid: req.body.vmid,
 		cores: req.body.cores,
 		memory: req.body.memory,
-		pool: req.cookies.username.replace("@ldap", "")
+		pool: group
 	};
 	if (req.body.type === "lxc") {
 		action.swap = req.body.swap;
