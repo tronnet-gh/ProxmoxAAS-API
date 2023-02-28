@@ -6,5 +6,6 @@ const pveAPIToken = {
 	uuid: ""
 };
 const listenPort = 80;
+const domain = "";
 
-module.exports = {pveAPI, listenPort, pveAPIToken};
+module.exports = {pveAPI, listenPort, pveAPIToken, domain};

@@ -7,14 +7,14 @@ const morgan = require("morgan");
 const axios = require('axios');
 var api = require("./package.json");
 
-const {pveAPI, pveAPIToken, listenPort} = require("./vars.js");
+const {pveAPI, pveAPIToken, listenPort, domain} = require("./vars.js");
 const {init, requestResources, releaseResources} = require("./db.js");
 
 const app = express();
 app.use(helmet());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser())
-app.use(cors({origin: "https://client.tronnet.net"}));
+app.use(cors({origin: domain}));
 app.use(morgan("combined"));
 
 
