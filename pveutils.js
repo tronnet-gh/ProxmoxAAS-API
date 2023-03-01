@@ -72,9 +72,7 @@ async function getUnusedDiskData (node, type, vmid, disk) {
 	let storageData = await requestPVE(`/nodes/${node}/storage/${storageID}/content`, "GET", null, null, pveAPIToken);
 	let diskDataStorage = null;
 	storageData.data.data.forEach((element) => {
-		console.log(element)
 		if (element.volid === diskDataConfig) {
-			console.log("match!!!")
 			element.storage = storageID;
 			diskDataStorage = element;
 		}

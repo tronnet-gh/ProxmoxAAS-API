@@ -349,6 +349,32 @@ app.delete("/api/instance", async (req, res) => {
 	// setup release TODO: add disk data here
 	let currentConfig = await requestPVE(`${vmpath}/config`, "GET", null, null, pveAPIToken);
 	let release = {cores: currentConfig.data.data.cores, memory: currentConfig.data.data.memory};
+	let keys = Object.keys(currentConfig.data.data);
+	for (let i = 0; i < keys.length; i++) {
+		let element = keys[i];
+		if (element.includes("sata") || element.includes("mp") || element.includes("rootfs")) { // if the disk is mounted, get its storage and size 
+			let diskConfig = await getDiskConfig(req.body.node, req.body.type, req.body.vmid, element);
+			let storage = diskConfig.split(":")[0];
+			let size = parseInt(diskConfig.split("size=")[1].split("G")[0]);
+			if (!release[storage]) { // if this is the first time storage has been seen, set storage to size
+				release[storage] = size;
+			}
+			else { // otherwise incrment storage by size
+				release[storage] += size;
+			}
+		}
+		else if (element.includes("unused")) {
+			let diskConfig = await getUnusedDiskData(req.body.node, req.body.type, req.body.vmid, element); // get disk config of unused disk
+			let storage = diskConfig.storage; // get disk storage
+			let size = diskConfig.size / (1024**3); // get disk size
+			if (!release[storage]) { // if this is the first time storage has been seen, set storage to size
+				release[storage] = size;
+			}
+			else { // otherwise incrment storage by size
+				release[storage] += size;
+			}
+		}
+	}
 
 	let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
