@@ -243,7 +243,6 @@ app.post("/api/disk/create", async (req, res) => {
 	result = await handleResponse(req.body.node, result);
 
 	// update resources
-	// update resources
 	if (result.status === 200) {
 		allocateResources(req.cookies.username, request);
 	}
