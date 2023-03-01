@@ -117,7 +117,7 @@ app.post("/api/disk/resize", async (req, res) => {
 		allocateResources(req.cookies.username, request);
 	}
 
-	res.status(result.status).send({auth: auth, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data, allocated: request});
 });
 
 app.post("/api/disk/move", async (req, res) => {
@@ -167,7 +167,7 @@ app.post("/api/disk/move", async (req, res) => {
 		releaseResources(req.cookies.username, release);
 	}
 
-	res.status(result.status).send({auth: auth, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data, allocated: request, deallocated: release});
 });
 
 app.post("/api/disk/delete", async (req, res) => {
@@ -204,7 +204,7 @@ app.post("/api/disk/delete", async (req, res) => {
 		releaseResources(req.cookies.username, release);
 	}
 
-	res.status(result.status).send({auth: auth, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data, deallocated: release});
 });
 
 app.post("/api/disk/create", async (req, res) => {
@@ -248,7 +248,7 @@ app.post("/api/disk/create", async (req, res) => {
 		allocateResources(req.cookies.username, request);
 	}
 
-	res.status(result.status).send({auth: auth, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data, allocated: request});
 });
 
 app.post("/api/resources", async (req, res) => {
@@ -278,7 +278,7 @@ app.post("/api/resources", async (req, res) => {
 		allocateResources(req.cookies.username, request);
 	}
 
-	res.status(result.status).send({auth: auth, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data, allocated: request});
 });
 
 app.post("/api/instance", async (req, res) => {
@@ -333,7 +333,7 @@ app.post("/api/instance", async (req, res) => {
 		allocateResources(req.cookies.username, request);
 	}
 
-	res.status(result.status).send({auth: auth, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data, allocated: request});
 });
 
 app.delete("/api/instance", async (req, res) => {
@@ -358,7 +358,7 @@ app.delete("/api/instance", async (req, res) => {
 		releaseResources(req.cookies.username, release);
 	}
 
-	res.status(result.status).send({auth: auth, data: result.data});
+	res.status(result.status).send({auth: auth, data: result.data, deallocated: release});
 });
 
 app.listen(listenPort, () => {
