@@ -25,7 +25,10 @@ function init () {
 function requestResources (user, resources) {
 	let approved = true;
 	Object.keys(resources).forEach((element) => {
-		if (db[user][element] - resources[element] < 0) {
+		if(!db[user][element]) { // if the resource does not exist in the user's entry, assume the user is not allowed to use it
+			approved = false;
+		}
+		else if (db[user][element] - resources[element] < 0) {
 			approved = false;
 		}
 	});
