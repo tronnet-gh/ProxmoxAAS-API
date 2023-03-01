@@ -263,17 +263,17 @@ app.post("/api/resources", async (req, res) => {
 
 	let currentConfig = await requestPVE(`${vmpath}/config`, "GET", null, null, pveAPIToken);
 	let request = {cores: req.body.cores - currentConfig.data.data.cores, memory: req.body.memory - currentConfig.data.data.memory};
-	
 	if (!requestResources(req.cookies.username, request)) { // check resource approval
 		res.status(500).send({auth: auth, data:{request: request, error: `Not enough resources to satisfy request.`}});
 		return;
-	}	
+	}
 
 	let action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
 
+	// update resources
 	if (result.status === 200) {
 		allocateResources(req.cookies.username, request);
 	}
@@ -288,6 +288,9 @@ app.post("/api/instance", async (req, res) => {
 		res.status(401).send({auth: auth});
 		return;
 	}
+
+	// setup request
+	let request = {cores: req.body.cores, memory: req.body.memory};
 
 	// setup action
 	let user = await requestPVE(`/access/users/${req.cookies.username}`, "GET", null, null, pveAPIToken);
@@ -309,13 +312,27 @@ app.post("/api/instance", async (req, res) => {
 		action.password = req.body.password;
 		action.ostemplate = req.body.ostemplate;
 		action.rootfs = `${req.body.rootfslocation}:${req.body.rootfssize}`;
+		request[req.body.rootfslocation] = req.body.rootfssize;
 	}
 	else {
 		action.name = req.body.name;
 	}
+
+	// check resource approval
+	if (!requestResources(req.cookies.username, request)) { // check resource approval
+		res.status(500).send({auth: auth, data:{request: request, error: `Not enough resources to satisfy request.`}});
+		return;
+	}
+
 	action = JSON.stringify(action);
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}`, "POST", req.cookies, action, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
+
+	//update resources
+	if (result.status === 200) {
+		allocateResources(req.cookies.username, request);
+	}
+
 	res.status(result.status).send({auth: auth, data: result.data});
 });
 
@@ -329,8 +346,18 @@ app.delete("/api/instance", async (req, res) => {
 		return;
 	}
 
+	// setup release TODO: add disk data here
+	let currentConfig = await requestPVE(`${vmpath}/config`, "GET", null, null, pveAPIToken);
+	let release = {cores: currentConfig.data.data.cores, memory: currentConfig.data.data.memory};
+
 	let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
 	result = await handleResponse(req.body.node, result);
+
+	//update resources
+	if (result.status === 200) {
+		releaseResources(req.cookies.username, release);
+	}
+
 	res.status(result.status).send({auth: auth, data: result.data});
 });
 
