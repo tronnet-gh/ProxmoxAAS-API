@@ -42,6 +42,7 @@ function allocateResources (user, resources) {
 	let newdb = {};
 	Object.assign(newdb, db);
 	Object.keys(resources).forEach((element) => {
+		console.log(newdb[user][element] + "-" + resources[element])
 		newdb[user][element] -= resources[element];
 	});
 	try {

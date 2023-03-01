@@ -66,15 +66,20 @@ async function handleResponse (node, response) {
 	}
 }
 
-async function getUnusedDiskData (node, disk) {
-	let storageID = disk.split(":")[0];
+async function getUnusedDiskData (node, type, vmid, disk) {
+	let diskDataConfig = await getDiskConfig(node, type, vmid, disk);
+	let storageID = diskDataConfig.split(":")[0];
 	let storageData = await requestPVE(`/nodes/${node}/storage/${storageID}/content`, "GET", null, null, pveAPIToken);
-	storageData.data.forEach((element) => {
-		if (element.volid === disk) {
-			return element;
+	let diskDataStorage = null;
+	storageData.data.data.forEach((element) => {
+		console.log(element)
+		if (element.volid === diskDataConfig) {
+			console.log("match!!!")
+			element.storage = storageID;
+			diskDataStorage = element;
 		}
 	});
-	return null;
+	return diskDataStorage;
 }
 
 async function getDiskConfig (node, type, vmid, disk) {
