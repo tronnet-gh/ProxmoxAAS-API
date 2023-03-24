@@ -45,7 +45,7 @@ function allocateResources (user, resources) {
 	let newdb = {};
 	Object.assign(newdb, db);
 	Object.keys(resources).forEach((element) => {
-		if(resources[element] instanceof Number && isFinite(resources[element])) {
+		if(typeof(resources[element]) === "number" && isFinite(resources[element])) {
 			newdb[user][element] -= resources[element];
 		}
 		else {
@@ -73,7 +73,7 @@ function releaseResources (user, resources) {
 	let newdb = {};
 	Object.assign(newdb, db);
 	Object.keys(resources).forEach((element) => {
-		if(resources[element] instanceof Number && isFinite(resources[element]) && resources[element]) {
+		if(typeof(resources[element]) === "number" && isFinite(resources[element]) && resources[element]) {
 			newdb[user][element] += resources[element];
 		}
 		else {
