@@ -45,8 +45,12 @@ function allocateResources (user, resources) {
 	let newdb = {};
 	Object.assign(newdb, db);
 	Object.keys(resources).forEach((element) => {
-		console.log(newdb[user][element] + "-" + resources[element])
-		newdb[user][element] -= resources[element];
+		if(resources[element] instanceof Number && isFinite(resources[element])) {
+			newdb[user][element] -= resources[element];
+		}
+		else {
+			return false;
+		}
 	});
 	try {
 		fs.writeFileSync(filename, JSON.stringify(newdb));
@@ -69,7 +73,12 @@ function releaseResources (user, resources) {
 	let newdb = {};
 	Object.assign(newdb, db);
 	Object.keys(resources).forEach((element) => {
-		newdb[user][element] += resources[element];
+		if(resources[element] instanceof Number && isFinite(resources[element]) && resources[element]) {
+			newdb[user][element] += resources[element];
+		}
+		else {
+			return false;
+		}
 	});
 	try {
 		fs.writeFileSync(filename, JSON.stringify(newdb));

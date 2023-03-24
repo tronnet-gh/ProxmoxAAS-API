@@ -102,7 +102,7 @@ app.post("/api/disk/resize", async (req, res) => {
 	}	
 	let storage = diskConfig.split(":")[0]; // get the storage
 	let request = {};
-	request[storage] = req.body.size; // setup request object
+	request[storage] = Number(req.body.size); // setup request object
 	if (!requestResources(req.cookies.username, request)) { // check request approval
 		res.status(500).send({auth: auth, data:{request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`}});
 		return;
@@ -142,9 +142,9 @@ app.post("/api/disk/move", async (req, res) => {
 	let request = {};
 	let release = {};
 	if (req.body.delete) { // if delete is true, increase resource used by the source storage
-		release[srcStorage] = size;
+		release[srcStorage] = Number(size);
 	}
-	request[dstStorage] = size; // always decrease destination storage by size
+	request[dstStorage] = Number(size); // always decrease destination storage by size
 	if (!requestResources(req.cookies.username, request)) { // check resource approval
 		res.status(500).send({auth: auth, data:{request: request, release: release, error: `Storage ${dstStorage} could not fulfill request of size ${size}G.`}});
 		return;
@@ -191,7 +191,7 @@ app.post("/api/disk/delete", async (req, res) => {
 		let diskConfig = await getUnusedDiskData(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get disk config of unused disk
 		let storage = diskConfig.storage; // get disk storage
 		let size = diskConfig.size / (1024**3); // get disk size
-		release[storage] = size;
+		release[storage] = Number(size);
 	}
 
 	let action = JSON.stringify({delete: req.body.disk});
@@ -220,7 +220,7 @@ app.post("/api/disk/create", async (req, res) => {
 	// check resource allocation
 	let request = {};
 	if (!req.body.disk.includes("ide")) {
-		request[req.body.storage] = req.body.size; // setup request object
+		request[req.body.storage] = Number(req.body.siz); // setup request object
 		if (!requestResources(req.cookies.username, request)) { // check request approval
 			res.status(500).send({auth: auth, data:{request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`}});
 			return;
@@ -261,7 +261,10 @@ app.post("/api/resources", async (req, res) => {
 	}
 
 	let currentConfig = await requestPVE(`${vmpath}/config`, "GET", null, null, pveAPIToken);
-	let request = {cores: req.body.cores - currentConfig.data.data.cores, memory: req.body.memory - currentConfig.data.data.memory};
+	let request = {
+		cores: Number(req.body.cores) - currentConfig.data.data.cores, 
+		memory: Number(req.body.memory) - currentConfig.data.data.memory
+	};
 	if (!requestResources(req.cookies.username, request)) { // check resource approval
 		res.status(500).send({auth: auth, data:{request: request, error: `Not enough resources to satisfy request.`}});
 		return;
@@ -289,7 +292,10 @@ app.post("/api/instance", async (req, res) => {
 	}
 
 	// setup request
-	let request = {cores: req.body.cores, memory: req.body.memory};
+	let request = {
+		cores: Number(req.body.cores), 
+		memory: Number(req.body.memory)
+	};
 
 	// setup action
 	let user = await requestPVE(`/access/users/${req.cookies.username}`, "GET", null, null, pveAPIToken);
