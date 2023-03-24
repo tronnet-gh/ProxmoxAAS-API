@@ -262,8 +262,8 @@ app.post("/api/resources", async (req, res) => {
 
 	let currentConfig = await requestPVE(`${vmpath}/config`, "GET", null, null, pveAPIToken);
 	let request = {
-		cores: Number(req.body.cores) - currentConfig.data.data.cores, 
-		memory: Number(req.body.memory) - currentConfig.data.data.memory
+		cores: Number(req.body.cores) - Number(currentConfig.data.data.cores), 
+		memory: Number(req.body.memory) - Number(currentConfig.data.data.memory)
 	};
 	if (!requestResources(req.cookies.username, request)) { // check resource approval
 		res.status(500).send({auth: auth, data:{request: request, error: `Not enough resources to satisfy request.`}});
