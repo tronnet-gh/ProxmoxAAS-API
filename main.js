@@ -44,13 +44,14 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 });
 
 app.get("/api/user/resources", async(req, res) => {
-	let auth = await checkAuth(req.cookies, vmpath);
+	let auth = await checkAuth(req.cookies);
 	if (!auth) {
 		res.status(401).send({auth: auth});
 		return;
 	}
 
-	return getResources(req.cookies.username);
+	res.status(200).send({resources: getResources(req.cookies.username)});
+	return;
 });
 
 app.post("/api/disk/detach", async (req, res) => {
