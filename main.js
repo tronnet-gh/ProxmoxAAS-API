@@ -8,7 +8,7 @@ var api = require("./package.json");
 
 const {pveAPIToken, listenPort, domain} = require("./vars.js");
 const {checkAuth, requestPVE, handleResponse, getUnusedDiskData, getDiskConfig} = require("./pveutils.js");
-const {init, requestResources, allocateResources, releaseResources} = require("./db.js");
+const {init, requestResources, allocateResources, releaseResources, getResources} = require("./db.js");
 
 const app = express();
 app.use(helmet());
@@ -41,6 +41,16 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 	path = req.url.replace("/api/proxmox", "");
 	let result = await requestPVE(path, "POST", req.cookies, JSON.stringify(req.body)); // need to stringify body because of other issues
 	res.send(result.data, result.status);
+});
+
+app.get("/api/user/resources", async(req, res) => {
+	let auth = await checkAuth(req.cookies, vmpath);
+	if (!auth) {
+		res.status(401).send({auth: auth});
+		return;
+	}
+
+	return getResources(req.cookies.username);
 });
 
 app.post("/api/disk/detach", async (req, res) => {

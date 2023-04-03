@@ -91,4 +91,17 @@ function releaseResources (user, resources) {
 	}
 }
 
-module.exports = {init, requestResources, allocateResources, releaseResources};
+/**
+ * return a read only copy of the user resources
+ * @param {string} user user's proxmox username in the form username@authrealm
+ * @returns {Object} user's remaining resources as k-v pairs with resource name as keys and resource ammount as values
+ */
+function getResources (user) {
+	let returnVal = {};
+	if(user in db) {
+		Object.assign(returnVal, db[user]);
+	}
+	return returnVal;
+}
+
+module.exports = {init, requestResources, allocateResources, releaseResources, getResources};
