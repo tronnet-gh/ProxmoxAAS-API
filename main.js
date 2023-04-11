@@ -231,7 +231,7 @@ app.post("/api/disk/create", async (req, res) => {
 	// check resource allocation
 	let request = {};
 	if (!req.body.disk.includes("ide")) {
-		request[req.body.storage] = Number(req.body.siz); // setup request object
+		request[req.body.storage] = Number(req.body.size); // setup request object
 		if (!requestResources(req.cookies.username, request)) { // check request approval
 			res.status(500).send({auth: auth, data:{request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`}});
 			return;
