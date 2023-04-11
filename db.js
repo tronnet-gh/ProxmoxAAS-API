@@ -25,10 +25,10 @@ function init () {
 function requestResources (user, resources) {
 	let approved = true;
 	Object.keys(resources).forEach((element) => {
-		if(!(element in db[user])) { // if the resource does not exist in the user's entry, assume the user is not allowed to use it
+		if(!(element in db[user].avaliable)) { // if the resource does not exist in the user's entry, assume the user is not allowed to use it
 			approved = false;
 		}
-		else if (db[user][element] - resources[element] < 0) {
+		else if (db[user].avaliable[element] - resources[element] < 0) {
 			approved = false;
 		}
 	});
@@ -46,7 +46,7 @@ function allocateResources (user, resources) {
 	Object.assign(newdb, db);
 	Object.keys(resources).forEach((element) => {
 		if(typeof(resources[element]) === "number" && isFinite(resources[element])) {
-			newdb[user][element] -= resources[element];
+			newdb[user].avaliable[element] -= resources[element];
 		}
 		else {
 			return false;
@@ -74,7 +74,7 @@ function releaseResources (user, resources) {
 	Object.assign(newdb, db);
 	Object.keys(resources).forEach((element) => {
 		if(typeof(resources[element]) === "number" && isFinite(resources[element]) && resources[element]) {
-			newdb[user][element] += resources[element];
+			newdb[user].avaliable[element] += resources[element];
 		}
 		else {
 			return false;
