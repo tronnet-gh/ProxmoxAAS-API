@@ -1,14 +1,20 @@
 const axios = require('axios');
 const {pveAPI, pveAPIToken} = require("./vars.js");
 
-async function checkAuth (cookies, vmpath = null) {
+async function checkAuth (cookies, res, vmpath = null) {
+	let auth = false;
 	if (vmpath) {
 		let result = await requestPVE(`/${vmpath}/config`, "GET", cookies);
-		return result.status === 200;
+		auth = result.status === 200;
 	}
 	else { // if no path is specified, then do a simple authentication
 		let result = await requestPVE("/version", "GET", cookies);
-		return result.status === 200;
+		auth = result.status === 200;
+	}
+	if (!auth) {
+		res.status(401).send({auth: auth});
+		res.end();
+		return;
 	}
 }
 
@@ -44,17 +50,21 @@ async function requestPVE (path, method, cookies, body = null, token = null) {
 	}
 }
 
-async function handleResponse (node, response) {
+async function handleResponse (node, result, res) {
 	const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
-	if (response.data.data) {
-		let upid = response.data.data;
+	if (result.data.data) {
+		let upid = result.data.data;
 		while (true) {
 			let taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", null, null, pveAPIToken);
 			if (taskStatus.data.data.status === "stopped" && taskStatus.data.data.exitstatus === "OK") {
-				return {status: 200, data: taskStatus.data.data};
+				res.status(200).send(taskStatus.data.data);
+				res.end();
+				return;
 			}
 			else if (taskStatus.data.data.status === "stopped") {
-				return {status: 500, data: taskStatus.data.data};
+				res.status(500).send(taskStatus.data.data);
+				res.end();
+				return;
 			}
 			else {
 				await waitFor(1000);
@@ -62,28 +72,58 @@ async function handleResponse (node, response) {
 		}
 	}
 	else {
-		return response;
+		res.status(result.status).send(result.data);
+		res.end();
+		return;
 	}
 }
 
-async function getUnusedDiskData (node, type, vmid, disk) {
-	let diskDataConfig = await getDiskConfig(node, type, vmid, disk);
-	let storageID = diskDataConfig.split(":")[0];
+async function getUsedResources (req, resourceMeta) {
+	let response = await requestPVE("/cluster/resources", "GET", req.cookies);
+	let used = {};
+	let diskprefixes = [];
+	for (let resourceName of Object.keys(resourceMeta)) {
+		if (resourceMeta[resourceName].type === "numeric") {
+			used[resourceName] = 0;
+		}
+		else if (resourceMeta[resourceName].type === "disk") {
+			resourceMeta[resourceName].storages.forEach((element) => {
+				used[element] = 0;
+			});
+			diskprefixes.push(resourceName);
+		}
+	}
+	for (instance of response.data.data) {
+		if (instance.type === "lxc" || instance.type === "qemu") {
+			let config = await requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", req.cookies);
+			config = config.data.data;
+			for (key of Object.keys(config)) {
+				if (Object.keys(used).includes(key) && resourceMeta[key].type === "numeric") {					
+					used[key] += config[key];
+				}
+				else if (diskprefixes.some(prefix => key.startsWith(prefix))) {
+					let diskInfo = await getDiskInfo(instance.node, instance.type, instance.vmid, key);
+					used[diskInfo.storage] += diskInfo.size;
+				}
+			}
+		}
+	}
+	return used;
+}
+
+async function getDiskInfo (node, type, vmid, disk) {
+	let config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
+	let storageID = config.data.data[disk].split(":")[0];
+	let volIDTarget = config.data.data[disk].split(",")[0];
 	let storageData = await requestPVE(`/nodes/${node}/storage/${storageID}/content`, "GET", null, null, pveAPIToken);
-	let diskDataStorage = null;
+	let diskInfo = null;
 	storageData.data.data.forEach((element) => {
-		if (element.volid === diskDataConfig) {
+		if (element.volid === volIDTarget) {
 			element.storage = storageID;
-			diskDataStorage = element;
+			diskInfo = element;
 		}
 	});
-	return diskDataStorage;
+	return diskInfo;
 }
 
-async function getDiskConfig (node, type, vmid, disk) {
-	let config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
-
-	return config.data.data[disk];
-}
-
-module.exports = {checkAuth, requestPVE, handleResponse, getUnusedDiskData, getDiskConfig};
+module.exports = {checkAuth, requestPVE, handleResponse, getUsedResources};

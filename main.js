@@ -7,8 +7,8 @@ const morgan = require("morgan");
 var api = require("./package.json");
 
 const {pveAPIToken, listenPort, domain} = require("./vars.js");
-const {checkAuth, requestPVE, handleResponse, getUnusedDiskData, getDiskConfig} = require("./pveutils.js");
-const {init, requestResources, allocateResources, releaseResources, getResources} = require("./db.js");
+const {checkAuth, requestPVE, handleResponse, getUsedResources} = require("./pveutils.js");
+const {init, getResourceMeta, getUserMax, getResourceUnits} = require("./db.js");
 
 const app = express();
 app.use(helmet());
@@ -19,82 +19,68 @@ app.use(morgan("combined"));
 
 
 app.get("/api/version", (req, res) => {
-	res.send({version: api.version});
+	res.status(200).send({version: api.version});
 });
 
 app.get("/api/echo", (req, res) => {
-	res.send({body: req.body, cookies: req.cookies});
+	res.status(200).send({body: req.body, cookies: req.cookies});
 });
 
 app.get("/api/auth", async (req, res) => {
-	let result = await checkAuth(req.cookies);
-	res.send({auth: result});
+	await checkAuth(req.cookies);
+	res.status(200).send({auth: true});
 });
 
 app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for GET proxmox api with no token
 	path = req.url.replace("/api/proxmox", "");
 	let result = await requestPVE(path, "GET", req.cookies);
-	res.send(result.data, result.status);
+	res.status(result.status).send(result.data);
 });
 
 app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST proxmox api with no token
 	path = req.url.replace("/api/proxmox", "");
 	let result = await requestPVE(path, "POST", req.cookies, JSON.stringify(req.body)); // need to stringify body because of other issues
-	res.send(result.data, result.status);
+	res.status(result.status).send(result.data);
 });
 
 app.get("/api/user/resources", async(req, res) => {
-	let auth = await checkAuth(req.cookies);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
-	res.status(200).send({resources: getResources(req.cookies.username)});
+	await checkAuth(req.cookies, res);
+	let rm = getResourceMeta();
+	let used = await getUsedResources(req, rm);	
+	let max = await getUserMax(req.cookies.username);
+	avail = {};
+	Object.keys(max).forEach((k) => {
+		avail[k] = max[k] - used[k];
+	});
+	let units = getResourceUnits();
+	res.status(200).send({used: used, maximum: max, available: avail, units: units});
 	return;
 });
 
 app.post("/api/disk/detach", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
-
-	// check auth
-	let auth = await checkAuth(req.cookies, vmpath);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
+	await checkAuth(req.cookies, res);
 	if (req.body.disk.includes("unused")) {
 		res.status(500).send({auth: auth, data:{error: `Requested disk ${req.body.disk} cannot be unused. Use /disk/delete to permanently delete unused disks.`}});
 		return;
 	}
-
 	let action = JSON.stringify({delete: req.body.disk});
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-	res.status(result.status).send({auth: auth, data: result.data});
+	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/disk/attach", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
-
-	// check auth
-	let auth = await checkAuth(req.cookies, vmpath);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
+	await checkAuth(req.cookies, res);
 	let action = {};
 	action[req.body.disk] = req.body.data;
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-	res.status(result.status).send({auth: auth, data: result.data});
+	await handleResponse(req.body.node, result, res);
 });
-
+/*
 app.post("/api/disk/resize", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 
@@ -401,7 +387,7 @@ app.delete("/api/instance", async (req, res) => {
 	}
 
 	res.status(result.status).send({auth: auth, data: result.data, deallocated: release});
-});
+});*/
 
 app.listen(listenPort, () => {
 	init();
