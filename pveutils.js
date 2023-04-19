@@ -114,16 +114,10 @@ async function getUsedResources (req, resourceMeta) {
 async function getDiskInfo (node, type, vmid, disk) {
 	let config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
 	let storageID = config.data.data[disk].split(":")[0];
-	let volIDTarget = config.data.data[disk].split(",")[0];
-	let storageData = await requestPVE(`/nodes/${node}/storage/${storageID}/content`, "GET", null, null, pveAPIToken);
-	let diskInfo = null;
-	storageData.data.data.forEach((element) => {
-		if (element.volid === volIDTarget) {
-			element.storage = storageID;
-			diskInfo = element;
-		}
-	});
-	return diskInfo;
+	let volID = config.data.data[disk].split(",")[0];
+	let volInfo = await requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", null, null, pveAPIToken);
+	volInfo.data.data.storage = storageID;
+	return volInfo.data.data;
 }
 
-module.exports = {checkAuth, requestPVE, handleResponse, getUsedResources};
+module.exports = {checkAuth, requestPVE, handleResponse, getUsedResources, getDiskInfo};

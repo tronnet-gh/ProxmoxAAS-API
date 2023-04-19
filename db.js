@@ -16,25 +16,48 @@ function init () {
 	}
 }
 
-function getResourceMeta () {
-	return db.resources;
+function load () {
+	db = JSON.parse(fs.readFileSync(filename));
 }
 
-function getUserMax (username) {
-	return db.users[username].maximum;
+function save () {
+	fs.writeFileSync(filename, JSON.stringify(db));
+}
+
+function getResourceMeta () {
+	return db["resource-metadata"];
 }
 
 function getResourceUnits () {
-	return db.units;
+	return db["resource-units"];
 }
 
-function putUserResources (username, used) {
+function getUser (username) {
+	return db.users[username];
+}
+
+function setUsedResources (username, used) {
 	let userEntry = db.users[username];
 	userEntry.used = used;
 	userEntry.avail = {};
-	Object.keys(max).forEach((k) => {
-		userEntry.avail[k] = max[k] - used[k];
+	Object.keys(userEntry.max).forEach((k) => {
+		userEntry.avail[k] = userEntry.max[k] - userEntry.used[k];
 	});
+	save();
 }
 
-module.exports = {init, getResourceMeta, getUserMax, getResourceUnits, putUserResources};
+async function approveResources (username, request) {
+	let approved = true;
+	let avail = db.users[username].avail;
+	Object.keys(request).forEach((key) => {
+		if (!(key in avail)) {
+			approved = false;
+		}
+		else if (avail[key] - request[key] < 0) {
+			approved = false;
+		}
+	});
+	return approved;
+}
+
+module.exports = {init, getResourceMeta, getResourceUnits, getUser, setUsedResources, approveResources};

@@ -7,8 +7,8 @@ const morgan = require("morgan");
 var api = require("./package.json");
 
 const {pveAPIToken, listenPort, domain} = require("./vars.js");
-const {checkAuth, requestPVE, handleResponse, getUsedResources} = require("./pveutils.js");
-const {init, getResourceMeta, getUserMax, getResourceUnits} = require("./db.js");
+const {checkAuth, requestPVE, handleResponse, getUsedResources, getDiskInfo} = require("./pveutils.js");
+const {init, getResourceMeta, getUser, approveResources, setUsedResources} = require("./db.js");
 
 const app = express();
 app.use(helmet());
@@ -44,21 +44,18 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 });
 
 app.get("/api/user/resources", async(req, res) => {
+	// check auth
 	await checkAuth(req.cookies, res);
-	let rm = getResourceMeta();
-	let used = await getUsedResources(req, rm);	
-	let max = await getUserMax(req.cookies.username);
-	avail = {};
-	Object.keys(max).forEach((k) => {
-		avail[k] = max[k] - used[k];
-	});
-	let units = getResourceUnits();
-	res.status(200).send({used: used, maximum: max, available: avail, units: units});
+	let used = await getUsedResources(req, getResourceMeta());
+	setUsedResources(req.cookies.username, used);
+	let user = await getUser(req.cookies.username);
+	res.status(200).send(user);
+	res.end();
 	return;
 });
 
 app.post("/api/disk/detach", async (req, res) => {
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	// check auth
 	await checkAuth(req.cookies, res);
 	if (req.body.disk.includes("unused")) {
 		res.status(500).send({auth: auth, data:{error: `Requested disk ${req.body.disk} cannot be unused. Use /disk/delete to permanently delete unused disks.`}});
@@ -66,75 +63,61 @@ app.post("/api/disk/detach", async (req, res) => {
 	}
 	let action = JSON.stringify({delete: req.body.disk});
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/disk/attach", async (req, res) => {
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	// check auth
 	await checkAuth(req.cookies, res);
 	let action = {};
 	action[req.body.disk] = req.body.data;
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
-/*
+
 app.post("/api/disk/resize", async (req, res) => {
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
-
 	// check auth
-	let auth = await checkAuth(req.cookies, vmpath);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
-	// check resource allocation
-	let diskConfig = await getDiskConfig(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
+	await checkAuth(req.cookies, res);
+	// update used resources
+	let used = await getUsedResources(req, getResourceMeta());
+	setUsedResources(req.cookies.username, used);
+	// check disk existence
+	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
 		res.status(500).send({auth: auth, data:{error: `requested disk ${req.body.disk} does not exist`}});
 		return;
 	}	
-	let storage = diskConfig.split(":")[0]; // get the storage
+	let storage = diskConfig.storage; // get the storage
 	let request = {};
-	request[storage] = Number(req.body.size); // setup request object
-	if (!requestResources(req.cookies.username, request)) { // check request approval
-		res.status(500).send({auth: auth, data:{request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`}});
+	request[storage] = Number(req.body.size * 1024 ** 3); // setup request object
+	// check request approval
+	if (!await approveResources(req.cookies.username, request)) {
+		res.status(500).send({request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`});
 		return;
 	}
-
+	// action approved, commit to action
 	let action = JSON.stringify({disk: req.body.disk, size: `+${req.body.size}G`});
-	let result = await requestPVE(`${vmpath}/resize`, "PUT", req.cookies, action, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-
-	// update resources
-	if (result.status === 200) {
-		allocateResources(req.cookies.username, request);
-	}
-
-	res.status(result.status).send({auth: auth, data: result.data, allocated: request});
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/resize`, "PUT", req.cookies, action, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/disk/move", async (req, res) => {
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
-	let route = req.body.type === "qemu" ? "move_disk" : "move_volume";
-
 	// check auth
-	let auth = await checkAuth(req.cookies, vmpath);
-	if (!auth) {
-		res.status(401).send({auth: auth});
+	await checkAuth(req.cookies, res);
+	// update used resources
+	let used = await getUsedResources(req, getResourceMeta());
+	setUsedResources(req.cookies.username, used);
+	// check disk existence
+	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
+	if (!diskConfig) { // exit if disk does not exist
+		res.status(500).send({auth: auth, data:{error: `requested disk ${req.body.disk} does not exist`}});
 		return;
 	}
-
-	// check resource allocation
-	let diskConfig = await getDiskConfig(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get source disk
-	if (!diskConfig) { // exit if source disk does not exist
-		res.status(500).send({auth: auth, data:{error: `Requested disk ${req.body.disk} does not exist`}});
-	}
-	let size = parseInt(diskConfig.split("size=")[1].split("G")[0]); // get source disk size
-	let srcStorage = diskConfig.split(":")[0]; // get source storage
+	let size = parseInt(diskConfig.size); // get source disk size
+	let srcStorage = diskConfig.storage; // get source storage
 	let dstStorage = req.body.storage; // get destination storage
 	let request = {};
 	let release = {};
@@ -142,8 +125,9 @@ app.post("/api/disk/move", async (req, res) => {
 		release[srcStorage] = Number(size);
 	}
 	request[dstStorage] = Number(size); // always decrease destination storage by size
-	if (!requestResources(req.cookies.username, request)) { // check resource approval
-		res.status(500).send({auth: auth, data:{request: request, release: release, error: `Storage ${dstStorage} could not fulfill request of size ${size}G.`}});
+	// check request approval
+	if (!await approveResources(req.cookies.username, request)) { 
+		res.status(500).send({request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`});
 		return;
 	}
 
@@ -155,75 +139,44 @@ app.post("/api/disk/move", async (req, res) => {
 		action.volume = req.body.disk
 	}
 	action = JSON.stringify(action);
-	let result = await requestPVE(`${vmpath}/${route}`, "POST", req.cookies, action, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-
-	// update resources
-	if (result.status === 200) {
-		allocateResources(req.cookies.username, request);
-		releaseResources(req.cookies.username, release);
-	}
-
-	res.status(result.status).send({auth: auth, data: result.data, allocated: request, deallocated: release});
+	let route = req.body.type === "qemu" ? "move_disk" : "move_volume";
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/${route}`, "POST", req.cookies, action, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/disk/delete", async (req, res) => {
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
-
 	// check auth
-	let auth = await checkAuth(req.cookies, vmpath);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
+	await checkAuth(req.cookies, res);
+	// update used resources
+	let used = await getUsedResources(req, getResourceMeta());
+	setUsedResources(req.cookies.username, used);
+	// only ide or unused are allowed to be deleted
 	if (!req.body.disk.includes("unused") && !req.body.disk.includes("ide")) { // must be ide or unused
 		res.status(500).send({auth: auth, data:{error: `Requested disk ${req.body.disk} must be unused or ide. Use /disk/detach to detach disks in use.`}});
 		return;
-	}
-
-	// setup release
-	let release = {};
-	if (!req.body.disk.includes("ide")) { // if disk type is ide, then dont bother checking for resources
-		let diskConfig = await getUnusedDiskData(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get disk config of unused disk
-		let storage = diskConfig.storage; // get disk storage
-		let size = diskConfig.size / (1024**3); // get disk size
-		release[storage] = Number(size);
-	}
-
+	}	
 	let action = JSON.stringify({delete: req.body.disk});
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-
-	// update resources
-	if (result.status === 200) {
-		releaseResources(req.cookies.username, release);
-	}
-
-	res.status(result.status).send({auth: auth, data: result.data, deallocated: release});
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/disk/create", async (req, res) => {
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
-
 	// check auth
-	let auth = await checkAuth(req.cookies, vmpath);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
-	// check resource allocation
+	await checkAuth(req.cookies, res);
+	// update used resources
+	let used = await getUsedResources(req, getResourceMeta());
+	setUsedResources(req.cookies.username, used);
+	// check resource approval
 	let request = {};
 	if (!req.body.disk.includes("ide")) {
-		request[req.body.storage] = Number(req.body.size); // setup request object
-		if (!requestResources(req.cookies.username, request)) { // check request approval
-			res.status(500).send({auth: auth, data:{request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`}});
+		request[req.body.storage] = Number(req.body.size * 1024 ** 3); // setup request object
+		// check request approval
+		if (!await approveResources(req.cookies.username, request)) {
+			res.status(500).send({request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`});
 			return;
 		}
 	}
-
 	let action = {};
 	if (req.body.disk.includes("ide") && req.body.iso) {
 		action[req.body.disk] = `${req.body.iso},media=cdrom`;
@@ -236,64 +189,45 @@ app.post("/api/disk/create", async (req, res) => {
 	}
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-
-	// update resources
-	if (result.status === 200) {
-		allocateResources(req.cookies.username, request);
-	}
-
-	res.status(result.status).send({auth: auth, data: result.data, allocated: request});
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/resources", async (req, res) => {
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
-
 	// check auth
-	let auth = await checkAuth(req.cookies, vmpath);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
-	let currentConfig = await requestPVE(`${vmpath}/config`, "GET", null, null, pveAPIToken);
+	await checkAuth(req.cookies, res);
+	// update used resources
+	let used = await getUsedResources(req, getResourceMeta());
+	setUsedResources(req.cookies.username, used);
+	// get current config
+	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
 	let request = {
 		cores: Number(req.body.cores) - Number(currentConfig.data.data.cores), 
 		memory: Number(req.body.memory) - Number(currentConfig.data.data.memory)
 	};
-	if (!requestResources(req.cookies.username, request)) { // check resource approval
-		res.status(500).send({auth: auth, data:{request: request, error: `Not enough resources to satisfy request.`}});
+	// check resource approval
+	if (!await approveResources(req.cookies.username, request)) {
+		res.status(500).send({request: request, error: `Could not fulfil request`});
 		return;
 	}
-
+	// commit action
 	let action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-
-	// update resources
-	if (result.status === 200) {
-		allocateResources(req.cookies.username, request);
-	}
-
-	res.status(result.status).send({auth: auth, data: result.data, allocated: request});
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance", async (req, res) => {
 	// check auth
-	let auth = await checkAuth(req.cookies);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
+	await checkAuth(req.cookies, res);
+	// update used resources
+	let used = await getUsedResources(req, getResourceMeta());
+	setUsedResources(req.cookies.username, used);
 	// setup request
 	let request = {
 		cores: Number(req.body.cores), 
 		memory: Number(req.body.memory)
 	};
-
 	// setup action
 	let user = await requestPVE(`/access/users/${req.cookies.username}`, "GET", null, null, pveAPIToken);
 	let group = user.data.data.groups[0];
@@ -319,75 +253,24 @@ app.post("/api/instance", async (req, res) => {
 	else {
 		action.name = req.body.name;
 	}
-
 	// check resource approval
-	if (!requestResources(req.cookies.username, request)) { // check resource approval
+	if (!approveResources(req.cookies.username, request)) { // check resource approval
 		res.status(500).send({auth: auth, data:{request: request, error: `Not enough resources to satisfy request.`}});
 		return;
 	}
-
+	// commit action
 	action = JSON.stringify(action);
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}`, "POST", req.cookies, action, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-
-	//update resources
-	if (result.status === 200) {
-		allocateResources(req.cookies.username, request);
-	}
-
-	res.status(result.status).send({auth: auth, data: result.data, allocated: request});
+	await handleResponse(req.body.node, result, res);
 });
 
 app.delete("/api/instance", async (req, res) => {
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
-
-	//check auth
-	let auth = await checkAuth(req.cookies, vmpath);
-	if (!auth) {
-		res.status(401).send({auth: auth});
-		return;
-	}
-
-	// setup release TODO: add disk data here
-	let currentConfig = await requestPVE(`${vmpath}/config`, "GET", null, null, pveAPIToken);
-	let release = {cores: currentConfig.data.data.cores, memory: currentConfig.data.data.memory};
-	let keys = Object.keys(currentConfig.data.data);
-	for (let i = 0; i < keys.length; i++) {
-		let element = keys[i];
-		if (element.includes("sata") || element.includes("mp") || element.includes("rootfs")) { // if the disk is mounted, get its storage and size 
-			let diskConfig = await getDiskConfig(req.body.node, req.body.type, req.body.vmid, element);
-			let storage = diskConfig.split(":")[0];
-			let size = parseInt(diskConfig.split("size=")[1].split("G")[0]);
-			if (!release[storage]) { // if this is the first time storage has been seen, set storage to size
-				release[storage] = size;
-			}
-			else { // otherwise incrment storage by size
-				release[storage] += size;
-			}
-		}
-		else if (element.includes("unused")) {
-			let diskConfig = await getUnusedDiskData(req.body.node, req.body.type, req.body.vmid, element); // get disk config of unused disk
-			let storage = diskConfig.storage; // get disk storage
-			let size = diskConfig.size / (1024**3); // get disk size
-			if (!release[storage]) { // if this is the first time storage has been seen, set storage to size
-				release[storage] = size;
-			}
-			else { // otherwise incrment storage by size
-				release[storage] += size;
-			}
-		}
-	}
-
-	let result = await requestPVE(`${vmpath}`, "DELETE", req.cookies, null, pveAPIToken);
-	result = await handleResponse(req.body.node, result);
-
-	//update resources
-	if (result.status === 200) {
-		releaseResources(req.cookies.username, release);
-	}
-
-	res.status(result.status).send({auth: auth, data: result.data, deallocated: release});
-});*/
+	// check auth
+	await checkAuth(req.cookies, res);
+	// commit action
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`, "DELETE", req.cookies, null, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
+});
 
 app.listen(listenPort, () => {
 	init();
