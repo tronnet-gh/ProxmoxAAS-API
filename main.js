@@ -8,7 +8,7 @@ var api = require("./package.json");
 
 const {pveAPIToken, listenPort, domain} = require("./vars.js");
 const {checkAuth, requestPVE, handleResponse, getUsedResources, getDiskInfo} = require("./pveutils.js");
-const {init, getResourceMeta, getUser, approveResources, setUsedResources} = require("./db.js");
+const {init, getResourceMeta, getUser, approveResources, setUsedResources, getResourceUnits} = require("./db.js");
 
 const app = express();
 app.use(helmet());
@@ -49,6 +49,7 @@ app.get("/api/user/resources", async(req, res) => {
 	let used = await getUsedResources(req, getResourceMeta());
 	setUsedResources(req.cookies.username, used);
 	let user = await getUser(req.cookies.username);
+	user.units = getResourceUnits();
 	res.status(200).send(user);
 	res.end();
 	return;
