@@ -44,13 +44,14 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 });
 
 async function getUserResources (req, username) {
-	let used = await getUsedResources(req, getResources());
+	let dbResources = getResources();
+	let used = await getUsedResources(req, dbResources);
 	let max = getUser(username).resources.max;
 	avail = {};
 	Object.keys(max).forEach((k) => {
 		avail[k] = max[k] - used[k];
 	});
-	return {used: used, max: max, avail: avail};
+	return {used: used, max: max, avail: avail, units: dbResources};
 }
 
 async function approveResources (request, avail) {
@@ -70,8 +71,7 @@ app.get("/api/user/resources", async(req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	let userResources = await getUserResources(req, req.cookies.username);
-	userResources.units = getResources();
-	res.status(200).send(userResources);
+	res.status(200).send({resources: userResources});
 	res.end();
 	return;
 });
