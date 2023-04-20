@@ -36,6 +36,21 @@
 					"local": 1099511627776,
 					"cephpl": 1099511627776
 				}
+			},
+			"instances": {
+				"vmid": {
+					"min": 100,
+					"max": 199
+				},
+				"pool": "examplegroup",
+				"templates": {
+					"lxc": {
+						"net0": "name=eth0,bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=10,type=veth"
+					},
+					"qemu": {
+						"net0": "virtio,bridge=vmbr0,tag=10"
+					}
+				}
 			}
 		}
 	}
