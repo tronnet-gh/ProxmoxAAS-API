@@ -247,17 +247,23 @@ app.post("/api/instance", async (req, res) => {
 		memory: Number(req.body.memory)
 	};
 	// setup action
-	let user = await requestPVE(`/access/users/${req.cookies.username}`, "GET", null, null, pveAPIToken);
-	let group = user.data.data.groups[0];
-	if (!group) {
-		res.status(500).send({error: `user ${req.cookies.username} has no group membership`});
+	let user = getUser(req.cookies.username);
+	let vmid = Number.parseInt(req.body.vmid);
+	let vmid_min = user.instances.vmid.min;
+	let vmid_max = user.instances.vmid.max;
+	if (vmid < vmid_min || vmid > vmid_max) {
+		res.status(500).send({error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}]`});
+		return;
 	}
 	let action = {
 		vmid: req.body.vmid,
 		cores: req.body.cores,
 		memory: req.body.memory,
-		pool: group
+		pool: user.instances.pool
 	};
+	for (key of Object.keys(user.instances.templates[req.body.type])) {
+		action[key] = user.instances.templates[req.body.type][key];
+	}
 	if (req.body.type === "lxc") {
 		action.swap = req.body.swap;
 		action.hostname = req.body.name;
