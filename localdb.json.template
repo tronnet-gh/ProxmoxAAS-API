@@ -1,0 +1,42 @@
+{
+	"resources": {
+		"cores": {
+			"type": "numeric",
+			"multiplier": 1,
+			"compact": false,
+			"unit": "Cores"
+		},
+		"memory": {
+			"type": "numeric",
+			"multiplier": 1048576,
+			"compact": true,
+			"unit": "B"
+		},
+		"local": {
+			"type": "storage",
+			"multiplier": 1,
+			"compact": true,
+			"unit": "B",
+			"disks": ["rootfs", "mp", "sata", "unused"]
+		},
+		"cephpl": {
+			"type": "storage",
+			"multiplier": 1,
+			"compact": true,
+			"unit": "B",
+			"disks": ["rootfs", "mp", "sata", "unused"]
+		}
+	},
+	"users": {
+		"exampleuser@realm": {
+			"resources": {
+				"max": {
+					"cores": 128,
+					"memory": 131072,
+					"local": 1099511627776,
+					"cephpl": 1099511627776
+				}
+			}
+		}
+	}
+}

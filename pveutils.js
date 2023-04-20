@@ -83,14 +83,11 @@ async function getUsedResources (req, resourceMeta) {
 	let used = {};
 	let diskprefixes = [];
 	for (let resourceName of Object.keys(resourceMeta)) {
-		if (resourceMeta[resourceName].type === "numeric") {
-			used[resourceName] = 0;
-		}
-		else if (resourceMeta[resourceName].type === "disk") {
-			resourceMeta[resourceName].storages.forEach((element) => {
-				used[element] = 0;
-			});
-			diskprefixes.push(resourceName);
+		used[resourceName] = 0;
+		if (resourceMeta[resourceName].type === "storage") {
+			for (let diskPrefix of resourceMeta[resourceName].disks) {
+				diskprefixes.push(diskPrefix);
+			}
 		}
 	}
 	for (instance of response.data.data) {
