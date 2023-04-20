@@ -8,7 +8,7 @@ var api = require("./package.json");
 
 const {pveAPIToken, listenPort, domain} = require("./vars.js");
 const {checkAuth, requestPVE, handleResponse, getUsedResources, getDiskInfo} = require("./pveutils.js");
-const {init, getResourceMeta, getUser, getResourceUnits} = require("./db.js");
+const {init, getUser, getResources} = require("./db.js");
 
 const app = express();
 app.use(helmet());
@@ -44,8 +44,8 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 });
 
 async function getUserResources (req, username) {
-	let used = await getUsedResources(req, getResourceMeta());
-	let max = getUser(username).max;
+	let used = await getUsedResources(req, getResources());
+	let max = getUser(username).resources.max;
 	avail = {};
 	Object.keys(max).forEach((k) => {
 		avail[k] = max[k] - used[k];
@@ -70,7 +70,7 @@ app.get("/api/user/resources", async(req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	let userResources = await getUserResources(req, req.cookies.username);
-	userResources.units = getResourceUnits();
+	userResources.units = getResources();
 	res.status(200).send(userResources);
 	res.end();
 	return;

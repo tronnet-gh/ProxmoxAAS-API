@@ -1,18 +1,19 @@
 const fs = require("fs");
 
+template = "localdb.json.template"
 filename = "localdb.json";
 
-let db = {};
+let db = JSON.parse(fs.readFileSync(template));
 
 /**
  * called at app startup, can be used to initialize any variables needed for database access
  */
 function init () {
 	try {
-		db = JSON.parse(fs.readFileSync(filename));
+		load();
 	}
 	catch {
-		fs.writeFileSync(filename, JSON.stringify(db));
+		save();
 	}
 }
 
@@ -24,16 +25,12 @@ function save () {
 	fs.writeFileSync(filename, JSON.stringify(db));
 }
 
-function getResourceMeta () {
-	return db["resource-metadata"];
-}
-
-function getResourceUnits () {
-	return db["resource-units"];
+function getResources() {
+	return db.resources;
 }
 
 function getUser (username) {
 	return db.users[username];
 }
 
-module.exports = {init, getResourceMeta, getResourceUnits, getUser};
+module.exports = {init, getUser, getResources};
