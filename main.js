@@ -76,11 +76,19 @@ app.get("/api/user/resources", async(req, res) => {
 	return;
 });
 
+app.get("/api/user/instances", async(req, res) => {
+	await checkAuth(req.cookies, res);
+	res.status(200).send({instances: getUser(re.cookies.username).instances})
+	res.end();
+	return;
+});
+
 app.post("/api/disk/detach", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	if (req.body.disk.includes("unused")) {
 		res.status(500).send({error: `Requested disk ${req.body.disk} cannot be unused. Use /disk/delete to permanently delete unused disks.`});
+		res.end();
 		return;
 	}
 	let action = JSON.stringify({delete: req.body.disk});
@@ -107,6 +115,7 @@ app.post("/api/disk/resize", async (req, res) => {
 	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
 		res.status(500).send({error: `requested disk ${req.body.disk} does not exist`});
+		res.end();
 		return;
 	}
 	// get used resources
@@ -118,6 +127,7 @@ app.post("/api/disk/resize", async (req, res) => {
 	// check request approval
 	if (!await approveResources(request, userResources.avail)) {
 		res.status(500).send({request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`});
+		res.end();
 		return;
 	}
 	// action approved, commit to action
@@ -133,6 +143,7 @@ app.post("/api/disk/move", async (req, res) => {
 	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
 		res.status(500).send({error: `requested disk ${req.body.disk} does not exist`});
+		res.end();
 		return;
 	}
 	// get used resources
@@ -150,6 +161,7 @@ app.post("/api/disk/move", async (req, res) => {
 	// check request approval
 	if (!await approveResources(request, userResources.avail)) { 
 		res.status(500).send({request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.`});
+		res.end();
 		return;
 	}
 
@@ -172,6 +184,7 @@ app.post("/api/disk/delete", async (req, res) => {
 	// only ide or unused are allowed to be deleted
 	if (!req.body.disk.includes("unused") && !req.body.disk.includes("ide")) { // must be ide or unused
 		res.status(500).send({error: `Requested disk ${req.body.disk} must be unused or ide. Use /disk/detach to detach disks in use.`});
+		res.end();
 		return;
 	}	
 	let action = JSON.stringify({delete: req.body.disk});
@@ -193,6 +206,7 @@ app.post("/api/disk/create", async (req, res) => {
 		// check request approval
 		if (!await approveResources(request, userResources.avail)) {
 			res.status(500).send({request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.`});
+			res.end();
 			return;
 		}
 	}
@@ -227,6 +241,7 @@ app.post("/api/resources", async (req, res) => {
 	// check resource approval
 	if (!await approveResources(request, userResources.avail)) {
 		res.status(500).send({request: request, error: `Could not fulfil request`});
+		res.end();
 		return;
 	}
 	// commit action
@@ -253,6 +268,7 @@ app.post("/api/instance", async (req, res) => {
 	let vmid_max = user.instances.vmid.max;
 	if (vmid < vmid_min || vmid > vmid_max) {
 		res.status(500).send({error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}]`});
+		res.end();
 		return;
 	}
 	let action = {
@@ -280,6 +296,7 @@ app.post("/api/instance", async (req, res) => {
 	// check resource approval
 	if (!approveResources(request, userResources.avail)) { // check resource approval
 		res.status(500).send({request: request, error: `Not enough resources to satisfy request.`});
+		res.end();
 		return;
 	}
 	// commit action
