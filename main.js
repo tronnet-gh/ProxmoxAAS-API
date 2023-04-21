@@ -78,7 +78,7 @@ app.get("/api/user/resources", async(req, res) => {
 
 app.get("/api/user/instances", async(req, res) => {
 	await checkAuth(req.cookies, res);
-	res.status(200).send({instances: getUser(re.cookies.username).instances})
+	res.status(200).send({instances: getUser(req.cookies.username).instances})
 	res.end();
 	return;
 });
