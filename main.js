@@ -46,7 +46,7 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 app.get("/api/user", async(req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
-	res.status(200).send(await getUserData(req, req.body.username));
+	res.status(200).send(await getUserData(req, req.cookies.username));
 	res.end();
 	return;
 });
