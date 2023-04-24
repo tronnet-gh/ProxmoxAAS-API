@@ -4,17 +4,11 @@ template = "localdb.json.template"
 filename = "localdb.json";
 
 let db = JSON.parse(fs.readFileSync(template));
-
-/**
- * called at app startup, can be used to initialize any variables needed for database access
- */
-function init () {
-	try {
-		load();
-	}
-	catch {
-		save();
-	}
+try {
+	load();
+}
+catch {
+	save();
 }
 
 function load () {
@@ -25,12 +19,12 @@ function save () {
 	fs.writeFileSync(filename, JSON.stringify(db));
 }
 
-function getResources() {
+function getResourceConfig() {
 	return db.resources;
 }
 
-function getUser (username) {
+function getUserConfig (username) {
 	return db.users[username];
 }
 
-module.exports = {init, getUser, getResources};
+module.exports = {getUserConfig, getResourceConfig};

@@ -7,8 +7,8 @@ const morgan = require("morgan");
 var api = require("./package.json");
 
 const {pveAPIToken, listenPort, domain} = require("./vars.js");
-const {checkAuth, requestPVE, handleResponse, getUsedResources, getDiskInfo} = require("./pveutils.js");
-const {init, getUser, getResources} = require("./db.js");
+const {checkAuth, requestPVE, handleResponse, getDiskInfo} = require("./pve.js");
+const {getUserData, approveResources} = require("./utils.js")
 
 const app = express();
 app.use(helmet());
@@ -43,47 +43,15 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 	res.status(result.status).send(result.data);
 });
 
-async function getUserResources (req, username) {
-	let dbResources = getResources();
-	let used = await getUsedResources(req, dbResources);
-	let max = getUser(username).resources.max;
-	avail = {};
-	Object.keys(max).forEach((k) => {
-		avail[k] = max[k] - used[k];
-	});
-	return {used: used, max: max, avail: avail, units: dbResources};
-}
-
-async function approveResources (request, avail) {
-	let approved = true;
-	Object.keys(request).forEach((key) => {
-		if (!(key in avail)) {
-			approved = false;
-		}
-		else if (avail[key] - request[key] < 0) {
-			approved = false;
-		}
-	});
-	return approved;
-}
-
-app.get("/api/user/resources", async(req, res) => {
+app.get("/api/user", async(req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
-	let userResources = await getUserResources(req, req.cookies.username);
-	res.status(200).send({resources: userResources});
+	res.status(200).send(await getUserData(req, req.body.username));
 	res.end();
 	return;
 });
 
-app.get("/api/user/instances", async(req, res) => {
-	await checkAuth(req.cookies, res);
-	res.status(200).send({instances: getUser(req.cookies.username).instances})
-	res.end();
-	return;
-});
-
-app.post("/api/disk/detach", async (req, res) => {
+app.post("/api/instance/disk/detach", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	if (req.body.disk.includes("unused")) {
@@ -97,7 +65,7 @@ app.post("/api/disk/detach", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
-app.post("/api/disk/attach", async (req, res) => {
+app.post("/api/instance/disk/attach", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	let action = {};
@@ -108,7 +76,7 @@ app.post("/api/disk/attach", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
-app.post("/api/disk/resize", async (req, res) => {
+app.post("/api/instance/disk/resize", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	// check disk existence
@@ -118,14 +86,12 @@ app.post("/api/disk/resize", async (req, res) => {
 		res.end();
 		return;
 	}
-	// get used resources
-	let userResources = await getUserResources(req, req.cookies.username);
 	// setup request
 	let storage = diskConfig.storage; // get the storage
 	let request = {};
 	request[storage] = Number(req.body.size * 1024 ** 3); // setup request object
 	// check request approval
-	if (!await approveResources(request, userResources.avail)) {
+	if (!await approveResources(req, req.body.username, request)) {
 		res.status(500).send({request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`});
 		res.end();
 		return;
@@ -136,7 +102,7 @@ app.post("/api/disk/resize", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
-app.post("/api/disk/move", async (req, res) => {
+app.post("/api/instance/disk/move", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	// check disk existence
@@ -146,8 +112,6 @@ app.post("/api/disk/move", async (req, res) => {
 		res.end();
 		return;
 	}
-	// get used resources
-	let userResources = await getUserResources(req, req.cookies.username);
 	// setup request
 	let size = parseInt(diskConfig.size); // get source disk size
 	let srcStorage = diskConfig.storage; // get source storage
@@ -159,7 +123,7 @@ app.post("/api/disk/move", async (req, res) => {
 	}
 	request[dstStorage] = Number(size); // always decrease destination storage by size
 	// check request approval
-	if (!await approveResources(request, userResources.avail)) { 
+	if (!await approveResources(req, req.body.username, request)) { 
 		res.status(500).send({request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.`});
 		res.end();
 		return;
@@ -178,7 +142,7 @@ app.post("/api/disk/move", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
-app.post("/api/disk/delete", async (req, res) => {
+app.post("/api/instance/disk/delete", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	// only ide or unused are allowed to be deleted
@@ -194,17 +158,15 @@ app.post("/api/disk/delete", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
-app.post("/api/disk/create", async (req, res) => {
+app.post("/api/instance/disk/create", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
-	// get used resources
-	let userResources = await getUserResources(req, req.cookies.username);
 	// setup request
 	let request = {};
 	if (!req.body.disk.includes("ide")) {
 		request[req.body.storage] = Number(req.body.size * 1024 ** 3); // setup request object
 		// check request approval
-		if (!await approveResources(request, userResources.avail)) {
+		if (!await approveResources(req, req.body.username, request)) {
 			res.status(500).send({request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.`});
 			res.end();
 			return;
@@ -230,8 +192,6 @@ app.post("/api/disk/create", async (req, res) => {
 app.post("/api/resources", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
-	// get used resources
-	let userResources = await getUserResources(req, req.cookies.username);
 	// get current config
 	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
 	let request = {
@@ -239,7 +199,7 @@ app.post("/api/resources", async (req, res) => {
 		memory: Number(req.body.memory) - Number(currentConfig.data.data.memory)
 	};
 	// check resource approval
-	if (!await approveResources(request, userResources.avail)) {
+	if (!await approveResources(req, req.body.username, request)) {
 		res.status(500).send({request: request, error: `Could not fulfil request`});
 		res.end();
 		return;
@@ -254,8 +214,6 @@ app.post("/api/resources", async (req, res) => {
 app.post("/api/instance", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
-	// get used resources
-	let userResources = await getUserResources(req, req.cookies.username);
 	// setup request
 	let request = {
 		cores: Number(req.body.cores), 
@@ -294,7 +252,7 @@ app.post("/api/instance", async (req, res) => {
 		action.name = req.body.name;
 	}
 	// check resource approval
-	if (!approveResources(request, userResources.avail)) { // check resource approval
+	if (!await approveResources(req, req.body.username, request)) { // check resource approval
 		res.status(500).send({request: request, error: `Not enough resources to satisfy request.`});
 		res.end();
 		return;
@@ -314,6 +272,5 @@ app.delete("/api/instance", async (req, res) => {
 });
 
 app.listen(listenPort, () => {
-	init();
 	console.log(`proxmoxaas-api v${api.version} listening on port ${listenPort}`);
 });
