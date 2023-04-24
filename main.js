@@ -91,7 +91,7 @@ app.post("/api/instance/disk/resize", async (req, res) => {
 	let request = {};
 	request[storage] = Number(req.body.size * 1024 ** 3); // setup request object
 	// check request approval
-	if (!await approveResources(req, req.body.username, request)) {
+	if (!await approveResources(req, req.cookies.username, request)) {
 		res.status(500).send({request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`});
 		res.end();
 		return;
@@ -123,7 +123,7 @@ app.post("/api/instance/disk/move", async (req, res) => {
 	}
 	request[dstStorage] = Number(size); // always decrease destination storage by size
 	// check request approval
-	if (!await approveResources(req, req.body.username, request)) { 
+	if (!await approveResources(req, req.cookies.username, request)) { 
 		res.status(500).send({request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.`});
 		res.end();
 		return;
@@ -166,7 +166,7 @@ app.post("/api/instance/disk/create", async (req, res) => {
 	if (!req.body.disk.includes("ide")) {
 		request[req.body.storage] = Number(req.body.size * 1024 ** 3); // setup request object
 		// check request approval
-		if (!await approveResources(req, req.body.username, request)) {
+		if (!await approveResources(req, req.cookies.username, request)) {
 			res.status(500).send({request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.`});
 			res.end();
 			return;
@@ -180,7 +180,7 @@ app.post("/api/instance/disk/create", async (req, res) => {
 		action[req.body.disk] = `${req.body.storage}:${req.body.size}`;
 	}
 	else { // type is lxc, use mp and add mp and backup values
-		action[req.body.disk] = `${req.body.storage}:${req.body.size},mp=/mp${req.body.device}/,backup=1`;
+		action[req.body.disk] = `${req.body.storage}:${req.body.size},mp=/${req.body.disk}/,backup=1`;
 	}
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
@@ -199,7 +199,7 @@ app.post("/api/resources", async (req, res) => {
 		memory: Number(req.body.memory) - Number(currentConfig.data.data.memory)
 	};
 	// check resource approval
-	if (!await approveResources(req, req.body.username, request)) {
+	if (!await approveResources(req, req.cookies.username, request)) {
 		res.status(500).send({request: request, error: `Could not fulfil request`});
 		res.end();
 		return;
@@ -220,7 +220,7 @@ app.post("/api/instance", async (req, res) => {
 		memory: Number(req.body.memory)
 	};
 	// setup action
-	let user = getUser(req.cookies.username);
+	let user = await getUserData(req, req.cookies.username);
 	let vmid = Number.parseInt(req.body.vmid);
 	let vmid_min = user.instances.vmid.min;
 	let vmid_max = user.instances.vmid.max;
@@ -252,7 +252,7 @@ app.post("/api/instance", async (req, res) => {
 		action.name = req.body.name;
 	}
 	// check resource approval
-	if (!await approveResources(req, req.body.username, request)) { // check resource approval
+	if (!await approveResources(req, req.cookies.username, request)) { // check resource approval
 		res.status(500).send({request: request, error: `Not enough resources to satisfy request.`});
 		res.end();
 		return;
