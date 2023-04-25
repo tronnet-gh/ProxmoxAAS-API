@@ -189,7 +189,7 @@ app.post("/api/instance/disk/create", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
-app.post("/api/resources", async (req, res) => {
+app.post("/api/instance/resources", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	// get current config
