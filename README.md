@@ -6,7 +6,7 @@ ProxmoxAAS API provides functionality to the Client by both providing a proxy AP
 - Proxmox VE Cluster (v7.0+)
 - Reverse proxy server which can proxy the client and API
 	- FQDN
-- Server with NodeJS (18.x or higher) and NPM installed
+- Server with NodeJS (v18.0+) and NPM installed
 
 ## Configuring API Token and Permissions
 In Proxmox VE, follow the following steps:
