@@ -19,7 +19,7 @@ app.use(morgan("combined"));
 
 
 app.get("/api/version", (req, res) => {
-	res.status(200).send({version: _version});
+	res.status(200).send({version: api.version});
 });
 
 app.get("/api/echo", (req, res) => {
