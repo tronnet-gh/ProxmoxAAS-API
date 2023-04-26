@@ -2,7 +2,7 @@
 ProxmoxAAS API provides functionality to the Client by both providing a proxy API for the Proxmox API, and an API for requesting resources within a defined quota.
 
 ## Prerequisites
-- (ProxmoxAAS-Client)[https://github.com/tronnet-gh/ProxmoxAAS-Client]\
+- (ProxmoxAAS-Client)[https://github.com/tronnet-gh/ProxmoxAAS-Client]
 - Proxmox VE Cluster (v7.0+)
 - Reverse proxy server which can proxy the client and API
 	- FQDN
