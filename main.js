@@ -4,8 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-//import { version as _version } from "./package.json";
-let api = {version: "0.0.1"};
+import api from "./package.json" assert {type: "json"};
 
 import { pveAPIToken, listenPort, domain } from "./vars.js";
 import { checkAuth, requestPVE, handleResponse, getDiskInfo } from "./pve.js";
