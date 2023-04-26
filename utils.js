@@ -1,7 +1,7 @@
-const {getUsedResources} = require("./pve.js");
-const {getUserConfig, getResourceConfig} = require("./db.js");
+import { getUsedResources } from "./pve.js";
+import { getUserConfig, getResourceConfig } from "./db.js";
 
-async function getUserData (req, username) {
+export async function getUserData (req, username) {
 	let resources = await getAllocatedResources(req, username);
 	let instances = getUserConfig(req.cookies.username).instances;
 	return {resources: resources, instances: instances};
@@ -11,14 +11,14 @@ async function getAllocatedResources (req, username) {
 	let dbResources = getResourceConfig();
 	let used = await getUsedResources(req, dbResources);
 	let max = getUserConfig(username).resources.max;
-	avail = {};
+	let avail = {};
 	Object.keys(max).forEach((k) => {
 		avail[k] = max[k] - used[k];
 	});
 	return {used: used, max: max, avail: avail, units: dbResources};
 }
 
-async function approveResources (req, username, request) {
+export async function approveResources (req, username, request) {
 
 	let avail = (await getAllocatedResources(req, username)).avail;
 
@@ -33,5 +33,3 @@ async function approveResources (req, username, request) {
 	});
 	return approved;
 }
-
-module.exports = {getUserData, approveResources}

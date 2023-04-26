@@ -1,14 +1,15 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cookieParser = require("cookie-parser")
-const cors = require("cors");
-const helmet = require("helmet");
-const morgan = require("morgan");
-var api = require("./package.json");
+import express from "express";
+import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+//import { version as _version } from "./package.json";
+let api = {version: "0.0.1"};
 
-const {pveAPIToken, listenPort, domain} = require("./vars.js");
-const {checkAuth, requestPVE, handleResponse, getDiskInfo} = require("./pve.js");
-const {getUserData, approveResources} = require("./utils.js")
+import { pveAPIToken, listenPort, domain } from "./vars.js";
+import { checkAuth, requestPVE, handleResponse, getDiskInfo } from "./pve.js";
+import { getUserData, approveResources } from "./utils.js";
 
 const app = express();
 app.use(helmet());
@@ -19,7 +20,7 @@ app.use(morgan("combined"));
 
 
 app.get("/api/version", (req, res) => {
-	res.status(200).send({version: api.version});
+	res.status(200).send({version: _version});
 });
 
 app.get("/api/echo", (req, res) => {
@@ -32,13 +33,13 @@ app.get("/api/auth", async (req, res) => {
 });
 
 app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for GET proxmox api with no token
-	path = req.url.replace("/api/proxmox", "");
+	let path = req.url.replace("/api/proxmox", "");
 	let result = await requestPVE(path, "GET", req.cookies);
 	res.status(result.status).send(result.data);
 });
 
 app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST proxmox api with no token
-	path = req.url.replace("/api/proxmox", "");
+	let path = req.url.replace("/api/proxmox", "");
 	let result = await requestPVE(path, "POST", req.cookies, JSON.stringify(req.body)); // need to stringify body because of other issues
 	res.status(result.status).send(result.data);
 });
@@ -235,7 +236,7 @@ app.post("/api/instance", async (req, res) => {
 		memory: req.body.memory,
 		pool: user.instances.pool
 	};
-	for (key of Object.keys(user.instances.templates[req.body.type])) {
+	for (let key of Object.keys(user.instances.templates[req.body.type])) {
 		action[key] = user.instances.templates[req.body.type][key];
 	}
 	if (req.body.type === "lxc") {
