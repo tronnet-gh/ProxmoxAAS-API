@@ -1,9 +1,9 @@
-const fs = require("fs");
+import { readFileSync, writeFileSync } from "fs";
 
-template = "localdb.json.template"
-filename = "localdb.json";
+let template = "localdb.json.template"
+let filename = "localdb.json";
 
-let db = JSON.parse(fs.readFileSync(template));
+let db = JSON.parse(readFileSync(template));
 try {
 	load();
 }
@@ -12,19 +12,17 @@ catch {
 }
 
 function load () {
-	db = JSON.parse(fs.readFileSync(filename));
+	db = JSON.parse(readFileSync(filename));
 }
 
 function save () {
-	fs.writeFileSync(filename, JSON.stringify(db));
+	writeFileSync(filename, JSON.stringify(db));
 }
 
-function getResourceConfig() {
+export function getResourceConfig() {
 	return db.resources;
 }
 
-function getUserConfig (username) {
+export function getUserConfig (username) {
 	return db.users[username];
 }
-
-module.exports = {getUserConfig, getResourceConfig};

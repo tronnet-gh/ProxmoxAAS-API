@@ -1,7 +1,7 @@
-const axios = require('axios');
-const {pveAPI, pveAPIToken} = require("./vars.js");
+import axios from 'axios';
+import { pveAPI, pveAPIToken } from "./vars.js";
 
-async function checkAuth (cookies, res, vmpath = null) {
+export async function checkAuth (cookies, res, vmpath = null) {
 	let auth = false;
 	if (vmpath) {
 		let result = await requestPVE(`/${vmpath}/config`, "GET", cookies);
@@ -18,7 +18,7 @@ async function checkAuth (cookies, res, vmpath = null) {
 	}
 }
 
-async function requestPVE (path, method, cookies, body = null, token = null) {
+export async function requestPVE (path, method, cookies, body = null, token = null) {
 	let url = `${pveAPI}${path}`;
 	let content = {
 		method: method,
@@ -50,7 +50,7 @@ async function requestPVE (path, method, cookies, body = null, token = null) {
 	}
 }
 
-async function handleResponse (node, result, res) {
+export async function handleResponse (node, result, res) {
 	const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
 	if (result.data.data) {
 		let upid = result.data.data;
@@ -78,7 +78,7 @@ async function handleResponse (node, result, res) {
 	}
 }
 
-async function getUsedResources (req, resourceMeta) {
+export async function getUsedResources (req, resourceMeta) {
 	let response = await requestPVE("/cluster/resources", "GET", req.cookies);
 	let used = {};
 	let diskprefixes = [];
@@ -90,11 +90,11 @@ async function getUsedResources (req, resourceMeta) {
 			}
 		}
 	}
-	for (instance of response.data.data) {
+	for (let instance of response.data.data) {
 		if (instance.type === "lxc" || instance.type === "qemu") {
 			let config = await requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", req.cookies);
 			config = config.data.data;
-			for (key of Object.keys(config)) {
+			for (let key of Object.keys(config)) {
 				if (Object.keys(used).includes(key) && resourceMeta[key].type === "numeric") {					
 					used[key] += config[key];
 				}
@@ -108,7 +108,7 @@ async function getUsedResources (req, resourceMeta) {
 	return used;
 }
 
-async function getDiskInfo (node, type, vmid, disk) {
+export async function getDiskInfo (node, type, vmid, disk) {
 	let config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
 	let storageID = config.data.data[disk].split(":")[0];
 	let volID = config.data.data[disk].split(",")[0];
@@ -116,5 +116,3 @@ async function getDiskInfo (node, type, vmid, disk) {
 	volInfo.data.data.storage = storageID;
 	return volInfo.data.data;
 }
-
-module.exports = {checkAuth, requestPVE, handleResponse, getUsedResources, getDiskInfo};
