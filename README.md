@@ -30,7 +30,7 @@ In Proxmox VE, follow the following steps:
 4. Start the service using `node .`, or call the provided shell script, or use the provided systemctl service script
 
 ## Installation - Reverse Proxy
-1. Configure nginx or preferred reverse proxy to reverse proxy the client. This can be done in the same file previously or in a new configuration file:
+1. Configure nginx or preferred reverse proxy to reverse proxy the client. The configuration should include at least the following:
 ```
 server {
 	listen 443 ssl;
