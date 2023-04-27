@@ -3,8 +3,8 @@ import { getUserConfig, getResourceConfig } from "./db.js";
 
 export async function getUserData (req, username) {
 	let resources = await getAllocatedResources(req, username);
-	let instances = getUserConfig(req.cookies.username).instances;
-	return {resources: resources, instances: instances};
+	let user = getUserConfig(req.cookies.username);
+	return {resources: resources, instances: user.instances, nodes: user.nodes};
 }
 
 async function getAllocatedResources (req, username) {
