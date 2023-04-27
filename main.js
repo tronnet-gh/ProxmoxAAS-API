@@ -229,6 +229,11 @@ app.post("/api/instance", async (req, res) => {
 		res.end();
 		return;
 	}
+	if (!user.nodes.includes(req.body.node)) {
+		res.status(500).send({error: `Requested node ${req.body.node} is not in allowed nodes [${user.nodes}]`});
+		res.end();
+		return;
+	}
 	let action = {
 		vmid: req.body.vmid,
 		cores: req.body.cores,
