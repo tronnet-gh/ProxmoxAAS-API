@@ -17,7 +17,6 @@ app.use(cookieParser())
 app.use(cors({origin: domain}));
 app.use(morgan("combined"));
 
-
 app.get("/api/version", (req, res) => {
 	res.status(200).send({version: api.version});
 });
@@ -43,7 +42,7 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 	res.status(result.status).send(result.data);
 });
 
-app.get("/api/user", async(req, res) => {
+app.get("/api/user", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
 	res.status(200).send(await getUserData(req, req.cookies.username));
