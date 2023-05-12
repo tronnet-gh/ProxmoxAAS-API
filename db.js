@@ -19,7 +19,7 @@ function save () {
 	writeFileSync(filename, JSON.stringify(db));
 }
 
-export function getResourceConfig() {
+export function getResourceConfig () {
 	return db.resources;
 }
 

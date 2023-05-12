@@ -8,7 +8,8 @@ import api from "./package.json" assert {type: "json"};
 
 import { pveAPIToken, listenPort, domain } from "./vars.js";
 import { checkAuth, requestPVE, handleResponse, getDiskInfo } from "./pve.js";
-import { getUserData, approveResources } from "./utils.js";
+import { getAllocatedResources, approveResources } from "./utils.js";
+import { getUserConfig } from "./db.js";
 
 const app = express();
 app.use(helmet());
@@ -42,13 +43,26 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 	res.status(result.status).send(result.data);
 });
 
-app.get("/api/user", async (req, res) => {
+app.get("/api/user/resources", async (req, res) => {
 	// check auth
 	await checkAuth(req.cookies, res);
-	res.status(200).send(await getUserData(req, req.cookies.username));
-	res.end();
-	return;
+	let resources = await getAllocatedResources(req, req.cookies.username);
+	res.status(200).send(resources);
 });
+
+app.get("/api/user/instances", async (req, res) => {
+	// check auth
+	await checkAuth(req.cookies, res);
+	let config = getUserConfig(req.cookies.username);
+	res.status(200).send(config.instances)
+});
+
+app.get("/api/user/nodes", async (req, res) => {
+	// check auth
+	await checkAuth(req.cookies, res);
+	let config = getUserConfig(req.cookies.username);
+	res.status(200).send(config.nodes)
+})
 
 app.post("/api/instance/disk/detach", async (req, res) => {
 	// check auth
