@@ -1,13 +1,7 @@
 import { getUsedResources } from "./pve.js";
 import { getUserConfig, getResourceConfig } from "./db.js";
 
-export async function getUserData (req, username) {
-	let resources = await getAllocatedResources(req, username);
-	let user = getUserConfig(req.cookies.username);
-	return {resources: resources, instances: user.instances, nodes: user.nodes};
-}
-
-async function getAllocatedResources (req, username) {
+export async function getAllocatedResources (req, username) {
 	let dbResources = getResourceConfig();
 	let used = await getUsedResources(req, dbResources);
 	let max = getUserConfig(username).resources.max;

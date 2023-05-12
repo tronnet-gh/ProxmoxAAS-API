@@ -37,6 +37,10 @@
 					"cephpl": 1099511627776
 				}
 			},
+			"nodes": [
+				"nodeid-1",
+				"nodeid-2"
+			],
 			"instances": {
 				"vmid": {
 					"min": 100,
