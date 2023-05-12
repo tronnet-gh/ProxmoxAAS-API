@@ -233,7 +233,7 @@ app.post("/api/instance", async (req, res) => {
 		memory: Number(req.body.memory)
 	};
 	// setup action
-	let user = await getUserData(req, req.cookies.username);
+	let user = await getUserConfig(req.cookies.username);
 	let vmid = Number.parseInt(req.body.vmid);
 	let vmid_min = user.instances.vmid.min;
 	let vmid_max = user.instances.vmid.max;
