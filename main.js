@@ -2,7 +2,6 @@ import express from "express";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import helmet from "helmet";
 import morgan from "morgan";
 import api from "./package.json" assert {type: "json"};
 
@@ -12,7 +11,6 @@ import { getAllocatedResources, approveResources } from "./utils.js";
 import { getUserConfig } from "./db.js";
 
 const app = express();
-app.use(helmet());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser())
 app.use(cors({origin: domain}));
