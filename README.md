@@ -24,7 +24,8 @@ In Proxmox VE, follow the following steps:
 2. Run `npm install` to initiaze the package requirements
 3. Copy `vars.js.template` as `vars.js` and modify the following values:
     - pveAPI - the URI to the Proxmox API, ie `<proxmoxhost>:8006/api2/json` or `<proxmox URL>/api2/json` if Proxmox VE is behind a reverse proxy. 
-    - domain - the ProxmoxAAS-Client URL, ie `client.<FQDN>`
+    - hostname - the ProxmoxAAS-Client URL, ie `host.domain.tld`
+	- domain - the base domain for the client and proxmox, ie `domain.tld`
     - listenPort - the port you want the API to listen on, ie `8080`
     - pveAPIToken - the user(name), authentication realm, token id, and token secrey key (uuid)
 4. Start the service using `node .`, or call the provided shell script, or use the provided systemctl service script
