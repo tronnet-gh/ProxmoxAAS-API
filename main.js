@@ -5,7 +5,7 @@ import cors from "cors";
 import morgan from "morgan";
 import api from "./package.json" assert {type: "json"};
 
-import { pveAPIToken, listenPort, domain } from "./vars.js";
+import { pveAPIToken, listenPort, hostname, domain } from "./vars.js";
 import { checkAuth, requestPVE, handleResponse, getDiskInfo } from "./pve.js";
 import { getAllocatedResources, approveResources } from "./utils.js";
 import { getUserConfig } from "./db.js";
@@ -13,7 +13,7 @@ import { getUserConfig } from "./db.js";
 const app = express();
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(cookieParser())
-app.use(cors({origin: domain}));
+app.use(cors({origin: hostname}));
 app.use(morgan("combined"));
 
 app.get("/api/version", (req, res) => {
@@ -40,6 +40,29 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 	let result = await requestPVE(path, "POST", req.cookies, JSON.stringify(req.body)); // need to stringify body because of other issues
 	res.status(result.status).send(result.data);
 });
+
+app.post("/api/ticket", async (req, res) => {
+	let response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
+	let ticket = response.data.data.ticket;
+	let csrftoken = response.data.data.CSRFPreventionToken;
+	let username = response.data.data.username;
+	let expire = new Date(Date.now() + (2*60*60*1000));
+	res.cookie("PVEAuthCookie", ticket, {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
+	res.cookie("CSRFPreventionToken", csrftoken, {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
+	res.cookie("username", username, {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
+	res.cookie("auth", 1, {domain: domain, path: "/", secure: true, expires: expire});
+	res.status(200).send({auth: true});
+});
+
+app.delete("/api/ticket", async (req, res) => {
+	let expire = new Date(0);
+	res.cookie("PVEAuthCookie", "", {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
+	res.cookie("CSRFPreventionToken", "", {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
+	res.cookie("username", "", {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
+	res.cookie("auth", 0, {domain: domain, path: "/", expires: expire});
+	res.status(200).send({auth: false});
+});
+
 
 app.get("/api/user/resources", async (req, res) => {
 	// check auth
