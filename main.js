@@ -49,7 +49,7 @@ app.post("/api/ticket", async (req, res) => {
 	let expire = new Date(Date.now() + (2*60*60*1000));
 	res.cookie("PVEAuthCookie", ticket, {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
 	res.cookie("CSRFPreventionToken", csrftoken, {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
-	res.cookie("username", username, {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
+	res.cookie("username", username, {domain: domain, path: "/", secure: true, expires: expire});
 	res.cookie("auth", 1, {domain: domain, path: "/", secure: true, expires: expire});
 	res.status(200).send({auth: true});
 });
