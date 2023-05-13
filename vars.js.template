@@ -6,4 +6,5 @@ export const pveAPIToken = {
 	uuid: ""
 };
 export const listenPort = 80;
+export const hostname = "";
 export const domain = "";
