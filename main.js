@@ -43,7 +43,7 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 
 app.post("/api/ticket", async (req, res) => {
 	let response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
-	if (!response.ok) {
+	if (!(response.status === 200)) {
 		res.status(response.status).send({auth: false});
 		res.end();
 		return;
