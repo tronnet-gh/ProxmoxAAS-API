@@ -43,6 +43,11 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 
 app.post("/api/ticket", async (req, res) => {
 	let response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
+	if (!response.ok) {
+		res.status(response.status).send({auth: false});
+		res.end();
+		return;
+	}
 	let ticket = response.data.data.ticket;
 	let csrftoken = response.data.data.CSRFPreventionToken;
 	let username = response.data.data.username;
