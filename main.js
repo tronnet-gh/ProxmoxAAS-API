@@ -11,22 +11,23 @@ import { getAllocatedResources, approveResources } from "./utils.js";
 import { getUserConfig } from "./db.js";
 
 const app = express();
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser())
-app.use(cors({origin: hostname}));
+app.use(cors({ origin: hostname }));
 app.use(morgan("combined"));
 
 app.get("/api/version", (req, res) => {
-	res.status(200).send({version: api.version});
+	res.status(200).send({ version: api.version });
 });
 
 app.get("/api/echo", (req, res) => {
-	res.status(200).send({body: req.body, cookies: req.cookies});
+	res.status(200).send({ body: req.body, cookies: req.cookies });
 });
 
 app.get("/api/auth", async (req, res) => {
-	await checkAuth(req.cookies);
-	res.status(200).send({auth: true});
+	let auth = await checkAuth(req.cookies);
+	if (!auth) { return; }
+	res.status(200).send({ auth: true });
 });
 
 app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for GET proxmox api with no token
@@ -44,61 +45,65 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 app.post("/api/ticket", async (req, res) => {
 	let response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
 	if (!(response.status === 200)) {
-		res.status(response.status).send({auth: false});
+		res.status(response.status).send({ auth: false });
 		res.end();
 		return;
 	}
 	let ticket = response.data.data.ticket;
 	let csrftoken = response.data.data.CSRFPreventionToken;
 	let username = response.data.data.username;
-	let expire = new Date(Date.now() + (2*60*60*1000));
-	res.cookie("PVEAuthCookie", ticket, {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
-	res.cookie("CSRFPreventionToken", csrftoken, {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
-	res.cookie("username", username, {domain: domain, path: "/", secure: true, expires: expire});
-	res.cookie("auth", 1, {domain: domain, path: "/", secure: true, expires: expire});
-	res.status(200).send({auth: true});
+	let expire = new Date(Date.now() + (2 * 60 * 60 * 1000));
+	res.cookie("PVEAuthCookie", ticket, { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("CSRFPreventionToken", csrftoken, { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("username", username, { domain: domain, path: "/", secure: true, expires: expire });
+	res.cookie("auth", 1, { domain: domain, path: "/", secure: true, expires: expire });
+	res.status(200).send({ auth: true });
 });
 
 app.delete("/api/ticket", async (req, res) => {
 	let expire = new Date(0);
-	res.cookie("PVEAuthCookie", "", {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
-	res.cookie("CSRFPreventionToken", "", {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
-	res.cookie("username", "", {domain: domain, path: "/", httpOnly: true, secure: true, expires: expire});
-	res.cookie("auth", 0, {domain: domain, path: "/", expires: expire});
-	res.status(200).send({auth: false});
+	res.cookie("PVEAuthCookie", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("CSRFPreventionToken", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("username", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("auth", 0, { domain: domain, path: "/", expires: expire });
+	res.status(200).send({ auth: false });
 });
 
 
 app.get("/api/user/resources", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	let resources = await getAllocatedResources(req, req.cookies.username);
 	res.status(200).send(resources);
 });
 
 app.get("/api/user/instances", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	let config = getUserConfig(req.cookies.username);
 	res.status(200).send(config.instances)
 });
 
 app.get("/api/user/nodes", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	let config = getUserConfig(req.cookies.username);
 	res.status(200).send(config.nodes)
 })
 
 app.post("/api/instance/disk/detach", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	if (req.body.disk.includes("unused")) {
-		res.status(500).send({error: `Requested disk ${req.body.disk} cannot be unused. Use /disk/delete to permanently delete unused disks.`});
+		res.status(500).send({ error: `Requested disk ${req.body.disk} cannot be unused. Use /disk/delete to permanently delete unused disks.` });
 		res.end();
 		return;
 	}
-	let action = JSON.stringify({delete: req.body.disk});
+	let action = JSON.stringify({ delete: req.body.disk });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
@@ -106,7 +111,8 @@ app.post("/api/instance/disk/detach", async (req, res) => {
 
 app.post("/api/instance/disk/attach", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	let action = {};
 	action[req.body.disk] = req.body.data;
 	action = JSON.stringify(action);
@@ -117,11 +123,12 @@ app.post("/api/instance/disk/attach", async (req, res) => {
 
 app.post("/api/instance/disk/resize", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	// check disk existence
 	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
-		res.status(500).send({error: `requested disk ${req.body.disk} does not exist`});
+		res.status(500).send({ error: `requested disk ${req.body.disk} does not exist` });
 		res.end();
 		return;
 	}
@@ -131,23 +138,24 @@ app.post("/api/instance/disk/resize", async (req, res) => {
 	request[storage] = Number(req.body.size * 1024 ** 3); // setup request object
 	// check request approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.`});
+		res.status(500).send({ request: request, error: `Storage ${storage} could not fulfill request of size ${req.body.size}G.` });
 		res.end();
 		return;
 	}
 	// action approved, commit to action
-	let action = JSON.stringify({disk: req.body.disk, size: `+${req.body.size}G`});
+	let action = JSON.stringify({ disk: req.body.disk, size: `+${req.body.size}G` });
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/resize`, "PUT", req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance/disk/move", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	// check disk existence
 	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
-		res.status(500).send({error: `requested disk ${req.body.disk} does not exist`});
+		res.status(500).send({ error: `requested disk ${req.body.disk} does not exist` });
 		res.end();
 		return;
 	}
@@ -162,13 +170,13 @@ app.post("/api/instance/disk/move", async (req, res) => {
 	}
 	request[dstStorage] = Number(size); // always decrease destination storage by size
 	// check request approval
-	if (!await approveResources(req, req.cookies.username, request)) { 
-		res.status(500).send({request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.`});
+	if (!await approveResources(req, req.cookies.username, request)) {
+		res.status(500).send({ request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.` });
 		res.end();
 		return;
 	}
 
-	let action = {storage: req.body.storage, delete: req.body.delete};
+	let action = { storage: req.body.storage, delete: req.body.delete };
 	if (req.body.type === "qemu") {
 		action.disk = req.body.disk
 	}
@@ -183,14 +191,15 @@ app.post("/api/instance/disk/move", async (req, res) => {
 
 app.post("/api/instance/disk/delete", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	// only ide or unused are allowed to be deleted
 	if (!req.body.disk.includes("unused") && !req.body.disk.includes("ide")) { // must be ide or unused
-		res.status(500).send({error: `Requested disk ${req.body.disk} must be unused or ide. Use /disk/detach to detach disks in use.`});
+		res.status(500).send({ error: `Requested disk ${req.body.disk} must be unused or ide. Use /disk/detach to detach disks in use.` });
 		res.end();
 		return;
-	}	
-	let action = JSON.stringify({delete: req.body.disk});
+	}
+	let action = JSON.stringify({ delete: req.body.disk });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
@@ -199,14 +208,15 @@ app.post("/api/instance/disk/delete", async (req, res) => {
 
 app.post("/api/instance/disk/create", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	// setup request
 	let request = {};
 	if (!req.body.disk.includes("ide")) {
 		request[req.body.storage] = Number(req.body.size * 1024 ** 3); // setup request object
 		// check request approval
 		if (!await approveResources(req, req.cookies.username, request)) {
-			res.status(500).send({request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.`});
+			res.status(500).send({ request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.` });
 			res.end();
 			return;
 		}
@@ -230,21 +240,22 @@ app.post("/api/instance/disk/create", async (req, res) => {
 
 app.post("/api/instance/resources", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	// get current config
 	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
 	let request = {
-		cores: Number(req.body.cores) - Number(currentConfig.data.data.cores), 
+		cores: Number(req.body.cores) - Number(currentConfig.data.data.cores),
 		memory: Number(req.body.memory) - Number(currentConfig.data.data.memory)
 	};
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({request: request, error: `Could not fulfil request`});
+		res.status(500).send({ request: request, error: `Could not fulfil request` });
 		res.end();
 		return;
 	}
 	// commit action
-	let action = JSON.stringify({cores: req.body.cores, memory: req.body.memory});
+	let action = JSON.stringify({ cores: req.body.cores, memory: req.body.memory });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
@@ -252,10 +263,11 @@ app.post("/api/instance/resources", async (req, res) => {
 
 app.post("/api/instance", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	// setup request
 	let request = {
-		cores: Number(req.body.cores), 
+		cores: Number(req.body.cores),
 		memory: Number(req.body.memory)
 	};
 	// setup action
@@ -264,12 +276,12 @@ app.post("/api/instance", async (req, res) => {
 	let vmid_min = user.instances.vmid.min;
 	let vmid_max = user.instances.vmid.max;
 	if (vmid < vmid_min || vmid > vmid_max) {
-		res.status(500).send({error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}]`});
+		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}]` });
 		res.end();
 		return;
 	}
 	if (!user.nodes.includes(req.body.node)) {
-		res.status(500).send({error: `Requested node ${req.body.node} is not in allowed nodes [${user.nodes}]`});
+		res.status(500).send({ error: `Requested node ${req.body.node} is not in allowed nodes [${user.nodes}]` });
 		res.end();
 		return;
 	}
@@ -297,7 +309,7 @@ app.post("/api/instance", async (req, res) => {
 	}
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) { // check resource approval
-		res.status(500).send({request: request, error: `Not enough resources to satisfy request.`});
+		res.status(500).send({ request: request, error: `Not enough resources to satisfy request.` });
 		res.end();
 		return;
 	}
@@ -309,7 +321,8 @@ app.post("/api/instance", async (req, res) => {
 
 app.delete("/api/instance", async (req, res) => {
 	// check auth
-	await checkAuth(req.cookies, res);
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
 	// commit action
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`, "DELETE", req.cookies, null, pveAPIToken);
 	await handleResponse(req.body.node, result, res);

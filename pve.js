@@ -14,8 +14,8 @@ export async function checkAuth (cookies, res, vmpath = null) {
 	if (!auth) {
 		res.status(401).send({auth: auth});
 		res.end();
-		return;
 	}
+	return auth;
 }
 
 export async function requestPVE (path, method, cookies, body = null, token = null) {
