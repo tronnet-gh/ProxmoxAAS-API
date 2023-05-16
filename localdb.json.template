@@ -12,19 +12,41 @@
 			"compact": true,
 			"unit": "B"
 		},
+		"swap": {
+			"type": "numeric",
+			"multiplier": 1048576,
+			"compact": true,
+			"unit": "B"
+		},
 		"local": {
 			"type": "storage",
 			"multiplier": 1,
 			"compact": true,
 			"unit": "B",
-			"disks": ["rootfs", "mp", "sata", "unused"]
+			"disks": [
+				"rootfs",
+				"mp",
+				"sata",
+				"unused"
+			]
 		},
 		"cephpl": {
 			"type": "storage",
 			"multiplier": 1,
 			"compact": true,
 			"unit": "B",
-			"disks": ["rootfs", "mp", "sata", "unused"]
+			"disks": [
+				"rootfs",
+				"mp",
+				"sata",
+				"unused"
+			]
+		},
+		"network": {
+			"type": "network",
+			"multiplier": 1,
+			"compact": true,
+			"unit": "MB/s"
 		}
 	},
 	"users": {
@@ -33,26 +55,28 @@
 				"max": {
 					"cores": 128,
 					"memory": 131072,
+					"swap": 131072,
 					"local": 1099511627776,
-					"cephpl": 1099511627776
+					"cephpl": 1099511627776,
+					"network": 131072
 				}
 			},
 			"nodes": [
-				"nodeid-1",
-				"nodeid-2"
+				"node1",
+				"node2"
 			],
 			"instances": {
 				"vmid": {
 					"min": 100,
 					"max": 199
 				},
-				"pool": "examplegroup",
+				"pool": "examplepool",
 				"templates": {
 					"lxc": {
-						"net0": "name=eth0,bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=10,type=veth"
+						"net0": "name=eth0,bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=10,type=veth,rate=1000"
 					},
 					"qemu": {
-						"net0": "virtio,bridge=vmbr0,tag=10"
+						"net0": "virtio,bridge=vmbr0,tag=10,rate=1000"
 					}
 				}
 			}

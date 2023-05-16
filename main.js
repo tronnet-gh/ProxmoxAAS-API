@@ -238,6 +238,32 @@ app.post("/api/instance/disk/create", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+app.post("/api/instance/network", async (req, res) => {
+	// check auth
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
+	// get current config
+	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
+	let currentNetworkConfig = currentConfig.data.data[`net${req.body.netid}`];
+	let currentNetworkRate = currentNetworkConfig.split("rate=")[1].split(",")[0];
+	let request = {
+		network: Number(req.body.rate) - Number(currentNetworkRate)
+	};
+	// check resource approval
+	if (!await approveResources(req, req.cookies.username, request)) {
+		res.status(500).send({ request: request, error: `Could not fulfil request` });
+		res.end();
+		return;
+	}
+	// commit action
+	let action = {};
+	action[`net${req.body.netid}`] = currentNetworkConfig.replace(`rate=${currentNetworkRate}`, `rate=${req.body.rate}`);
+	action = JSON.stringify(action);
+	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
+});
+
 app.post("/api/instance/resources", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
