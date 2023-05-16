@@ -44,7 +44,7 @@
 		},
 		"network": {
 			"type": "network",
-			"multiplier": 1,
+			"multiplier": 1000000,
 			"compact": true,
 			"unit": "MB/s"
 		}

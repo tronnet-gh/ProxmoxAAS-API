@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { pveAPI, pveAPIToken } from "./vars.js";
 
-export async function checkAuth (cookies, res, vmpath = null) {
+export async function checkAuth(cookies, res, vmpath = null) {
 	let auth = false;
 	if (vmpath) {
 		let result = await requestPVE(`/${vmpath}/config`, "GET", cookies);
@@ -12,13 +12,13 @@ export async function checkAuth (cookies, res, vmpath = null) {
 		auth = result.status === 200;
 	}
 	if (!auth) {
-		res.status(401).send({auth: auth});
+		res.status(401).send({ auth: auth });
 		res.end();
 	}
 	return auth;
 }
 
-export async function requestPVE (path, method, cookies, body = null, token = null) {
+export async function requestPVE(path, method, cookies, body = null, token = null) {
 	let url = `${pveAPI}${path}`;
 	let content = {
 		method: method,
@@ -50,7 +50,7 @@ export async function requestPVE (path, method, cookies, body = null, token = nu
 	}
 }
 
-export async function handleResponse (node, result, res) {
+export async function handleResponse(node, result, res) {
 	const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
 	if (result.data.data) {
 		let upid = result.data.data;
@@ -78,7 +78,7 @@ export async function handleResponse (node, result, res) {
 	}
 }
 
-export async function getUsedResources (req, resourceMeta) {
+export async function getUsedResources(req, resourceMeta) {
 	let response = await requestPVE("/cluster/resources", "GET", req.cookies);
 	let used = {};
 	let diskprefixes = [];
@@ -95,12 +95,15 @@ export async function getUsedResources (req, resourceMeta) {
 			let config = await requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", req.cookies);
 			config = config.data.data;
 			for (let key of Object.keys(config)) {
-				if (Object.keys(used).includes(key) && resourceMeta[key].type === "numeric") {					
-					used[key] += config[key];
+				if (Object.keys(used).includes(key) && resourceMeta[key].type === "numeric") {
+					used[key] += Number(config[key]);
 				}
 				else if (diskprefixes.some(prefix => key.startsWith(prefix))) {
 					let diskInfo = await getDiskInfo(instance.node, instance.type, instance.vmid, key);
-					used[diskInfo.storage] += diskInfo.size;
+					used[diskInfo.storage] += Number(diskInfo.size);
+				}
+				else if (key.startsWith("net")) {
+					used.network += Number(config[key].split("rate=")[1].split(",")[0]);
 				}
 			}
 		}
@@ -108,7 +111,7 @@ export async function getUsedResources (req, resourceMeta) {
 	return used;
 }
 
-export async function getDiskInfo (node, type, vmid, disk) {
+export async function getDiskInfo(node, type, vmid, disk) {
 	let config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
 	let storageID = config.data.data[disk].split(":")[0];
 	let volID = config.data.data[disk].split(",")[0];
