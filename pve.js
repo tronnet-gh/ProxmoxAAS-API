@@ -12,7 +12,7 @@ export async function checkAuth(cookies, res, vmpath = null) {
 		auth = result.status === 200;
 	}
 	if (!auth) {
-		res.status(401).send({ auth: auth });
+		res.status(401).send({ auth: auth, path: vmpath ? `${vmpath}/config` : "/version" });
 		res.end();
 	}
 	return auth;

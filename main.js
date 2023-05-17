@@ -95,8 +95,9 @@ app.get("/api/user/nodes", async (req, res) => {
 })
 
 app.post("/api/instance/disk/detach", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	if (req.body.disk.includes("unused")) {
 		res.status(500).send({ error: `Requested disk ${req.body.disk} cannot be unused. Use /disk/delete to permanently delete unused disks.` });
@@ -105,25 +106,27 @@ app.post("/api/instance/disk/detach", async (req, res) => {
 	}
 	let action = JSON.stringify({ delete: req.body.disk });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance/disk/attach", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	let action = {};
 	action[req.body.disk] = req.body.data;
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance/disk/resize", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// check disk existence
 	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
@@ -144,13 +147,14 @@ app.post("/api/instance/disk/resize", async (req, res) => {
 	}
 	// action approved, commit to action
 	let action = JSON.stringify({ disk: req.body.disk, size: `+${req.body.size}G` });
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/resize`, "PUT", req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/resize`, "PUT", req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance/disk/move", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// check disk existence
 	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
@@ -185,13 +189,14 @@ app.post("/api/instance/disk/move", async (req, res) => {
 	}
 	action = JSON.stringify(action);
 	let route = req.body.type === "qemu" ? "move_disk" : "move_volume";
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/${route}`, "POST", req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/${route}`, "POST", req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance/disk/delete", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// only ide or unused are allowed to be deleted
 	if (!req.body.disk.includes("unused") && !req.body.disk.includes("ide")) { // must be ide or unused
@@ -202,13 +207,14 @@ app.post("/api/instance/disk/delete", async (req, res) => {
 	let action = JSON.stringify({ delete: req.body.disk });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance/disk/create", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// setup request
 	let request = {};
@@ -234,13 +240,14 @@ app.post("/api/instance/disk/create", async (req, res) => {
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance/network", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// get current config
 	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
@@ -260,13 +267,14 @@ app.post("/api/instance/network", async (req, res) => {
 	action[`net${req.body.netid}`] = currentNetworkConfig.replace(`rate=${currentNetworkRate}`, `rate=${req.body.rate}`);
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
 app.post("/api/instance/resources", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// get current config
 	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
@@ -283,7 +291,7 @@ app.post("/api/instance/resources", async (req, res) => {
 	// commit action
 	let action = JSON.stringify({ cores: req.body.cores, memory: req.body.memory });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, method, req.cookies, action, pveAPIToken);
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
@@ -301,11 +309,13 @@ app.post("/api/instance", async (req, res) => {
 	let vmid = Number.parseInt(req.body.vmid);
 	let vmid_min = user.instances.vmid.min;
 	let vmid_max = user.instances.vmid.max;
+	// check vmid is within allowed range
 	if (vmid < vmid_min || vmid > vmid_max) {
 		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}]` });
 		res.end();
 		return;
 	}
+	// check node is within allowed list
 	if (!user.nodes.includes(req.body.node)) {
 		res.status(500).send({ error: `Requested node ${req.body.node} is not in allowed nodes [${user.nodes}]` });
 		res.end();
@@ -346,11 +356,12 @@ app.post("/api/instance", async (req, res) => {
 });
 
 app.delete("/api/instance", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// commit action
-	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`, "DELETE", req.cookies, null, pveAPIToken);
+	let result = await requestPVE(vmpath, "DELETE", req.cookies, null, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
 
