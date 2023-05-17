@@ -11,18 +11,18 @@ catch {
 	save();
 }
 
-function load () {
+function load() {
 	db = JSON.parse(readFileSync(filename));
 }
 
-function save () {
+function save() {
 	writeFileSync(filename, JSON.stringify(db));
 }
 
-export function getResourceConfig () {
+export function getResourceConfig() {
 	return db.resources;
 }
 
-export function getUserConfig (username) {
+export function getUserConfig(username) {
 	return db.users[username];
 }

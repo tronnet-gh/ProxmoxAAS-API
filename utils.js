@@ -1,7 +1,7 @@
 import { getUsedResources } from "./pve.js";
 import { getUserConfig, getResourceConfig } from "./db.js";
 
-export async function getAllocatedResources (req, username) {
+export async function getAllocatedResources(req, username) {
 	let dbResources = getResourceConfig();
 	let used = await getUsedResources(req, dbResources);
 	let max = getUserConfig(username).resources.max;
@@ -9,10 +9,10 @@ export async function getAllocatedResources (req, username) {
 	Object.keys(max).forEach((k) => {
 		avail[k] = max[k] - used[k];
 	});
-	return {used: used, max: max, avail: avail, units: dbResources};
+	return { used: used, max: max, avail: avail, units: dbResources };
 }
 
-export async function approveResources (req, username, request) {
+export async function approveResources(req, username, request) {
 
 	let avail = (await getAllocatedResources(req, username)).avail;
 
