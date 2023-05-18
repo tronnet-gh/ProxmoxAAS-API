@@ -21,9 +21,12 @@ export async function approveResources(req, username, request) {
 		if (!(key in avail)) {
 			approved = false;
 		}
-		else if (avail[key] - request[key] < 0) {
+		else if (isNaN(avail[key]) || isNaN(request[key])) {
 			approved = false;
 		}
+		else if (avail[key] - request[key] < 0) {
+			approved = false;
+		}		
 	});
 	return approved;
 }
