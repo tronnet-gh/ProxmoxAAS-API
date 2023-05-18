@@ -25,7 +25,7 @@ app.get("/api/echo", (req, res) => {
 });
 
 app.get("/api/auth", async (req, res) => {
-	let auth = await checkAuth(req.cookies);
+	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
 	res.status(200).send({ auth: true });
 });
@@ -115,10 +115,20 @@ app.post("/api/instance/disk/attach", async (req, res) => {
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
+	// get current config and check if unused disk exists
+	let config = await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null);
+	if (!config.data.data[`unused${req.body.source}`]) {
+		res.status(403).send({ error: `requested disk unused${req.body.source} does not exist` });
+		res.end();
+		return;
+	}
+	let sourceDisk = config.data.data[`unused${req.body.source}`];
+	// setup action using source disk info from vm config
 	let action = {};
-	action[req.body.disk] = req.body.data;
+	action[req.body.disk] = sourceDisk;
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	// commit action
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
@@ -179,7 +189,7 @@ app.post("/api/instance/disk/move", async (req, res) => {
 		res.end();
 		return;
 	}
-
+	// create action
 	let action = { storage: req.body.storage, delete: req.body.delete };
 	if (req.body.type === "qemu") {
 		action.disk = req.body.disk
@@ -189,6 +199,7 @@ app.post("/api/instance/disk/move", async (req, res) => {
 	}
 	action = JSON.stringify(action);
 	let route = req.body.type === "qemu" ? "move_disk" : "move_volume";
+	// commit action
 	let result = await requestPVE(`${vmpath}/${route}`, "POST", req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
@@ -204,6 +215,7 @@ app.post("/api/instance/disk/delete", async (req, res) => {
 		res.end();
 		return;
 	}
+	// create action
 	let action = JSON.stringify({ delete: req.body.disk });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
@@ -227,6 +239,7 @@ app.post("/api/instance/disk/create", async (req, res) => {
 			return;
 		}
 	}
+	// setup action
 	let action = {};
 	if (req.body.disk.includes("ide") && req.body.iso) {
 		action[req.body.disk] = `${req.body.iso},media=cdrom`;
@@ -262,11 +275,12 @@ app.post("/api/instance/network", async (req, res) => {
 		res.end();
 		return;
 	}
-	// commit action
+	// setup action
 	let action = {};
 	action[`net${req.body.netid}`] = currentNetworkConfig.replace(`rate=${currentNetworkRate}`, `rate=${req.body.rate}`);
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	// commit action
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
@@ -288,9 +302,10 @@ app.post("/api/instance/resources", async (req, res) => {
 		res.end();
 		return;
 	}
-	// commit action
+	// setup action
 	let action = JSON.stringify({ cores: req.body.cores, memory: req.body.memory });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	// commit action
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });
@@ -349,8 +364,8 @@ app.post("/api/instance", async (req, res) => {
 		res.end();
 		return;
 	}
-	// commit action
 	action = JSON.stringify(action);
+	// commit action
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}`, "POST", req.cookies, action, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
 });

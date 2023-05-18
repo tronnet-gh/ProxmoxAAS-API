@@ -56,13 +56,18 @@ export async function handleResponse(node, result, res) {
 		let upid = result.data.data;
 		while (true) {
 			let taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", null, null, pveAPIToken);
+			let taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", null, null, pveAPIToken);
 			if (taskStatus.data.data.status === "stopped" && taskStatus.data.data.exitstatus === "OK") {
-				res.status(200).send(taskStatus.data.data);
+				let result = taskStatus.data.data;
+				result.log = taskLog.data.data;
+				res.status(200).send(result);
 				res.end();
 				return;
 			}
 			else if (taskStatus.data.data.status === "stopped") {
-				res.status(500).send(taskStatus.data.data);
+				let result = taskStatus.data.data;
+				result.log = taskLog.data.data;
+				res.status(500).send(result);
 				res.end();
 				return;
 			}
@@ -73,8 +78,7 @@ export async function handleResponse(node, result, res) {
 	}
 	else {
 		res.status(result.status).send(result.data);
-		res.end();
-		return;
+		res.end();	
 	}
 }
 
@@ -112,10 +116,15 @@ export async function getUsedResources(req, resourceMeta) {
 }
 
 export async function getDiskInfo(node, type, vmid, disk) {
-	let config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
-	let storageID = config.data.data[disk].split(":")[0];
-	let volID = config.data.data[disk].split(",")[0];
-	let volInfo = await requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", null, null, pveAPIToken);
-	volInfo.data.data.storage = storageID;
-	return volInfo.data.data;
+	try {
+		let config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
+		let storageID = config.data.data[disk].split(":")[0];
+		let volID = config.data.data[disk].split(",")[0];
+		let volInfo = await requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", null, null, pveAPIToken);
+		volInfo.data.data.storage = storageID;
+		return volInfo.data.data;
+	}
+	catch {
+		return null;
+	}
 }
