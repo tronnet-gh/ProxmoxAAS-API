@@ -466,7 +466,7 @@ app.post("/api/instance/resources", async (req, res) => {
 		cores: Number(req.body.cores) - Number(currentConfig.data.data.cores),
 		memory: Number(req.body.memory) - Number(currentConfig.data.data.memory)
 	};
-	if (type === "lxc") {
+	if (req.body.type === "lxc") {
 		request.swap = Number(req.body.swap) - Number(currentConfig.data.data.swap);
 	}
 	// check resource approval
@@ -476,7 +476,11 @@ app.post("/api/instance/resources", async (req, res) => {
 		return;
 	}
 	// setup action
-	let action = JSON.stringify({ cores: req.body.cores, memory: req.body.memory });
+	let action = { cores: req.body.cores, memory: req.body.memory };
+	if (req.body.type === "lxc") {
+		action.swap = Number(req.body.swap);
+	}
+	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
