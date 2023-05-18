@@ -16,32 +16,65 @@ app.use(cookieParser())
 app.use(cors({ origin: hostname }));
 app.use(morgan("combined"));
 
+/**
+ * GET - get API version
+ * responses:
+ * - 200: {version: String}
+ */
 app.get("/api/version", (req, res) => {
 	res.status(200).send({ version: api.version });
 });
 
+/**
+ * GET - echo request
+ * responses:
+ * - 200: {body: request.body, cookies: request.cookies}
+ */
 app.get("/api/echo", (req, res) => {
 	res.status(200).send({ body: req.body, cookies: req.cookies });
 });
 
+/**
+ * GET - check authentication
+ * responses:
+ * - 200: {auth: true, path: String}
+ * - 401: {auth: false, path: String}
+ */
 app.get("/api/auth", async (req, res) => {
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
 	res.status(200).send({ auth: true });
 });
 
+/**
+ * GET - proxy proxmox api without privilege elevation
+ * request and responses passed through to/from proxmox
+ */
 app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for GET proxmox api with no token
 	let path = req.url.replace("/api/proxmox", "");
 	let result = await requestPVE(path, "GET", req.cookies);
 	res.status(result.status).send(result.data);
 });
 
+/**
+ * POST - proxy proxmox api without privilege elevation
+ * request and responses passed through to/from proxmox
+ */
 app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST proxmox api with no token
 	let path = req.url.replace("/api/proxmox", "");
 	let result = await requestPVE(path, "POST", req.cookies, JSON.stringify(req.body)); // need to stringify body because of other issues
 	res.status(result.status).send(result.data);
 });
 
+/**
+ * POST - safer ticket generation using proxmox authentication but adding HttpOnly
+ * request:
+ * - username: String
+ * - password: String
+ * responses:
+ * - 200: {auth: true, path: String}
+ * - 401: {auth: false, path: String}
+ */
 app.post("/api/ticket", async (req, res) => {
 	let response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
 	if (!(response.status === 200)) {
@@ -60,6 +93,11 @@ app.post("/api/ticket", async (req, res) => {
 	res.status(200).send({ auth: true });
 });
 
+/**
+ * DELETE - request to destroy ticket
+ * responses:
+ * - 200: {auth: false, path: String}
+ */
 app.delete("/api/ticket", async (req, res) => {
 	let expire = new Date(0);
 	res.cookie("PVEAuthCookie", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
@@ -69,7 +107,12 @@ app.delete("/api/ticket", async (req, res) => {
 	res.status(200).send({ auth: false });
 });
 
-
+/**
+ * GET - get db user resource information including allocated, free, and maximum resource values along with resource metadata
+ * responses:
+ * - 200: {avail: Object, max: Object, units: Object, used: Object}
+ * - 401: {auth: false, path: String}
+ */
 app.get("/api/user/resources", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
@@ -78,6 +121,12 @@ app.get("/api/user/resources", async (req, res) => {
 	res.status(200).send(resources);
 });
 
+/**
+ * GET - get db user instance configuration
+ * responses:
+ * - 200: {pool: String, templates: {lxc: Object, qemu: Object}, vmid: {min: Number, max: Number}}
+ * - 401: {auth: false, path: String}
+ */
 app.get("/api/user/instances", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
@@ -86,14 +135,33 @@ app.get("/api/user/instances", async (req, res) => {
 	res.status(200).send(config.instances)
 });
 
+/**
+ * GET - get db user node configuration
+ * responses:
+ * - 200: {nodes: String[]}
+ * - 401: {auth: false, path: String}
+ */
 app.get("/api/user/nodes", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
 	let config = getUserConfig(req.cookies.username);
-	res.status(200).send(config.nodes)
+	res.status(200).send({ nodes: config.nodes })
 })
 
+/**
+ * POST - detach mounted disk from instance
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - disk: String - disk id (sata0, NOT unused)
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance/disk/detach", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
@@ -110,6 +178,20 @@ app.post("/api/instance/disk/detach", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * POST - attach unused disk image to instance
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - disk: String - disk id (sata0)
+ * - source: Number - source unused disk number (0 => unused0)
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance/disk/attach", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
@@ -133,6 +215,21 @@ app.post("/api/instance/disk/attach", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * POST - increase size of mounted disk
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - disk: String - disk id (sata0)
+ * - size: Number - increase size in GiB
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String}
+ * - 500: {request: Object, error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance/disk/resize", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
@@ -161,6 +258,22 @@ app.post("/api/instance/disk/resize", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * POST - move mounted disk from one storage to another
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - disk: String - disk id (sata0)
+ * - storage: String - target storage to move disk
+ * - delete: Number - delete original disk (0, 1) 
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String}
+ * - 500: {request: Object, error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance/disk/move", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
@@ -204,6 +317,19 @@ app.post("/api/instance/disk/move", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * POST - delete unused disk permanently
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - disk: String - disk id (sata0)
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance/disk/delete", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
@@ -223,6 +349,21 @@ app.post("/api/instance/disk/delete", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * POST - create a new disk in storage of specified size
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - disk: String - disk id (sata0, ide0)
+ * - storage: String - storage to hold disk
+ * - size: Number size of disk in GiB
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {request: Object, error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance/disk/create", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
@@ -257,6 +398,20 @@ app.post("/api/instance/disk/create", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * POST - modify virtual network interface
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - netid: Number - network interface id number (0 => net0)
+ * - rate: Number - new bandwidth rate for interface in MB/s
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {request: Object, error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance/network", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
@@ -271,7 +426,7 @@ app.post("/api/instance/network", async (req, res) => {
 	};
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Could not fulfil request` });
+		res.status(500).send({ request: request, error: `Could not fulfil network request of ${req.body.rate}MB/s` });
 		res.end();
 		return;
 	}
@@ -285,6 +440,21 @@ app.post("/api/instance/network", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * POST - set basic resources for vm
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - cores: Number - new number of cores for instance
+ * - memory: Number - new amount of memory for instance
+ * - swap: Number, optional - new amount of swap for instance
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {request: Object, error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance/resources", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
@@ -296,6 +466,9 @@ app.post("/api/instance/resources", async (req, res) => {
 		cores: Number(req.body.cores) - Number(currentConfig.data.data.cores),
 		memory: Number(req.body.memory) - Number(currentConfig.data.data.memory)
 	};
+	if (type === "lxc") {
+		request.swap = Number(req.body.swap) - Number(currentConfig.data.data.swap);
+	}
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
 		res.status(500).send({ request: request, error: `Could not fulfil request` });
@@ -310,6 +483,28 @@ app.post("/api/instance/resources", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * POST - create new instance
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number for instance
+ * - hostname: String, optional- hostname for lxc instance
+ * - name: String, optional - hostname for qemu instance
+ * - cores: Number - number of cores for instance
+ * - memory: Number - amount of memory for instance
+ * - swap: Number, optional - amount of swap for lxc instance
+ * - password: String, optional - password for lxc instance
+ * - ostemplate: String, optional - os template name for lxc instance
+ * - rootfslocation: String, optional - storage name for lxc instance rootfs
+ * - rootfssize: Number, optional, - size of lxc instance rootfs
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String}
+ * - 500: {request: Object, error: String}
+ * - 500: Object(pve_task_object)
+ */
 app.post("/api/instance", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
@@ -370,6 +565,17 @@ app.post("/api/instance", async (req, res) => {
 	await handleResponse(req.body.node, result, res);
 });
 
+/**
+ * DELETE - destroy existing instance
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number to destroy
+ * responses:
+ * - 200: Object(pve_auth_object)
+ * - 401: {auth: false, path: String}
+ * - 500: Object(pve_task_object)
+ */
 app.delete("/api/instance", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
