@@ -157,7 +157,7 @@ app.get("/api/user/nodes", async (req, res) => {
  * - vmid: Number - vm id number
  * - disk: String - disk id (sata0, NOT unused)
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: Object(pve_task_object)
@@ -187,7 +187,7 @@ app.post("/api/instance/disk/detach", async (req, res) => {
  * - disk: String - disk id (sata0)
  * - source: Number - source unused disk number (0 => unused0)
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: Object(pve_task_object)
@@ -224,7 +224,7 @@ app.post("/api/instance/disk/attach", async (req, res) => {
  * - disk: String - disk id (sata0)
  * - size: Number - increase size in GiB
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: {request: Object, error: String}
@@ -268,7 +268,7 @@ app.post("/api/instance/disk/resize", async (req, res) => {
  * - storage: String - target storage to move disk
  * - delete: Number - delete original disk (0, 1) 
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: {request: Object, error: String}
@@ -325,7 +325,7 @@ app.post("/api/instance/disk/move", async (req, res) => {
  * - vmid: Number - vm id number
  * - disk: String - disk id (sata0)
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: Object(pve_task_object)
@@ -359,7 +359,7 @@ app.post("/api/instance/disk/delete", async (req, res) => {
  * - storage: String - storage to hold disk
  * - size: Number size of disk in GiB
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {request: Object, error: String}
  * - 500: Object(pve_task_object)
@@ -407,7 +407,7 @@ app.post("/api/instance/disk/create", async (req, res) => {
  * - netid: Number - network interface id number (0 => net0)
  * - rate: Number - new bandwidth rate for interface in MB/s
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {request: Object, error: String}
  * - 500: Object(pve_task_object)
@@ -450,7 +450,7 @@ app.post("/api/instance/network", async (req, res) => {
  * - memory: Number - new amount of memory for instance
  * - swap: Number, optional - new amount of swap for instance
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {request: Object, error: String}
  * - 500: Object(pve_task_object)
@@ -503,7 +503,7 @@ app.post("/api/instance/resources", async (req, res) => {
  * - rootfslocation: String, optional - storage name for lxc instance rootfs
  * - rootfssize: Number, optional, - size of lxc instance rootfs
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: {request: Object, error: String}
@@ -576,7 +576,7 @@ app.post("/api/instance", async (req, res) => {
  * - type: String - vm type (lxc, qemu)
  * - vmid: Number - vm id number to destroy
  * responses:
- * - 200: Object(pve_auth_object)
+ * - 200: Object(pve_task_object)
  * - 401: {auth: false, path: String}
  * - 500: Object(pve_task_object)
  */
