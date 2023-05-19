@@ -513,12 +513,7 @@ app.post("/api/instance", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
-	// setup request
-	let request = {
-		cores: Number(req.body.cores),
-		memory: Number(req.body.memory)
-	};
-	// setup action
+	// get user db config
 	let user = await getUserConfig(req.cookies.username);
 	let vmid = Number.parseInt(req.body.vmid);
 	let vmid_min = user.instances.vmid.min;
@@ -535,27 +530,25 @@ app.post("/api/instance", async (req, res) => {
 		res.end();
 		return;
 	}
-	let action = {
-		vmid: req.body.vmid,
-		cores: req.body.cores,
-		memory: req.body.memory,
-		pool: user.instances.pool
+	// setup request
+	let request = {
+		cores: Number(req.body.cores),
+		memory: Number(req.body.memory)
 	};
-	for (let key of Object.keys(user.instances.templates[req.body.type])) {
-		action[key] = user.instances.templates[req.body.type][key];
-	}
 	if (req.body.type === "lxc") {
-		action.swap = req.body.swap;
-		action.hostname = req.body.name;
-		action.unprivileged = 1;
-		action.features = "nesting=1";
-		action.password = req.body.password;
-		action.ostemplate = req.body.ostemplate;
-		action.rootfs = `${req.body.rootfslocation}:${req.body.rootfssize}`;
+		request.swap = req.body.swap;
 		request[req.body.rootfslocation] = req.body.rootfssize;
 	}
-	else {
-		action.name = req.body.name;
+	for (let key of Object.keys(user.instances.templates[req.body.type])) {
+		let item = user.instances.templates[req.body.type][key];
+		if (item.resource) {
+			if (request[item.resource.name]) {
+				request[item.resource.name] += item.resource.amount;
+			}
+			else {
+				request[item.resource.name] = item.resource.amount;
+			}
+		}
 	}
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) { // check resource approval
@@ -563,6 +556,28 @@ app.post("/api/instance", async (req, res) => {
 		res.end();
 		return;
 	}
+	// setup action by adding non resource values
+	let action = {
+		vmid: req.body.vmid,
+		cores: Number(req.body.cores),
+		memory: Number(req.body.memory),
+		pool: user.instances.pool
+	};
+	for (let key of Object.keys(user.instances.templates[req.body.type])) {
+		action[key] = user.instances.templates[req.body.type][key].value;
+	}
+	if (req.body.type === "lxc") {
+		action.hostname = req.body.name;
+		action.unprivileged = 1;
+		action.features = "nesting=1";
+		action.password = req.body.password;
+		action.ostemplate = req.body.ostemplate;
+		action.rootfs = `${req.body.rootfslocation}:${req.body.rootfssize}`;
+	}
+	else {
+		action.name = req.body.name;
+	}
+	console.log(action)
 	action = JSON.stringify(action);
 	// commit action
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}`, "POST", req.cookies, action, pveAPIToken);
