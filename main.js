@@ -577,7 +577,6 @@ app.post("/api/instance", async (req, res) => {
 	else {
 		action.name = req.body.name;
 	}
-	console.log(action)
 	action = JSON.stringify(action);
 	// commit action
 	let result = await requestPVE(`/nodes/${req.body.node}/${req.body.type}`, "POST", req.cookies, action, pveAPIToken);
