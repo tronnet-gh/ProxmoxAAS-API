@@ -56,9 +56,9 @@ export async function handleResponse(node, result, res) {
 		let upid = result.data.data;
 		while (true) {
 			let taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", null, null, pveAPIToken);
-			let taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", null, null, pveAPIToken);
 			if (taskStatus.data.data.status === "stopped" && taskStatus.data.data.exitstatus === "OK") {
 				let result = taskStatus.data.data;
+				let taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", null, null, pveAPIToken);
 				result.log = taskLog.data.data;
 				res.status(200).send(result);
 				res.end();
@@ -66,6 +66,7 @@ export async function handleResponse(node, result, res) {
 			}
 			else if (taskStatus.data.data.status === "stopped") {
 				let result = taskStatus.data.data;
+				let taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", null, null, pveAPIToken);
 				result.log = taskLog.data.data;
 				res.status(500).send(result);
 				res.end();
