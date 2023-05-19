@@ -3,24 +3,28 @@
 		"cores": {
 			"type": "numeric",
 			"multiplier": 1,
+			"base": 1024,
 			"compact": false,
 			"unit": "Cores"
 		},
 		"memory": {
 			"type": "numeric",
 			"multiplier": 1048576,
+			"base": 1024,
 			"compact": true,
 			"unit": "B"
 		},
 		"swap": {
 			"type": "numeric",
 			"multiplier": 1048576,
+			"base": 1024,
 			"compact": true,
 			"unit": "B"
 		},
 		"local": {
 			"type": "storage",
 			"multiplier": 1,
+			"base": 1024,
 			"compact": true,
 			"unit": "B",
 			"disks": [
@@ -33,6 +37,7 @@
 		"cephpl": {
 			"type": "storage",
 			"multiplier": 1,
+			"base": 1024,
 			"compact": true,
 			"unit": "B",
 			"disks": [
@@ -45,25 +50,26 @@
 		"network": {
 			"type": "network",
 			"multiplier": 1000000,
+			"base": 1000,
 			"compact": true,
-			"unit": "MB/s"
+			"unit": "B/s"
 		}
 	},
 	"users": {
 		"exampleuser@realm": {
 			"resources": {
 				"max": {
-					"cores": 128,
-					"memory": 131072,
-					"swap": 131072,
-					"local": 1099511627776,
-					"cephpl": 1099511627776,
-					"network": 100000
+					"cores": 0,
+					"memory": 0,
+					"swap": 0,
+					"local": 0,
+					"cephpl": 0,
+					"network": 0
 				}
 			},
 			"nodes": [
-				"node1",
-				"node2"
+				"node-0-id",
+				"node-1-id"
 			],
 			"instances": {
 				"vmid": {
@@ -73,10 +79,22 @@
 				"pool": "examplepool",
 				"templates": {
 					"lxc": {
-						"net0": "name=eth0,bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=10,type=veth,rate=1000"
+						"net0": {
+							"value": "name=eth0,bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=10,type=veth,rate=1000",
+							"resource": {
+								"name": "network",
+								"amount": 1000
+							}
+						}
 					},
 					"qemu": {
-						"net0": "virtio,bridge=vmbr0,tag=10,rate=1000"
+						"net0": {
+							"value": "virtio,bridge=vmbr0,tag=10,rate=1000",
+							"resource": {
+								"name": "network",
+								"amount": 1000
+							}
+						}
 					}
 				}
 			}
