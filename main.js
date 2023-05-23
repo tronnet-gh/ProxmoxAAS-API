@@ -6,8 +6,8 @@ import morgan from "morgan";
 import api from "./package.json" assert {type: "json"};
 
 import { pveAPIToken, listenPort, hostname, domain } from "./vars.js";
-import { checkAuth, requestPVE, handleResponse, getDiskInfo } from "./pve.js";
-import { getAllocatedResources, approveResources } from "./utils.js";
+import { requestPVE, handleResponse, getDiskInfo } from "./pve.js";
+import { checkAuth, getAllocatedResources, approveResources } from "./utils.js";
 import { getUserConfig } from "./db.js";
 
 const app = express();
