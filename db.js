@@ -24,5 +24,10 @@ export function getResourceConfig() {
 }
 
 export function getUserConfig(username) {
-	return db.users[username];
+	if (db.users[username]) {
+		return db.users[username];
+	}
+	else {
+		return null;
+	}
 }

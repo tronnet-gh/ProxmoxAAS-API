@@ -1,23 +1,6 @@
 import axios from 'axios';
 import { pveAPI, pveAPIToken } from "./vars.js";
 
-export async function checkAuth(cookies, res, vmpath = null) {
-	let auth = false;
-	if (vmpath) {
-		let result = await requestPVE(`/${vmpath}/config`, "GET", cookies);
-		auth = result.status === 200;
-	}
-	else { // if no path is specified, then do a simple authentication
-		let result = await requestPVE("/version", "GET", cookies);
-		auth = result.status === 200;
-	}
-	if (!auth) {
-		res.status(401).send({ auth: auth, path: vmpath ? `${vmpath}/config` : "/version" });
-		res.end();
-	}
-	return auth;
-}
-
 export async function requestPVE(path, method, cookies, body = null, token = null) {
 	let url = `${pveAPI}${path}`;
 	let content = {
