@@ -1,10 +1,10 @@
 import { getUsedResources, requestPVE } from "./pve.js";
-import { getUserConfig, getResourceConfig } from "./db.js";
+import { db } from "./db.js";
 
 export async function checkAuth(cookies, res, vmpath = null) {
 	let auth = false;
 
-	if (getUserConfig(cookies.username) === null) {
+	if (db.getUserConfig(cookies.username) === null) {
 		auth = false;
 		res.status(401).send({ auth: auth, path: vmpath ? `${vmpath}/config` : "/version", error: `user ${cookies.username} not found in localdb` });
 		res.end();
@@ -27,10 +27,10 @@ export async function checkAuth(cookies, res, vmpath = null) {
 	return auth;
 }
 
-export async function getAllocatedResources(req, username) {
-	let dbResources = getResourceConfig();
+export async function getUserResources (req, username) {
+	let dbResources = db.getResourceConfig();
 	let used = await getUsedResources(req, dbResources);
-	let max = getUserConfig(username).resources.max;
+	let max = db.getUserConfig(username).resources.max;
 	let avail = {};
 	Object.keys(max).forEach((k) => {
 		avail[k] = max[k] - used[k];
@@ -39,20 +39,20 @@ export async function getAllocatedResources(req, username) {
 }
 
 export async function approveResources(req, username, request) {
-
-	let avail = (await getAllocatedResources(req, username)).avail;
-
-	let approved = true;
+	let avail = (await getUserResources(req, username)).avail;
 	Object.keys(request).forEach((key) => {
-		if (!(key in avail)) {
+		if (!(key in avail)) { // if requested resource is not in avail, block
 			approved = false;
+			return false;
 		}
-		else if (isNaN(avail[key]) || isNaN(request[key])) {
+		else if (isNaN(avail[key]) || isNaN(request[key])) { // if either the requested or avail resource is NaN, block
 			approved = false;
+			return false;
 		}
-		else if (avail[key] - request[key] < 0) {
+		else if (avail[key] - request[key] < 0) { // if the avail resources is less than the requested resources, block
 			approved = false;
+			return false;
 		}		
 	});
-	return approved;
+	return true; // if all requested resources pass, allow
 }

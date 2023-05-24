@@ -7,8 +7,8 @@ import api from "./package.json" assert {type: "json"};
 
 import { pveAPIToken, listenPort, hostname, domain } from "./vars.js";
 import { requestPVE, handleResponse, getDiskInfo } from "./pve.js";
-import { checkAuth, getAllocatedResources, approveResources } from "./utils.js";
-import { getUserConfig } from "./db.js";
+import { checkAuth, approveResources, getUserResources } from "./utils.js";
+import { db } from "./db.js";
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -117,7 +117,7 @@ app.get("/api/user/resources", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
-	let resources = await getAllocatedResources(req, req.cookies.username);
+	let resources = await getUserResources(req, req.cookies.username);
 	res.status(200).send(resources);
 });
 
@@ -131,7 +131,7 @@ app.get("/api/user/instances", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
-	let config = getUserConfig(req.cookies.username);
+	let config = db.getUserConfig(req.cookies.username);
 	res.status(200).send(config.instances)
 });
 
@@ -145,7 +145,7 @@ app.get("/api/user/nodes", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
-	let config = getUserConfig(req.cookies.username);
+	let config = db.getUserConfig(req.cookies.username);
 	res.status(200).send({ nodes: config.nodes })
 })
 
@@ -514,7 +514,7 @@ app.post("/api/instance", async (req, res) => {
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
 	// get user db config
-	let user = await getUserConfig(req.cookies.username);
+	let user = await db.getUserConfig(req.cookies.username);
 	let vmid = Number.parseInt(req.body.vmid);
 	let vmid_min = user.instances.vmid.min;
 	let vmid_max = user.instances.vmid.max;
