@@ -1,33 +1,35 @@
 import { readFileSync, writeFileSync } from "fs";
 
-let template = "localdb.json.template"
-let filename = "localdb.json";
-
-let db = JSON.parse(readFileSync(template));
-try {
-	load();
-}
-catch {
-	save();
-}
-
-function load() {
-	db = JSON.parse(readFileSync(filename));
-}
-
-function save() {
-	writeFileSync(filename, JSON.stringify(db));
-}
-
-export function getResourceConfig() {
-	return db.resources;
-}
-
-export function getUserConfig(username) {
-	if (db.users[username]) {
-		return db.users[username];
+class localdb {
+	#template = "localdb.json.template";
+	#filename = "localdb.json";
+	#data = null;
+	constructor () {
+		try {
+			this.load(this.#filename);
+		}
+		catch {
+			this.load(this.#template);
+			this.save(this.#filename);
+		}
 	}
-	else {
-		return null;
+	load(path) {
+		this.#data = JSON.parse(readFileSync(path));
+	}	
+	save(path) {
+		writeFileSync(path, JSON.stringify(this.#data));
+	}
+	getResourceConfig () {
+		return this.#data.resources;
+	}
+	getUserConfig (username) {
+		if (this.#data.users[username]) {
+			return this.#data.users[username];
+		}
+		else {
+			return null;
+		}
 	}
 }
+
+export const db = new localdb();

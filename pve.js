@@ -88,10 +88,14 @@ export async function getUsedResources(req, resourceMeta) {
 				}
 				else if (diskprefixes.some(prefix => key.startsWith(prefix))) {
 					let diskInfo = await getDiskInfo(instance.node, instance.type, instance.vmid, key);
-					used[diskInfo.storage] += Number(diskInfo.size);
+					if (diskInfo) { // only count if disk exists
+						used[diskInfo.storage] += Number(diskInfo.size);
+					}
 				}
 				else if (key.startsWith("net")) {
-					used.network += Number(config[key].split("rate=")[1].split(",")[0]);
+					if (config[key].includes("rate=")) { // only count instances with a rate limit
+						used.network += Number(config[key].split("rate=")[1].split(",")[0]);
+					}
 				}
 			}
 		}
