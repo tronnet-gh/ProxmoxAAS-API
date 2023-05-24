@@ -42,15 +42,12 @@ export async function approveResources(req, username, request) {
 	let avail = (await getUserResources(req, username)).avail;
 	Object.keys(request).forEach((key) => {
 		if (!(key in avail)) { // if requested resource is not in avail, block
-			approved = false;
 			return false;
 		}
 		else if (isNaN(avail[key]) || isNaN(request[key])) { // if either the requested or avail resource is NaN, block
-			approved = false;
 			return false;
 		}
 		else if (avail[key] - request[key] < 0) { // if the avail resources is less than the requested resources, block
-			approved = false;
 			return false;
 		}		
 	});
