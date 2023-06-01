@@ -35,7 +35,7 @@ export async function requestPVE(path, method, cookies, body = null, token = nul
 
 export async function handleResponse(node, result, res) {
 	const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
-	if (result.data.data) {
+	if (result.data.data && typeof(result.data.data) === String && result.data.data.startsWith("UPID:")) {
 		let upid = result.data.data;
 		while (true) {
 			let taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", null, null, pveAPIToken);

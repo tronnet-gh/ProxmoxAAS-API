@@ -618,20 +618,29 @@ app.delete("/api/instance", async (req, res) => {
  */
 app.get("/api/nodes/pci", async (req, res) => {
 	// check auth for specific instance
-	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let vmpath = `/nodes/${req.query.node}/${req.query.type}/${req.query.vmid}`;
 	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// check device is in instance config
 	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
-	if (!config[`hostpci${req.body.hostpci}`]) {
-		res.status(500).send({ error: `Could not find hostpci${req.body.hostpci} in ${req.body.vmid}.` });
+	if (!config[`hostpci${req.query.hostpci}`]) {
+		res.status(500).send({ error: `Could not find hostpci${req.query.hostpci} in ${req.query.vmid}.` });
 		res.end();
 		return;
 	}
-	let device = config[`hostpci${req.body.hostpci}`];
+	let device = config[`hostpci${req.query.hostpci}`].split(",")[0];
+	console.log(device)
 	// get node's pci devices
-	let result = (await requestPVE(`/nodes/${req.body.node}/hardware/pci/${device}`, "GET", req.cookies)).data.data;
-	return result;
+	let result = (await requestPVE(`/nodes/${req.query.node}/hardware/pci`, "GET", req.cookies, null, pveAPIToken)).data.data;
+	let deviceData = [];
+	result.forEach((element) => {
+		if (element.id.startsWith(device)) {
+			deviceData.push(element);
+		}
+	});
+	res.status(200).send(deviceData);
+	res.end();
+	return;
 });
 
 app.listen(listenPort, () => {
