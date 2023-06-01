@@ -238,7 +238,7 @@ app.post("/api/instance/disk/resize", async (req, res) => {
 	// check disk existence
 	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
-		res.status(500).send({ error: `requested disk ${req.body.disk} does not exist` });
+		res.status(500).send({ error: `requested disk ${req.body.disk} does not exist.` });
 		res.end();
 		return;
 	}
@@ -282,7 +282,7 @@ app.post("/api/instance/disk/move", async (req, res) => {
 	// check disk existence
 	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, req.body.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
-		res.status(500).send({ error: `requested disk ${req.body.disk} does not exist` });
+		res.status(500).send({ error: `requested disk ${req.body.disk} does not exist.` });
 		res.end();
 		return;
 	}
@@ -426,7 +426,7 @@ app.post("/api/instance/network", async (req, res) => {
 	};
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Could not fulfil network request of ${req.body.rate}MB/s` });
+		res.status(500).send({ request: request, error: `Could not fulfil network request of ${req.body.rate}MB/s.` });
 		res.end();
 		return;
 	}
@@ -471,7 +471,7 @@ app.post("/api/instance/resources", async (req, res) => {
 	}
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Could not fulfil request` });
+		res.status(500).send({ request: request, error: `Could not fulfil request.` });
 		res.end();
 		return;
 	}
@@ -520,13 +520,13 @@ app.post("/api/instance", async (req, res) => {
 	let vmid_max = user.instances.vmid.max;
 	// check vmid is within allowed range
 	if (vmid < vmid_min || vmid > vmid_max) {
-		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}]` });
+		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}].` });
 		res.end();
 		return;
 	}
 	// check node is within allowed list
 	if (!user.nodes.includes(req.body.node)) {
-		res.status(500).send({ error: `Requested node ${req.body.node} is not in allowed nodes [${user.nodes}]` });
+		res.status(500).send({ error: `Requested node ${req.body.node} is not in allowed nodes [${user.nodes}].` });
 		res.end();
 		return;
 	}
@@ -602,6 +602,36 @@ app.delete("/api/instance", async (req, res) => {
 	// commit action
 	let result = await requestPVE(vmpath, "DELETE", req.cookies, null, pveAPIToken);
 	await handleResponse(req.body.node, result, res);
+});
+
+/**
+ * GET - get instance pcie device data
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number to destroy
+ * - hostpci: String - hostpci number
+ * responses:
+ * - 200: Object(pve_pci_device_object)
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String} 
+ */
+app.get("/api/nodes/pci", async (req, res) => {
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) { return; }
+	// check device is in instance config
+	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
+	if (!config[`hostpci${req.body.hostpci}`]) {
+		res.status(500).send({ error: `Could not find hostpci${req.body.hostpci} in ${req.body.vmid}.` });
+		res.end();
+		return;
+	}
+	let device = config[`hostpci${req.body.hostpci}`];
+	// get node's pci devices
+	let result = (await requestPVE(`/nodes/${req.body.node}/hardware/pci/${device}`, "GET", req.cookies)).data.data;
+	return result;
 });
 
 app.listen(listenPort, () => {
