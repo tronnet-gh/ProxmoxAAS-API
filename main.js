@@ -157,16 +157,25 @@ app.get("/api/user/nodes", async (req, res) => {
  * - vmid: Number - vm id number
  * - disk: String - disk id (sata0, NOT unused)
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
 app.post("/api/instance/disk/detach", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
+	// get current config
+	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
+	// disk must exist
+	if (!config[req.body.disk]) {
+		res.status(500).send({ error: `Disk ${req.body.disk} does not exist.` });
+		res.end();
+		return;
+	}
+	// disk cannot be unused
 	if (req.body.disk.includes("unused")) {
 		res.status(500).send({ error: `Requested disk ${req.body.disk} cannot be unused. Use /disk/delete to permanently delete unused disks.` });
 		res.end();
@@ -187,23 +196,25 @@ app.post("/api/instance/disk/detach", async (req, res) => {
  * - disk: String - disk id (sata0)
  * - source: Number - source unused disk number (0 => unused0)
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
 app.post("/api/instance/disk/attach", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
-	// get current config and check if unused disk exists
-	let config = await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null);
-	if (!config.data.data[`unused${req.body.source}`]) {
-		res.status(403).send({ error: `requested disk unused${req.body.source} does not exist` });
+	// get current config
+	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
+	// disk must exist
+	if (!config[`unused${req.body.source}`]) {
+		res.status(403).send({ error: `Requested disk unused${req.body.source} does not exist.` });
 		res.end();
 		return;
 	}
+	// TODO: check create and mount disk against allowed bus types
 	let sourceDisk = config.data.data[`unused${req.body.source}`];
 	// setup action using source disk info from vm config
 	let action = {};
@@ -224,11 +235,11 @@ app.post("/api/instance/disk/attach", async (req, res) => {
  * - disk: String - disk id (sata0)
  * - size: Number - increase size in GiB
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: {request: Object, error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
 app.post("/api/instance/disk/resize", async (req, res) => {
 	// check auth for specific instance
@@ -268,11 +279,11 @@ app.post("/api/instance/disk/resize", async (req, res) => {
  * - storage: String - target storage to move disk
  * - delete: Number - delete original disk (0, 1) 
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: {request: Object, error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
 app.post("/api/instance/disk/move", async (req, res) => {
 	// check auth for specific instance
@@ -318,23 +329,31 @@ app.post("/api/instance/disk/move", async (req, res) => {
 });
 
 /**
- * POST - delete unused disk permanently
+ * DELETE - delete unused disk permanently
  * request:
  * - node: String - vm host node id
  * - type: String - vm type (lxc, qemu)
  * - vmid: Number - vm id number
- * - disk: String - disk id (sata0)
+ * - disk: String - disk id (unused0 or ide0)
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
-app.post("/api/instance/disk/delete", async (req, res) => {
+app.delete("/api/instance/disk/delete", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
+	// get current config
+	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
+	// disk must exist
+	if (!config[req.body.disk]) {
+		res.status(403).send({ error: `Requested disk unused${req.body.source} does not exist.` });
+		res.end();
+		return;
+	}
 	// only ide or unused are allowed to be deleted
 	if (!req.body.disk.includes("unused") && !req.body.disk.includes("ide")) { // must be ide or unused
 		res.status(500).send({ error: `Requested disk ${req.body.disk} must be unused or ide. Use /disk/detach to detach disks in use.` });
@@ -359,17 +378,26 @@ app.post("/api/instance/disk/delete", async (req, res) => {
  * - storage: String - storage to hold disk
  * - size: Number size of disk in GiB
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
  * - 500: {request: Object, error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
 app.post("/api/instance/disk/create", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
+	// get current config
+	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
+	// disk must not exist
+	if (config[req.body.disk]) {
+		res.status(403).send({ error: `Requested disk ${req.body.disk} already exists.` });
+		res.end();
+		return;
+	}
 	// setup request
+	// TODO: check create and mount disk against allowed bus types
 	let request = {};
 	if (!req.body.disk.includes("ide")) {
 		request[req.body.storage] = Number(req.body.size * 1024 ** 3); // setup request object
@@ -399,6 +427,65 @@ app.post("/api/instance/disk/create", async (req, res) => {
 });
 
 /**
+ * POST - create new virtual network interface
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - netid: Number - network interface id number (0 => net0)
+ * - rate: Number - new bandwidth rate for interface in MB/s
+ * - name: String, optional - required interface name for lxc only
+ * responses:
+ * - 200: PVE Task Object
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String}
+ * - 500: {request: Object, error: String}
+ * - 500: PVE Task Object
+ */
+app.post("/api/instance/network/create", async (req, res) => {
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) { return; }
+	// get current config
+	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
+	// net interface must not exist
+	if (currentConfig.data.data[`net${req.body.netid}`]) {
+		res.status(500).send({ error: `Network interface net${req.body.netid} already exists. Use /api/instance.network/modify to modify existing network interface.` });
+		res.end();
+		return;
+	}
+	if (req.body.type === "lxc" && !req.body.name) {
+		res.status(500).send({ error: `Network interface must have name parameter.` });
+		res.end();
+		return;
+	}
+	let request = {
+		network: Number(req.body.rate)
+	};
+	// check resource approval
+	if (!await approveResources(req, req.cookies.username, request)) {
+		res.status(500).send({ request: request, error: `Could not fulfil network request of ${req.body.rate}MB/s.` });
+		res.end();
+		return;
+	}
+	// setup action
+	let vlan = getUserConfig().instances.vlan;
+	let action = {};
+	if (type === "lxc") {
+		action[`net${req.body.netid}`] = `name=${req.body.name},bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=${vlan},type=veth,rate=${req.body.rate}`;
+	}
+	else {
+		action[`new${req.body.netid}`] = `virtio,bridge=vmbr0,tag=${vlan},rate=${req.body.rate}`;
+	}
+	action = JSON.stringify(action);
+	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	// commit action
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
+});
+
+/**
  * POST - modify virtual network interface
  * request:
  * - node: String - vm host node id
@@ -407,18 +494,25 @@ app.post("/api/instance/disk/create", async (req, res) => {
  * - netid: Number - network interface id number (0 => net0)
  * - rate: Number - new bandwidth rate for interface in MB/s
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
+ * - 500: {error: String}
  * - 500: {request: Object, error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
-app.post("/api/instance/network", async (req, res) => {
+app.post("/api/instance/network/modify", async (req, res) => {
 	// check auth for specific instance
 	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
 	let auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) { return; }
 	// get current config
 	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
+	// net interface must already exist
+	if (!currentConfig.data.data[`net${req.body.netid}`]) {
+		res.status(500).send({ error: `Network interface net${req.body.netid} does not exist. Use /api/instance/network/create to create a new network interface.` });
+		res.end();
+		return;
+	}
 	let currentNetworkConfig = currentConfig.data.data[`net${req.body.netid}`];
 	let currentNetworkRate = currentNetworkConfig.split("rate=")[1].split(",")[0];
 	let request = {
@@ -441,6 +535,40 @@ app.post("/api/instance/network", async (req, res) => {
 });
 
 /**
+ * DELETE - delete virtual network interface
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number
+ * - netid: Number - network interface id number (0 => net0)
+ * responses:
+ * - 200: PVE Task Object
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String}
+ * - 500: PVE Task Object
+ */
+app.delete("/api/instance/network/delete", async (req, res) => {
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) { return; }
+	// get current config
+	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
+	// net interface must already exist
+	if (!currentConfig.data.data[`net${req.body.netid}`]) {
+		res.status(500).send({ error: `Network interface net${req.body.netid} does not exist.` });
+		res.end();
+		return;
+	}
+	// setup action
+	let action = { delete: `net${req.body.netid}`};
+	let method = req.body.type === "qemu" ? "POST" : "PUT";
+	// commit action
+	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	await handleResponse(req.body.node, result, res);
+});
+
+/**
  * GET - get instance pcie device data
  * request:
  * - node: String - vm host node id
@@ -448,7 +576,7 @@ app.post("/api/instance/network", async (req, res) => {
  * - vmid: Number - vm id number to destroy
  * - hostpci: String - hostpci number
  * responses:
- * - 200: Object(pve_pci_device_object)
+ * - 200: PVE PCI Device Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String} 
  */
@@ -489,10 +617,10 @@ app.get("/api/instance/pci", async (req, res) => {
  * - memory: Number - new amount of memory for instance
  * - swap: Number, optional - new amount of swap for instance
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
  * - 500: {request: Object, error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
 app.post("/api/instance/resources", async (req, res) => {
 	// check auth for specific instance
@@ -542,11 +670,11 @@ app.post("/api/instance/resources", async (req, res) => {
  * - rootfslocation: String, optional - storage name for lxc instance rootfs
  * - rootfssize: Number, optional, - size of lxc instance rootfs
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  * - 500: {request: Object, error: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
 app.post("/api/instance", async (req, res) => {
 	// check auth
@@ -629,9 +757,9 @@ app.post("/api/instance", async (req, res) => {
  * - type: String - vm type (lxc, qemu)
  * - vmid: Number - vm id number to destroy
  * responses:
- * - 200: Object(pve_task_object)
+ * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
- * - 500: Object(pve_task_object)
+ * - 500: PVE Task Object
  */
 app.delete("/api/instance", async (req, res) => {
 	// check auth for specific instance
