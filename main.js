@@ -214,11 +214,17 @@ app.post("/api/instance/disk/attach", async (req, res) => {
 		res.end();
 		return;
 	}
-	// TODO: check create and mount disk against allowed bus types
-	let sourceDisk = config.data.data[`unused${req.body.source}`];
+	// target disk must be allowed according to source disk's storage options
+	let diskConfig = await getDiskInfo(req.body.node, req.body.type, req.body.vmid, `unused${req.body.source}`); // get target disk
+	let resourceConfig = db.getResourceConfig();
+	if (!resourceConfig[diskConfig.storage].disks.some(diskPrefix => req.body.disk.startsWith(diskPrefix))) {
+		res.status(500).send({ error: `Requested target ${req.body.disk} is not in allowed list [${resourceConfig[diskConfig.storage].disks}].` });
+		res.end();
+		return;
+	}
 	// setup action using source disk info from vm config
 	let action = {};
-	action[req.body.disk] = sourceDisk;
+	action[req.body.disk] = config[`unused${req.body.source}`];
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
@@ -376,7 +382,7 @@ app.delete("/api/instance/disk/delete", async (req, res) => {
  * - vmid: Number - vm id number
  * - disk: String - disk id (sata0, ide0)
  * - storage: String - storage to hold disk
- * - size: Number size of disk in GiB
+ * - size: Number - size of disk in GiB
  * responses:
  * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
@@ -397,7 +403,6 @@ app.post("/api/instance/disk/create", async (req, res) => {
 		return;
 	}
 	// setup request
-	// TODO: check create and mount disk against allowed bus types
 	let request = {};
 	if (!req.body.disk.includes("ide")) {
 		request[req.body.storage] = Number(req.body.size * 1024 ** 3); // setup request object
@@ -407,6 +412,13 @@ app.post("/api/instance/disk/create", async (req, res) => {
 			res.end();
 			return;
 		}
+	}
+	// target disk must be allowed according to storage options
+	let resourceConfig = db.getResourceConfig();
+	if (!resourceConfig[req.body.storage].disks.some(diskPrefix => req.body.disk.startsWith(diskPrefix))) {
+		res.status(500).send({ error: `Requested target ${req.body.disk} is not in allowed list [${resourceConfig[req.body.storage].disks}].` });
+		res.end();
+		return;
 	}
 	// setup action
 	let action = {};
