@@ -1,4 +1,16 @@
 {
+	"application": {
+		"pveAPI": "https://pve.mydomain/api2/json",
+		"pveAPIToken": {
+			"user": "proxmoxaas-api",
+			"realm": "pve",
+			"id": "token",
+			"uuid": "secret-key"
+		},
+		"listenPort": 80,
+		"hostname": "client.mydomain",
+		"domain": "mydomain"
+	},
 	"resources": {
 		"cores": {
 			"type": "numeric",

@@ -3,12 +3,11 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan";
-import api from "./package.json" assert {type: "json"};
+import api from "../package.json" assert {type: "json"};
 
-import { pveAPIToken, listenPort, hostname, domain } from "./vars.js";
 import { requestPVE, handleResponse, getDiskInfo } from "./pve.js";
 import { checkAuth, approveResources, getUserResources } from "./utils.js";
-import { db } from "./db.js";
+import { db, pveAPIToken, listenPort, hostname, domain } from "./db.js";
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));

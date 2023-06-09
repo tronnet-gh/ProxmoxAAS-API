@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { pveAPI, pveAPIToken } from "./vars.js";
+import { pveAPI, pveAPIToken } from "./db.js";
 
 export async function requestPVE(path, method, cookies, body = null, token = null) {
 	let url = `${pveAPI}${path}`;
