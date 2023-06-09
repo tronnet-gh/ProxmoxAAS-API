@@ -462,7 +462,7 @@ app.post("/api/instance/network/create", async (req, res) => {
 	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
 	// net interface must not exist
 	if (currentConfig.data.data[`net${req.body.netid}`]) {
-		res.status(500).send({ error: `Network interface net${req.body.netid} already exists. Use /api/instance.network/modify to modify existing network interface.` });
+		res.status(500).send({ error: `Network interface net${req.body.netid} already exists.` });
 		res.end();
 		return;
 	}
@@ -481,13 +481,13 @@ app.post("/api/instance/network/create", async (req, res) => {
 		return;
 	}
 	// setup action
-	let vlan = getUserConfig().instances.vlan;
+	let vlan = db.getUserConfig(req.cookies.username).instances.vlan;
 	let action = {};
-	if (type === "lxc") {
+	if (req.body.type === "lxc") {
 		action[`net${req.body.netid}`] = `name=${req.body.name},bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=${vlan},type=veth,rate=${req.body.rate}`;
 	}
 	else {
-		action[`new${req.body.netid}`] = `virtio,bridge=vmbr0,tag=${vlan},rate=${req.body.rate}`;
+		action[`net${req.body.netid}`] = `virtio,bridge=vmbr0,tag=${vlan},rate=${req.body.rate}`;
 	}
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
@@ -520,7 +520,7 @@ app.post("/api/instance/network/modify", async (req, res) => {
 	let currentConfig = await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", null, null, pveAPIToken);
 	// net interface must already exist
 	if (!currentConfig.data.data[`net${req.body.netid}`]) {
-		res.status(500).send({ error: `Network interface net${req.body.netid} does not exist. Use /api/instance/network/create to create a new network interface.` });
+		res.status(500).send({ error: `Network interface net${req.body.netid} does not exist.` });
 		res.end();
 		return;
 	}
@@ -572,7 +572,7 @@ app.delete("/api/instance/network/delete", async (req, res) => {
 		return;
 	}
 	// setup action
-	let action = { delete: `net${req.body.netid}`};
+	let action = JSON.stringify({ delete: `net${req.body.netid}`});
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
