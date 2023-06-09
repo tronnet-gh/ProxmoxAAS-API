@@ -27,7 +27,7 @@ export async function checkAuth(cookies, res, vmpath = null) {
 	return auth;
 }
 
-export async function getUserResources (req, username) {
+export async function getUserResources(req, username) {
 	let dbResources = db.getResourceConfig();
 	let used = await getUsedResources(req, dbResources);
 	let max = db.getUserConfig(username).resources.max;
@@ -50,7 +50,7 @@ export async function approveResources(req, username, request) {
 		}
 		else if (avail[key] - request[key] < 0) { // if the avail resources is less than the requested resources, block
 			approved = false;
-		}		
+		}
 	});
 	return approved; // if all requested resources pass, allow
 }

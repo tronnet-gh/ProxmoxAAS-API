@@ -4,7 +4,7 @@ class localdb {
 	#template = "localdb.json.template";
 	#filename = "localdb.json";
 	#data = null;
-	constructor () {
+	constructor() {
 		try {
 			this.load(this.#filename);
 		}
@@ -15,14 +15,14 @@ class localdb {
 	}
 	load(path) {
 		this.#data = JSON.parse(readFileSync(path));
-	}	
+	}
 	save(path) {
 		writeFileSync(path, JSON.stringify(this.#data));
 	}
-	getResourceConfig () {
+	getResourceConfig() {
 		return this.#data.resources;
 	}
-	getUserConfig (username) {
+	getUserConfig(username) {
 		if (this.#data.users[username]) {
 			return this.#data.users[username];
 		}
