@@ -35,15 +35,23 @@ export async function getUserResources(req, username) {
 	Object.keys(max).forEach((k) => {
 		avail[k] = max[k] - used[k];
 	});
-	return { used: used, max: max, avail: avail, units: dbResources };
+	return { used: used, max: max, avail: avail, resources: dbResources };
 }
 
 export async function approveResources(req, username, request) {
-	let avail = (await getUserResources(req, username)).avail;
+	let user = await getUserResources(req, username)
+	let avail = user.avail;
+	let resources = user.resources;
+	let max = user.max;
 	let approved = true;
 	Object.keys(request).forEach((key) => {
 		if (!(key in avail)) { // if requested resource is not in avail, block
 			approved = false;
+		}
+		else if (resources[key].type === "list") {
+			if (max[key].includes(request[key]) != resources[key].whitelist) {
+				approved = false;
+			}
 		}
 		else if (isNaN(avail[key]) || isNaN(request[key])) { // if either the requested or avail resource is NaN, block
 			approved = false;

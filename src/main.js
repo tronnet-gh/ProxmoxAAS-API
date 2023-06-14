@@ -572,7 +572,7 @@ app.delete("/api/instance/network/delete", async (req, res) => {
 		return;
 	}
 	// setup action
-	let action = JSON.stringify({ delete: `net${req.body.netid}`});
+	let action = JSON.stringify({ delete: `net${req.body.netid}` });
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
@@ -624,8 +624,9 @@ app.get("/api/instance/pci", async (req, res) => {
  * - node: String - vm host node id
  * - type: String - vm type (lxc, qemu)
  * - vmid: Number - vm id number
- * - cores: Number - new number of cores for instance
- * - memory: Number - new amount of memory for instance
+ * - proctype: String - vm processor type
+ * - cores: Number, optional - number of processor cores for instance
+ * - memory: Number - amount of memory for instance
  * - swap: Number, optional - new amount of swap for instance
  * responses:
  * - 200: PVE Task Object
@@ -647,6 +648,9 @@ app.post("/api/instance/resources", async (req, res) => {
 	if (req.body.type === "lxc") {
 		request.swap = Number(req.body.swap) - Number(currentConfig.data.data.swap);
 	}
+	else if (req.body.type === "qemu") {
+		request.cpu = req.body.proctype;
+	}
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
 		res.status(500).send({ request: request, error: `Could not fulfil request.` });
@@ -658,6 +662,10 @@ app.post("/api/instance/resources", async (req, res) => {
 	if (req.body.type === "lxc") {
 		action.swap = Number(req.body.swap);
 	}
+	else if (req.body.type === "qemu") {
+		action.cpu = req.body.proctype;
+	}
+	console.log(action)
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
