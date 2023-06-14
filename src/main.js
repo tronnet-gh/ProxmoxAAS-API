@@ -109,7 +109,7 @@ app.delete("/api/ticket", async (req, res) => {
 /**
  * GET - get db user resource information including allocated, free, and maximum resource values along with resource metadata
  * responses:
- * - 200: {avail: Object, max: Object, units: Object, used: Object}
+ * - 200: {avail: Object, max: Object, used: Object, resources: Object}
  * - 401: {auth: false, path: String}
  */
 app.get("/api/user/resources", async (req, res) => {
@@ -121,12 +121,39 @@ app.get("/api/user/resources", async (req, res) => {
 });
 
 /**
+ * GET - get db global resource configuration
+ * responses:
+ * - 200: Object
+ */
+app.get("/api/global/config/resources", async (req, res) => {
+	// check auth
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
+	let config = db.getResourceConfig();
+	res.status(200).send(config);
+});
+
+/**
+ * GET - get db user resource configuration
+ * responses:
+ * - 200: Object
+ * - 401: {auth: false, path: String}
+ */
+app.get("/api/user/config/resources", async (req, res) => {
+	// check auth
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
+	let config = db.getUserConfig(req.cookies.username);
+	res.status(200).send(config.resources);
+});
+
+/**
  * GET - get db user instance configuration
  * responses:
  * - 200: {pool: String, templates: {lxc: Object, qemu: Object}, vmid: {min: Number, max: Number}}
  * - 401: {auth: false, path: String}
  */
-app.get("/api/user/instances", async (req, res) => {
+app.get("/api/user/config/instances", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
@@ -140,12 +167,12 @@ app.get("/api/user/instances", async (req, res) => {
  * - 200: {nodes: String[]}
  * - 401: {auth: false, path: String}
  */
-app.get("/api/user/nodes", async (req, res) => {
+app.get("/api/user/config/nodes", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
 	let config = db.getUserConfig(req.cookies.username);
-	res.status(200).send({ nodes: config.nodes })
+	res.status(200).send(config.nodes)
 })
 
 /**
@@ -604,7 +631,6 @@ app.get("/api/instance/pci", async (req, res) => {
 		return;
 	}
 	let device = config[`hostpci${req.query.hostpci}`].split(",")[0];
-	console.log(device)
 	// get node's pci devices
 	let result = (await requestPVE(`/nodes/${req.query.node}/hardware/pci`, "GET", req.cookies, null, pveAPIToken)).data.data;
 	let deviceData = [];
@@ -665,7 +691,6 @@ app.post("/api/instance/resources", async (req, res) => {
 	else if (req.body.type === "qemu") {
 		action.cpu = req.body.proctype;
 	}
-	console.log(action)
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
 	// commit action
