@@ -14,7 +14,7 @@
 	"resources": {
 		"cpu": {
 			"type": "list",
-			"blacklist": false,
+			"whitelist": true,
 			"display": false
 		},
 		"cores": {
