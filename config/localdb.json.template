@@ -76,6 +76,11 @@
 			"compact": true,
 			"unit": "B/s",
 			"display": true
+		},
+		"pci": {
+			"type": "list",
+			"whitelist": true,
+			"display": true
 		}
 	},
 	"users": {

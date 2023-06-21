@@ -71,11 +71,17 @@ export async function getUsedResources(req, resourceMeta) {
 	let used = {};
 	let diskprefixes = [];
 	for (let resourceName of Object.keys(resourceMeta)) {
-		used[resourceName] = 0;
 		if (resourceMeta[resourceName].type === "storage") {
+			used[resourceName] = 0;
 			for (let diskPrefix of resourceMeta[resourceName].disks) {
 				diskprefixes.push(diskPrefix);
 			}
+		}
+		else if (resourceMeta[resourceName].type === "list") {
+			used[resourceName] = [];
+		}
+		else {
+			used[resourceName] = 0;
 		}
 	}
 	for (let instance of response.data.data) {
@@ -92,9 +98,13 @@ export async function getUsedResources(req, resourceMeta) {
 						used[diskInfo.storage] += Number(diskInfo.size);
 					}
 				}
-				else if (key.startsWith("net")) {
-					if (config[key].includes("rate=")) { // only count instances with a rate limit
-						used.network += Number(config[key].split("rate=")[1].split(",")[0]);
+				else if (key.startsWith("net") && config[key].includes("rate=")) { // only count net instances with a rate limit
+					used.network += Number(config[key].split("rate=")[1].split(",")[0]);
+				}
+				else if (key.startsWith("hostpci")) {
+					let deviceInfo = await getDeviceInfo(instance.node, instance.type, instance.vmid, config[key].split(",")[0]);
+					if (deviceInfo) { // only count if device exists
+						used.pci.push(deviceInfo);
 					}
 				}
 			}
@@ -111,6 +121,23 @@ export async function getDiskInfo(node, type, vmid, disk) {
 		let volInfo = await requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", null, null, pveAPIToken);
 		volInfo.data.data.storage = storageID;
 		return volInfo.data.data;
+	}
+	catch {
+		return null;
+	}
+}
+
+export async function getDeviceInfo(node, type, vmid, qid) {
+	try {
+		let result = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", null, null, pveAPIToken)).data.data;
+		let deviceData = [];
+		result.forEach((element) => {
+			if (element.id.startsWith(qid)) {
+				deviceData.push(element);
+			}
+		});
+		deviceData.sort((a, b) => { return a.id < b.id })
+		return deviceData[0].device_name;
 	}
 	catch {
 		return null;
