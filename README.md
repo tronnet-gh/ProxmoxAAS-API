@@ -48,4 +48,4 @@ server {
 2. Start nginx with the new configurations by running `systemctl reload nginx`
 
 ## Result
-After these steps, the ProxmoxAAS Client should be avaliable and fully functional at `client.<FQDN>`. 
+After these steps, the ProxmoxAAS Client should be available and fully functional at `client.<FQDN>`. 

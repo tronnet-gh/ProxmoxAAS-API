@@ -5,7 +5,7 @@ import cors from "cors";
 import morgan from "morgan";
 import api from "../package.json" assert {type: "json"};
 
-import { requestPVE, handleResponse, getDiskInfo } from "./pve.js";
+import { requestPVE, handleResponse, getDiskInfo, getDeviceInfo, getUsedResources } from "./pve.js";
 import { checkAuth, approveResources, getUserResources } from "./utils.js";
 import { db, pveAPIToken, listenPort, hostname, domain } from "./db.js";
 
@@ -614,7 +614,7 @@ app.delete("/api/instance/network/delete", async (req, res) => {
  * - vmid: Number - vm id number to destroy
  * - hostpci: String - hostpci number
  * responses:
- * - 200: PVE PCI Device Object
+ * - 200: {device_name: PVE PCI Device Object}
  * - 401: {auth: false, path: String}
  * - 500: {error: String} 
  */
@@ -632,14 +632,54 @@ app.get("/api/instance/pci", async (req, res) => {
 	}
 	let device = config[`hostpci${req.query.hostpci}`].split(",")[0];
 	// get node's pci devices
-	let result = (await requestPVE(`/nodes/${req.query.node}/hardware/pci`, "GET", req.cookies, null, pveAPIToken)).data.data;
-	let deviceData = [];
-	result.forEach((element) => {
-		if (element.id.startsWith(device)) {
-			deviceData.push(element);
-		}
-	});
-	res.status(200).send(deviceData);
+	let deviceData = await getDeviceInfo(req.query.node, req.query.type, req.query.vmid, device);
+	if (!deviceData) {
+		res.status(500).send({ error: `Could not find hostpci${req.query.hostpci}=${device} in ${req.query.node}.` });
+		res.end();
+		return;
+	}
+	res.status(200).send({ device_name: deviceData });
+	res.end();
+	return;
+});
+
+/**
+ * GET - get available pcie devices given node and user
+ * request:
+ * - node: String - vm host node id
+ * responses:
+ * - 200: [PVE PCI Device Object]
+ * - 401: {auth: false, path: String}
+ * - 500: {error: String} 
+ */
+app.get("/api/nodes/pci", async (req, res) => {
+	// check auth
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
+	// get remaining user resources
+	let userAvailPci = (await getUserResources(req, req.cookies.username)).avail.pci;
+	// get node pci devices
+	let nodeAvailPci = (await requestPVE(`/nodes/${req.query.node}/hardware/pci`, "GET", req.body.cookies, null, pveAPIToken)).data.data;
+	// for each node container, get its config and remove devices which are already used
+	let vms = (await requestPVE(`/nodes/${req.query.node}/qemu`, "GET", req.body.cookies, null, pveAPIToken)).data.data;
+	for (let vm of vms) {
+		let config = (await requestPVE(`/nodes/${req.query.node}/qemu/${vm.vmid}/config`, "GET", req.body.cookies, null, pveAPIToken)).data.data;
+		Object.keys(config).forEach((key) => {
+			if (key.startsWith("hostpci")) {
+				let device_id = config[key].split(",")[0];
+				let allfn = !device_id.includes(".");
+
+				if (allfn) { // if allfn, remove all devices which include the same id as already allocated device
+					nodeAvailPci = nodeAvailPci.filter(element => !element.id.includes(device_id));
+				}
+				else { // if not allfn, remove only device with exact id match
+					nodeAvailPci = nodeAvailPci.filter(element => !element.id === device_id);
+				}
+			}
+		});
+	}
+	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => { return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail) }));
+	res.status(200).send(nodeAvailPci);
 	res.end();
 	return;
 });

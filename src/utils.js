@@ -33,7 +33,16 @@ export async function getUserResources(req, username) {
 	let max = db.getUserConfig(username).resources.max;
 	let avail = {};
 	Object.keys(max).forEach((k) => {
-		avail[k] = max[k] - used[k];
+		if (dbResources[k] && dbResources[k].type === "list") {
+			avail[k] = structuredClone(max[k]);
+			used[k].forEach((usedDeviceName) => {
+				let index = avail[k].findIndex((maxElement) => usedDeviceName.includes(maxElement));
+				avail[k].splice(index, 1);
+			});
+		}
+		else {
+			avail[k] = max[k] - used[k];
+		}
 	});
 	return { used: used, max: max, avail: avail, resources: dbResources };
 }
@@ -49,7 +58,7 @@ export async function approveResources(req, username, request) {
 			approved = false;
 		}
 		else if (resources[key].type === "list") {
-			if (max[key].includes(request[key]) != resources[key].whitelist) {
+			if (avail[key].includes(request[key]) != resources[key].whitelist) {
 				approved = false;
 			}
 		}
