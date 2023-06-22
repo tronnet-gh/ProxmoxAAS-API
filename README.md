@@ -22,14 +22,17 @@ In Proxmox VE, follow the following steps:
 ## Installation - API
 1. Clone this repo onto `Client Host`
 2. Run `npm install` to initiaze the package requirements
-3. Copy `localdb.json.template` as `localdb.json` and modify the following values:
+3. Copy `localdb.json.template` as `localdb.json` and modify the following values under `pveAPIToken`:
     - pveAPI - the URI to the Proxmox API, ie `<proxmoxhost>:8006/api2/json` or `<proxmox URL>/api2/json` if Proxmox VE is behind a reverse proxy. 
     - hostname - the ProxmoxAAS-Client URL, ie `host.domain.tld`
 	- domain - the base domain for the client and proxmox, ie `domain.tld`
     - listenPort - the port you want the API to listen on, ie `8080`
     - pveAPIToken - the user(name), authentication realm, token id, and token secrey key (uuid)
-4. You may also wish to confuigure users at this point as well. An example user config is shown in the template.
-5. Start the service using `node .`, or call the provided shell script, or use the provided systemctl service script
+4. (Optional) In order to allow users to customize instance pcie devices, the API must use the root credentials for privilege elevation. Modify the following values under `pveroot` in order to use this feature:
+	- username: root user, typically `root@pam`
+	- password: root user password
+5. You may also wish to configure users at this point as well. An example user config is shown in the template.
+6. Start the service using `node .`, or call the provided shell script, or use the provided systemctl service script
 
 ## Installation - Reverse Proxy
 1. Configure nginx or preferred reverse proxy to reverse proxy the client. The configuration should include at least the following:

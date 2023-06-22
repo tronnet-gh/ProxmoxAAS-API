@@ -7,6 +7,10 @@
 			"id": "token",
 			"uuid": "token-secret-value"
 		},
+		"pveroot": {
+			"username": "root@pam",
+			"password": "rootpassword"
+		},
 		"listenPort": 80,
 		"hostname": "client.mydomain",
 		"domain": "mydomain"
@@ -93,7 +97,8 @@
 					"swap": 0,
 					"local": 0,
 					"cephpl": 0,
-					"network": 0
+					"network": 0,
+					"pci": ["[GeForce GTX 1070]", "[GeForce GTX 1080 Ti]"]
 				}
 			},
 			"nodes": [

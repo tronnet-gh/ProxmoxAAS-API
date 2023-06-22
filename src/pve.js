@@ -104,7 +104,7 @@ export async function getUsedResources(req, resourceMeta) {
 				else if (key.startsWith("hostpci")) {
 					let deviceInfo = await getDeviceInfo(instance.node, instance.type, instance.vmid, config[key].split(",")[0]);
 					if (deviceInfo) { // only count if device exists
-						used.pci.push(deviceInfo);
+						used.pci.push(deviceInfo.device_name);
 					}
 				}
 			}
@@ -137,9 +137,28 @@ export async function getDeviceInfo(node, type, vmid, qid) {
 			}
 		});
 		deviceData.sort((a, b) => { return a.id < b.id })
-		return deviceData[0].device_name;
+		let device = deviceData[0];
+		device.subfn = structuredClone(deviceData.slice(1));
+		return device;
 	}
 	catch {
 		return null;
 	}
+}
+
+export async function getNodeAvailDevices(node, cookies) {
+	// get node pci devices
+	let nodeAvailPci = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", cookies, null, pveAPIToken)).data.data;
+	// for each node container, get its config and remove devices which are already used
+	let vms = (await requestPVE(`/nodes/${node}/qemu`, "GET", cookies, null, pveAPIToken)).data.data;
+	for (let vm of vms) {
+		let config = (await requestPVE(`/nodes/${node}/qemu/${vm.vmid}/config`, "GET", cookies, null, pveAPIToken)).data.data;
+		Object.keys(config).forEach((key) => {
+			if (key.startsWith("hostpci")) {
+				let device_id = config[key].split(",")[0];
+				nodeAvailPci = nodeAvailPci.filter(element => !element.id.includes(device_id));
+			}
+		});
+	}
+	return nodeAvailPci;
 }

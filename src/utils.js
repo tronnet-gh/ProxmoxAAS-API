@@ -58,7 +58,8 @@ export async function approveResources(req, username, request) {
 			approved = false;
 		}
 		else if (resources[key].type === "list") {
-			if (avail[key].includes(request[key]) != resources[key].whitelist) {
+			let inAvail = avail[key].some(availElem => request[key].includes(availElem));
+			if (inAvail != resources[key].whitelist) {
 				approved = false;
 			}
 		}
