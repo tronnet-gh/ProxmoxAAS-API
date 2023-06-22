@@ -5,7 +5,7 @@ import cors from "cors";
 import morgan from "morgan";
 import api from "../package.json" assert {type: "json"};
 
-import { requestPVE, handleResponse, getDiskInfo, getDeviceInfo, getUsedResources } from "./pve.js";
+import { requestPVE, handleResponse, getDiskInfo, getDeviceInfo, getNodeAvailDevices } from "./pve.js";
 import { checkAuth, approveResources, getUserResources } from "./utils.js";
 import { db, pveAPIToken, listenPort, hostname, domain } from "./db.js";
 
@@ -614,7 +614,7 @@ app.delete("/api/instance/network/delete", async (req, res) => {
  * - vmid: Number - vm id number to destroy
  * - hostpci: String - hostpci number
  * responses:
- * - 200: {device_name: PVE PCI Device Object}
+ * - 200: PVE PCI Device Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String} 
  */
@@ -638,7 +638,7 @@ app.get("/api/instance/pci", async (req, res) => {
 		res.end();
 		return;
 	}
-	res.status(200).send({ device_name: deviceData });
+	res.status(200).send(deviceData);
 	res.end();
 	return;
 });
@@ -648,7 +648,7 @@ app.get("/api/instance/pci", async (req, res) => {
  * request:
  * - node: String - vm host node id
  * responses:
- * - 200: [PVE PCI Device Object]
+ * - 200: PVE PCI Device Object
  * - 401: {auth: false, path: String}
  * - 500: {error: String} 
  */
@@ -658,30 +658,149 @@ app.get("/api/nodes/pci", async (req, res) => {
 	if (!auth) { return; }
 	// get remaining user resources
 	let userAvailPci = (await getUserResources(req, req.cookies.username)).avail.pci;
-	// get node pci devices
-	let nodeAvailPci = (await requestPVE(`/nodes/${req.query.node}/hardware/pci`, "GET", req.body.cookies, null, pveAPIToken)).data.data;
-	// for each node container, get its config and remove devices which are already used
-	let vms = (await requestPVE(`/nodes/${req.query.node}/qemu`, "GET", req.body.cookies, null, pveAPIToken)).data.data;
-	for (let vm of vms) {
-		let config = (await requestPVE(`/nodes/${req.query.node}/qemu/${vm.vmid}/config`, "GET", req.body.cookies, null, pveAPIToken)).data.data;
-		Object.keys(config).forEach((key) => {
-			if (key.startsWith("hostpci")) {
-				let device_id = config[key].split(",")[0];
-				let allfn = !device_id.includes(".");
-
-				if (allfn) { // if allfn, remove all devices which include the same id as already allocated device
-					nodeAvailPci = nodeAvailPci.filter(element => !element.id.includes(device_id));
-				}
-				else { // if not allfn, remove only device with exact id match
-					nodeAvailPci = nodeAvailPci.filter(element => !element.id === device_id);
-				}
-			}
-		});
-	}
-	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => { return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail) }));
+	// get node avail devices
+	let nodeAvailPci = await getNodeAvailDevices(req.query.node, req.cookies);
+	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => { return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail); }));
 	res.status(200).send(nodeAvailPci);
 	res.end();
 	return;
+});
+
+/**
+ * POST - modify existing instance pci device
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number to destroy
+ * - hostpci: String - hostpci number
+ * - device: String - new device id
+ * - pcie: Boolean - whether to use pci express or pci
+ * response:
+ * - 200: PVE Task Object
+ * - 401: {auth: false, path: String}
+ * - 500: {request: Object, error: String}
+ * - 500: PVE Task Object
+ */
+app.post("/api/instance/pci/modify", async (req, res) => {
+
+});
+
+/**
+ * POST - add new instance pci device
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number to destroy
+ * - device: String - new device id
+ * - pcie: Boolean - whether to use pci express or pci
+ * response:
+ * - 200: PVE Task Object
+ * - 401: {auth: false, path: String}
+ * - 500: {request: Object, error: String}
+ * - 500: PVE Task Object
+ */
+app.post("/api/instance/pci/create", async (req, res) => {
+	// check if type is qemu
+	if (req.body.type !== "qemu") {
+		res.status(500).send({ error: `Type must be qemu (vm).` });
+		res.end();
+		return;
+	}
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) { return; }
+	// force all functions
+	req.body.device = req.body.device.split(".")[0];
+	// get instance config to find next available hostpci slot
+	let config = requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", req.body.cookies, null, null);
+	let hostpci = 0;
+	while (config[`hostpci${hostpci}`]) {
+		hostpci++;
+	}
+	// setup request
+	let deviceData = await getDeviceInfo(req.body.node, req.body.type, req.body.vmid, req.body.device);
+	let request = {
+		pci: deviceData.device_name
+	};
+	// check resource approval
+	if (!await approveResources(req, req.cookies.username, request)) {
+		res.status(500).send({ request: request, error: `Could not fulfil request for ${deviceData.device_name}.` });
+		res.end();
+		return;
+	}
+	// check node availability
+	let nodeAvailPci = await getNodeAvailDevices(req.body.node, req.cookies);
+	if (!nodeAvailPci.some(element => element.id.split(".")[0] === req.body.device)) {
+		res.status(500).send({ error: `Device ${req.body.device} is already in use on ${req.body.node}.` });
+		res.end();
+		return;
+	}
+	// setup action
+	let action = {};
+	action[`hostpci${hostpci}`] = `${req.body.device},pcie=${req.body.pcie}`;
+	action = JSON.stringify(action);
+	// commit action
+	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getApplicationConfig().pveroot), null);
+	if (!(rootauth.status === 200)) {
+		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
+		res.end();
+		return;
+	}
+	let rootcookies = {
+		PVEAuthCookie: rootauth.data.data.ticket,
+		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
+	};
+	let result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	await handleResponse(req.body.node, result, res); 
+});
+
+/**
+ * DELETE - delete instance pci device
+ * request:
+ * - node: String - vm host node id
+ * - type: String - vm type (lxc, qemu)
+ * - vmid: Number - vm id number to destroy
+ * - hostpci: String - hostpci number
+ * response:
+ * - 200: PVE Task Object
+ * - 401: {auth: false, path: String}
+ * - 500: {request: Object, error: String}
+ * - 500: PVE Task Object
+ */
+app.delete("/api/instance/pci/delete", async (req, res) => {
+	// check if type is qemu
+	if (req.body.type !== "qemu") {
+		res.status(500).send({ error: `Type must be qemu (vm).` });
+		res.end();
+		return;
+	}
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) { return; }
+	// check device is in instance config
+	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
+	if (!config[`hostpci${req.body.hostpci}`]) {
+		res.status(500).send({ error: `Could not find hostpci${req.body.hostpci} in ${req.body.vmid}.` });
+		res.end();
+		return;
+	}
+	// setup action
+	let action = JSON.stringify({ delete: `hostpci${req.body.hostpci}`});
+	// commit action, need to use root user here because proxmox api only allows root to modify hostpci for whatever reason
+	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getApplicationConfig().pveroot), null);
+	if (!(rootauth.status === 200)) {
+		res.status(response.status).send({ auth: false, error: "API could not authenticate as root user." });
+		res.end();
+		return;
+	}
+	let rootcookies = {
+		PVEAuthCookie: rootauth.data.data.ticket,
+		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
+	};
+	let result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	await handleResponse(req.body.node, result, res); 
 });
 
 /**
