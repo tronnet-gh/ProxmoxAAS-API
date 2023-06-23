@@ -694,23 +694,32 @@ app.post("/api/instance/pci/modify", async (req, res) => {
 	if (!auth) { return; }
 	// force all functions
 	req.body.device = req.body.device.split(".")[0];
-	// setup request
-	let deviceData = await getDeviceInfo(req.body.node, req.body.type, req.body.vmid, req.body.device);
-	let request = {
-		pci: deviceData.device_name
-	};
-	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Could not fulfil request for ${deviceData.device_name}.` });
+	// get instance config to check if device has not changed
+	let config = (await requestPVE(`/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}/config`, "GET", req.body.cookies, null, pveAPIToken)).data.data;
+	let currentDeviceData = await getDeviceInfo(req.body.node, req.body.type, req.body.vmid, config[`hostpci${req.body.hostpci}`].split(",")[0]);
+	if (!currentDeviceData) {
+		res.status(500).send({ error: `No device in hostpci${req.body.hostpci}.` });
 		res.end();
 		return;
 	}
-	// check node availability
-	let nodeAvailPci = await getNodeAvailDevices(req.body.node, req.cookies);
-	if (!nodeAvailPci.some(element => element.id.split(".")[0] === req.body.device)) {
-		res.status(500).send({ error: `Device ${req.body.device} is already in use on ${req.body.node}.` });
-		res.end();
-		return;
+	// only check user and node availability if base id is different
+	if (currentDeviceData.id.split(".")[0] !== req.body.device) {
+		// setup request
+		let deviceData = await getDeviceInfo(req.body.node, req.body.type, req.body.vmid, req.body.device);
+		let request = { pci: deviceData.device_name };
+		// check resource approval
+		if (!await approveResources(req, req.cookies.username, request)) {
+			res.status(500).send({ request: request, error: `Could not fulfil request for ${deviceData.device_name}.` });
+			res.end();
+			return;
+		}
+		// check node availability
+		let nodeAvailPci = await getNodeAvailDevices(req.body.node, req.cookies);
+		if (!nodeAvailPci.some(element => element.id.split(".")[0] === req.body.device)) {
+			res.status(500).send({ error: `Device ${req.body.device} is already in use on ${req.body.node}.` });
+			res.end();
+			return;
+		}
 	}
 	// setup action
 	let action = {};
@@ -833,7 +842,7 @@ app.delete("/api/instance/pci/delete", async (req, res) => {
 		return;
 	}
 	// setup action
-	let action = JSON.stringify({ delete: `hostpci${req.body.hostpci}`});
+	let action = JSON.stringify({ delete: `hostpci${req.body.hostpci}` });
 	// commit action, need to use root user here because proxmox api only allows root to modify hostpci for whatever reason
 	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getApplicationConfig().pveroot), null);
 	if (!(rootauth.status === 200)) {
@@ -846,7 +855,7 @@ app.delete("/api/instance/pci/delete", async (req, res) => {
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
 	let result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
-	await handleResponse(req.body.node, result, res); 
+	await handleResponse(req.body.node, result, res);
 });
 
 /**
