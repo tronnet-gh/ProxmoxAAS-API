@@ -682,7 +682,53 @@ app.get("/api/nodes/pci", async (req, res) => {
  * - 500: PVE Task Object
  */
 app.post("/api/instance/pci/modify", async (req, res) => {
-
+	// check if type is qemu
+	if (req.body.type !== "qemu") {
+		res.status(500).send({ error: `Type must be qemu (vm).` });
+		res.end();
+		return;
+	}
+	// check auth for specific instance
+	let vmpath = `/nodes/${req.body.node}/${req.body.type}/${req.body.vmid}`;
+	let auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) { return; }
+	// force all functions
+	req.body.device = req.body.device.split(".")[0];
+	// setup request
+	let deviceData = await getDeviceInfo(req.body.node, req.body.type, req.body.vmid, req.body.device);
+	let request = {
+		pci: deviceData.device_name
+	};
+	// check resource approval
+	if (!await approveResources(req, req.cookies.username, request)) {
+		res.status(500).send({ request: request, error: `Could not fulfil request for ${deviceData.device_name}.` });
+		res.end();
+		return;
+	}
+	// check node availability
+	let nodeAvailPci = await getNodeAvailDevices(req.body.node, req.cookies);
+	if (!nodeAvailPci.some(element => element.id.split(".")[0] === req.body.device)) {
+		res.status(500).send({ error: `Device ${req.body.device} is already in use on ${req.body.node}.` });
+		res.end();
+		return;
+	}
+	// setup action
+	let action = {};
+	action[`hostpci${req.body.hostpci}`] = `${req.body.device},pcie=${req.body.pcie}`;
+	action = JSON.stringify(action);
+	// commit action
+	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getApplicationConfig().pveroot), null);
+	if (!(rootauth.status === 200)) {
+		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
+		res.end();
+		return;
+	}
+	let rootcookies = {
+		PVEAuthCookie: rootauth.data.data.ticket,
+		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
+	};
+	let result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	await handleResponse(req.body.node, result, res);
 });
 
 /**
@@ -752,7 +798,7 @@ app.post("/api/instance/pci/create", async (req, res) => {
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
 	let result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
-	await handleResponse(req.body.node, result, res); 
+	await handleResponse(req.body.node, result, res);
 });
 
 /**
