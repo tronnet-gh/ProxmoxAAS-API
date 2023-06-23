@@ -409,6 +409,7 @@ app.delete("/api/instance/disk/delete", async (req, res) => {
  * - disk: String - disk id (sata0, ide0)
  * - storage: String - storage to hold disk
  * - size: Number - size of disk in GiB
+ * - iso: String - file name to mount as cdrom
  * responses:
  * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
@@ -431,20 +432,21 @@ app.post("/api/instance/disk/create", async (req, res) => {
 	// setup request
 	let request = {};
 	if (!req.body.disk.includes("ide")) {
-		request[req.body.storage] = Number(req.body.size * 1024 ** 3); // setup request object
+		// setup request
+		request[req.body.storage] = Number(req.body.size * 1024 ** 3);
 		// check request approval
 		if (!await approveResources(req, req.cookies.username, request)) {
 			res.status(500).send({ request: request, error: `Storage ${req.body.storage} could not fulfill request of size ${req.body.size}G.` });
 			res.end();
 			return;
 		}
-	}
-	// target disk must be allowed according to storage options
-	let resourceConfig = db.getResourceConfig();
-	if (!resourceConfig[req.body.storage].disks.some(diskPrefix => req.body.disk.startsWith(diskPrefix))) {
-		res.status(500).send({ error: `Requested target ${req.body.disk} is not in allowed list [${resourceConfig[req.body.storage].disks}].` });
-		res.end();
-		return;
+		// target disk must be allowed according to storage options
+		let resourceConfig = db.getResourceConfig();
+		if (!resourceConfig[req.body.storage].disks.some(diskPrefix => req.body.disk.startsWith(diskPrefix))) {
+			res.status(500).send({ error: `Requested target ${req.body.disk} is not in allowed list [${resourceConfig[req.body.storage].disks}].` });
+			res.end();
+			return;
+		}
 	}
 	// setup action
 	let action = {};
