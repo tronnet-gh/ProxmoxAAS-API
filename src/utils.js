@@ -14,7 +14,8 @@ export async function checkAuth (cookies, res, vmpath = null) {
 	if (vmpath) {
 		const result = await requestPVE(`/${vmpath}/config`, "GET", cookies);
 		auth = result.status === 200;
-	} else { // if no path is specified, then do a simple authentication
+	}
+	else { // if no path is specified, then do a simple authentication
 		const result = await requestPVE("/version", "GET", cookies);
 		auth = result.status === 200;
 	}
@@ -38,7 +39,8 @@ export async function getUserResources (req, username) {
 				const index = avail[k].findIndex((maxElement) => usedDeviceName.includes(maxElement));
 				avail[k].splice(index, 1);
 			});
-		} else {
+		}
+		else {
 			avail[k] = max[k] - used[k];
 		}
 	});
@@ -53,14 +55,17 @@ export async function approveResources (req, username, request) {
 	Object.keys(request).forEach((key) => {
 		if (!(key in avail)) { // if requested resource is not in avail, block
 			approved = false;
-		} else if (resources[key].type === "list") {
+		}
+		else if (resources[key].type === "list") {
 			const inAvail = avail[key].some(availElem => request[key].includes(availElem));
 			if (inAvail !== resources[key].whitelist) {
 				approved = false;
 			}
-		} else if (isNaN(avail[key]) || isNaN(request[key])) { // if either the requested or avail resource is NaN, block
+		}
+		else if (isNaN(avail[key]) || isNaN(request[key])) { // if either the requested or avail resource is NaN, block
 			approved = false;
-		} else if (avail[key] - request[key] < 0) { // if the avail resources is less than the requested resources, block
+		}
+		else if (avail[key] - request[key] < 0) { // if the avail resources is less than the requested resources, block
 			approved = false;
 		}
 	});

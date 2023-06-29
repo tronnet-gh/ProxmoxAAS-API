@@ -14,7 +14,8 @@ export async function requestPVE (path, method, cookies, body = null, token = nu
 
 	if (token) {
 		content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
-	} else if (cookies) {
+	}
+	else if (cookies) {
 		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
 		content.headers.Cookie = `PVEAuthCookie=${cookies.PVEAuthCookie}; CSRFPreventionToken=${cookies.CSRFPreventionToken}`;
 	}
@@ -26,7 +27,8 @@ export async function requestPVE (path, method, cookies, body = null, token = nu
 	try {
 		const response = await axios.request(url, content);
 		return response;
-	} catch (error) {
+	}
+	catch (error) {
 		return error.response;
 	}
 }
@@ -46,14 +48,16 @@ export async function handleResponse (node, result, res) {
 			result.log = taskLog.data.data;
 			res.status(200).send(result);
 			res.end();
-		} else {
+		}
+		else {
 			const result = taskStatus.data.data;
 			const taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", null, null, pveAPIToken);
 			result.log = taskLog.data.data;
 			res.status(500).send(result);
 			res.end();
 		}
-	} else {
+	}
+	else {
 		res.status(result.status).send(result.data);
 		res.end();
 	}
@@ -69,9 +73,11 @@ export async function getUsedResources (req, resourceMeta) {
 			for (const diskPrefix of resourceMeta[resourceName].disks) {
 				diskprefixes.push(diskPrefix);
 			}
-		} else if (resourceMeta[resourceName].type === "list") {
+		}
+		else if (resourceMeta[resourceName].type === "list") {
 			used[resourceName] = [];
-		} else {
+		}
+		else {
 			used[resourceName] = 0;
 		}
 	}
@@ -82,14 +88,17 @@ export async function getUsedResources (req, resourceMeta) {
 			for (const key of Object.keys(config)) {
 				if (Object.keys(used).includes(key) && resourceMeta[key].type === "numeric") {
 					used[key] += Number(config[key]);
-				} else if (diskprefixes.some(prefix => key.startsWith(prefix))) {
+				}
+				else if (diskprefixes.some(prefix => key.startsWith(prefix))) {
 					const diskInfo = await getDiskInfo(instance.node, instance.type, instance.vmid, key);
 					if (diskInfo) { // only count if disk exists
 						used[diskInfo.storage] += Number(diskInfo.size);
 					}
-				} else if (key.startsWith("net") && config[key].includes("rate=")) { // only count net instances with a rate limit
+				}
+				else if (key.startsWith("net") && config[key].includes("rate=")) { // only count net instances with a rate limit
 					used.network += Number(config[key].split("rate=")[1].split(",")[0]);
-				} else if (key.startsWith("hostpci")) {
+				}
+				else if (key.startsWith("hostpci")) {
 					const deviceInfo = await getDeviceInfo(instance.node, instance.type, instance.vmid, config[key].split(",")[0]);
 					if (deviceInfo) { // only count if device exists
 						used.pci.push(deviceInfo.device_name);
@@ -109,7 +118,8 @@ export async function getDiskInfo (node, type, vmid, disk) {
 		const volInfo = await requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", null, null, pveAPIToken);
 		volInfo.data.data.storage = storageID;
 		return volInfo.data.data;
-	} catch {
+	}
+	catch {
 		return null;
 	}
 }
@@ -123,11 +133,14 @@ export async function getDeviceInfo (node, type, vmid, qid) {
 				deviceData.push(element);
 			}
 		});
-		deviceData.sort((a, b) => { return a.id < b.id; });
+		deviceData.sort((a, b) => {
+			return a.id < b.id;
+		});
 		const device = deviceData[0];
 		device.subfn = structuredClone(deviceData.slice(1));
 		return device;
-	} catch {
+	}
+	catch {
 		return null;
 	}
 }
