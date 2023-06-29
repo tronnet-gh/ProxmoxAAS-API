@@ -148,17 +148,17 @@ app.get("/api/user/config/resources", async (req, res) => {
 });
 
 /**
- * GET - get db user instance configuration
+ * GET - get db user cluster configuration
  * responses:
  * - 200: {pool: String, templates: {lxc: Object, qemu: Object}, vmid: {min: Number, max: Number}}
  * - 401: {auth: false, path: String}
  */
-app.get("/api/user/config/instances", async (req, res) => {
+app.get("/api/user/config/cluster", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
 	let config = db.getUserConfig(req.cookies.username);
-	res.status(200).send(config.instances)
+	res.status(200).send(config.cluster)
 });
 
 /**
@@ -510,13 +510,13 @@ app.post("/api/instance/network/create", async (req, res) => {
 		return;
 	}
 	// setup action
-	let vlan = db.getUserConfig(req.cookies.username).instances.vlan;
+	let nc = db.getUserConfig(req.cookies.username).templates.network[req.body.type];
 	let action = {};
 	if (req.body.type === "lxc") {
-		action[`net${req.body.netid}`] = `name=${req.body.name},bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=${vlan},type=veth,rate=${req.body.rate}`;
+		action[`net${req.body.netid}`] = `name=${req.body.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${req.body.rate}`;
 	}
 	else {
-		action[`net${req.body.netid}`] = `virtio,bridge=vmbr0,tag=${vlan},rate=${req.body.rate}`;
+		action[`net${req.body.netid}`] = `${nc.type},bridge=${nc.bridge},tag=${nc.vlan},rate=${req.body.rate}`;
 	}
 	action = JSON.stringify(action);
 	let method = req.body.type === "qemu" ? "POST" : "PUT";
@@ -943,8 +943,8 @@ app.post("/api/instance", async (req, res) => {
 	// get user db config
 	let user = await db.getUserConfig(req.cookies.username);
 	let vmid = Number.parseInt(req.body.vmid);
-	let vmid_min = user.instances.vmid.min;
-	let vmid_max = user.instances.vmid.max;
+	let vmid_min = user.cluster.vmid.min;
+	let vmid_max = user.cluster.vmid.max;
 	// check vmid is within allowed range
 	if (vmid < vmid_min || vmid > vmid_max) {
 		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}].` });
@@ -966,8 +966,8 @@ app.post("/api/instance", async (req, res) => {
 		request.swap = req.body.swap;
 		request[req.body.rootfslocation] = req.body.rootfssize;
 	}
-	for (let key of Object.keys(user.instances.templates[req.body.type])) {
-		let item = user.instances.templates[req.body.type][key];
+	for (let key of Object.keys(user.templates.instances[req.body.type])) {
+		let item = user.templates.instances[req.body.type][key];
 		if (item.resource) {
 			if (request[item.resource.name]) {
 				request[item.resource.name] += item.resource.amount;
@@ -988,10 +988,10 @@ app.post("/api/instance", async (req, res) => {
 		vmid: req.body.vmid,
 		cores: Number(req.body.cores),
 		memory: Number(req.body.memory),
-		pool: user.instances.pool
+		pool: user.cluster.pool
 	};
-	for (let key of Object.keys(user.instances.templates[req.body.type])) {
-		action[key] = user.instances.templates[req.body.type][key].value;
+	for (let key of Object.keys(user.templates.instances[req.body.type])) {
+		action[key] = user.templates.instances[req.body.type][key].value;
 	}
 	if (req.body.type === "lxc") {
 		action.hostname = req.body.name;
