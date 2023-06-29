@@ -88,31 +88,32 @@
 		}
 	},
 	"users": {
-		"exampleuser@authrealm": {
+		"exampleuser@examplepool": {
 			"resources": {
 				"max": {
 					"cpu": ["kvm64", "host"],
-					"cores": 0,
-					"memory": 0,
-					"swap": 0,
-					"local": 0,
-					"cephpl": 0,
-					"network": 0,
-					"pci": ["[GeForce GTX 1070]", "[GeForce GTX 1080 Ti]"]
+					"cores": 128,
+					"memory": 131072,
+					"swap": 131072,
+					"local": 1099511627776,
+					"cephpl": 1099511627776,
+					"network": 100000,
+					"pci": ["Device Name Matcher 1", "Device Name Matcher 2"]
 				}
 			},
 			"nodes": [
-				"node1",
-				"node2"
+				"examplenode1",
+				"examplenode2"
 			],
-			"instances": {
+			"cluster": {
 				"vmid": {
-					"min": 100,
-					"max": 199
+					"min": 200,
+					"max": 299
 				},
-				"pool": "exampleuserpool",
-				"vlan": "10",
-				"templates": {
+				"pool": "examplepool"
+			},
+			"templates": {
+				"instances": {
 					"lxc": {
 						"net0": {
 							"value": "name=eth0,bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=10,type=veth,rate=1000",
@@ -123,6 +124,10 @@
 						}
 					},
 					"qemu": {
+						"cpu": {
+							"value": "host",
+							"resource": null
+						},
 						"net0": {
 							"value": "virtio,bridge=vmbr0,tag=10,rate=1000",
 							"resource": {
@@ -131,6 +136,21 @@
 							}
 						}
 					}
+				},
+				"network": {
+					"lxc": {
+						"type": "veth",
+						"bridge": "vmbr0",
+						"vlan": 10,
+						"ip": "dhcp",
+						"ip6": "dhcp"
+					},
+					"qemu": {
+						"type": "virtio",
+						"bridge": "vmbr0",
+						"vlan": 10
+					}
+					
 				}
 			}
 		}
