@@ -11,7 +11,7 @@ import { db, pveAPIToken, listenPort, hostname, domain } from "./db.js";
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cookieParser())
+app.use(cookieParser());
 app.use(cors({ origin: hostname }));
 app.use(morgan("combined"));
 

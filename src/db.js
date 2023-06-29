@@ -1,41 +1,44 @@
 import { readFileSync, writeFileSync } from "fs";
 import { exit } from "process";
 
-class localdb {
+class LocalDB {
 	#filename = "config/localdb.json";
 	#data = null;
-	constructor() {
+	constructor () {
 		try {
 			this.load(this.#filename);
-		}
-		catch {
+		} catch {
 			console.log("Error: localdb.json was not found. Please follow the directions in the README to initialize localdb.json.");
 			exit(1);
 		}
 	}
-	load(path) {
+
+	load (path) {
 		this.#data = JSON.parse(readFileSync(path));
 	}
-	save(path) {
+
+	save (path) {
 		writeFileSync(path, JSON.stringify(this.#data));
 	}
-	getApplicationConfig() {
+
+	getApplicationConfig () {
 		return this.#data.application;
 	}
-	getResourceConfig() {
+
+	getResourceConfig () {
 		return this.#data.resources;
 	}
-	getUserConfig(username) {
+
+	getUserConfig (username) {
 		if (this.#data.users[username]) {
 			return this.#data.users[username];
-		}
-		else {
+		} else {
 			return null;
 		}
 	}
 }
 
-export const db = new localdb();
+export const db = new LocalDB();
 export const pveAPI = db.getApplicationConfig().pveAPI;
 export const pveAPIToken = db.getApplicationConfig().pveAPIToken;
 export const listenPort = db.getApplicationConfig().listenPort;
