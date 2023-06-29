@@ -1,6 +1,6 @@
 {
 	"application": {
-		"pveAPI": "https://pve.mydoamin/api2/json",
+		"pveAPI": "https://pve.mydomain.example/api2/json",
 		"pveAPIToken": {
 			"user": "proxmoxaas-api",
 			"realm": "pve",
@@ -12,8 +12,8 @@
 			"password": "rootpassword"
 		},
 		"listenPort": 80,
-		"hostname": "client.mydomain",
-		"domain": "mydomain"
+		"hostname": "client.mydomain.example",
+		"domain": "mydomain.example"
 	},
 	"resources": {
 		"cpu": {
