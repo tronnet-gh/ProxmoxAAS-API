@@ -10,8 +10,10 @@
 	},
 	"rules": {
 		"no-tabs": [
-			"error", 
-			{ "allowIndentationTabs": true }
+			"error",
+			{
+				"allowIndentationTabs": true
+			}
 		],
 		"indent": [
 			"error",
@@ -28,6 +30,13 @@
 		"semi": [
 			"error",
 			"always"
+		],
+		"brace-style": [
+			"error",
+			"stroustrup",
+			{
+				"allowSingleLine": false
+			}
 		]
 	}
 }
