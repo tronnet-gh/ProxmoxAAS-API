@@ -15,6 +15,10 @@ app.use(cookieParser());
 app.use(cors({ origin: hostname }));
 app.use(morgan("combined"));
 
+const nodeRegexP = "[\\w-]+";
+const typeRegexP = "qemu|lxc";
+const vmidRegexP = "\\d+";
+
 /**
  * GET - get API version
  * responses:
@@ -188,7 +192,7 @@ app.get("/api/user/config/nodes", async (req, res) => {
  * - 500: {error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/disk/:disk/detach`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/detach`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -233,7 +237,7 @@ app.post(`/api/:node/:type/:vmid/disk/:disk/detach`, async (req, res) => {
  * - 500: {error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/disk/:disk/attach`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/attach`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -286,7 +290,7 @@ app.post(`/api/:node/:type/:vmid/disk/:disk/attach`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/disk/:disk/resize`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/resize`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -337,7 +341,7 @@ app.post(`/api/:node/:type/:vmid/disk/:disk/resize`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/disk/:disk/move`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/move`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -399,7 +403,7 @@ app.post(`/api/:node/:type/:vmid/disk/:disk/move`, async (req, res) => {
  * - 500: {error: String}
  * - 500: PVE Task Object
  */
-app.delete(`/api/:node/:type/:vmid/disk/:disk/delete`, async (req, res) => {
+app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/delete`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -448,7 +452,7 @@ app.delete(`/api/:node/:type/:vmid/disk/:disk/delete`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/disk/:disk/create`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/create`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -523,7 +527,7 @@ app.post(`/api/:node/:type/:vmid/disk/:disk/create`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/net/:netid/create`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/create`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -589,7 +593,7 @@ app.post(`/api/:node/:type/:vmid/net/:netid/create`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/net/:netid/modify`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/modify`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -643,7 +647,7 @@ app.post(`/api/:node/:type/:vmid/net/:netid/modify`, async (req, res) => {
  * - 500: {error: String}
  * - 500: PVE Task Object
  */
-app.delete(`/api/:node/:type/:vmid/net/:netid/delete`, async (req, res) => {
+app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/delete`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -682,7 +686,7 @@ app.delete(`/api/:node/:type/:vmid/net/:netid/delete`, async (req, res) => {
  * - 401: {auth: false, path: String}
  * - 500: {error: String} 
  */
-app.get(`/api/:node/:type/:vmid/pci/:hostpci`, async (req, res) => {
+app.get(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -722,7 +726,7 @@ app.get(`/api/:node/:type/:vmid/pci/:hostpci`, async (req, res) => {
  * - 401: {auth: false, path: String}
  * - 500: {error: String} 
  */
-app.get(`/api/:node/pci`, async (req, res) => {
+app.get(`/api/:node(${nodeRegexP})/pci`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 	};
@@ -754,7 +758,7 @@ app.get(`/api/:node/pci`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/pci/:hostpci/modify`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci/modify`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -835,7 +839,7 @@ app.post(`/api/:node/:type/:vmid/pci/:hostpci/modify`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/pci/create`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/create`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -911,7 +915,7 @@ app.post(`/api/:node/:type/:vmid/pci/create`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.delete(`/api/:node/:type/:vmid/pci/:hostpci/delete`, async (req, res) => {
+app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci/delete`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -968,7 +972,7 @@ app.delete(`/api/:node/:type/:vmid/pci/:hostpci/delete`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/resources`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/resources`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -1037,7 +1041,7 @@ app.post(`/api/:node/:type/:vmid/resources`, async (req, res) => {
  * - 500: {request: Object, error: String}
  * - 500: PVE Task Object
  */
-app.post(`/api/:node/:type/:vmid/create`, async (req, res) => {
+app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/create`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
@@ -1136,7 +1140,7 @@ app.post(`/api/:node/:type/:vmid/create`, async (req, res) => {
  * - 401: {auth: false, path: String}
  * - 500: PVE Task Object
  */
-app.delete(`/api/:node/:type/:vmid/delete`, async (req, res) => {
+app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/delete`, async (req, res) => {
 	let params = {
 		node: req.params.node,
 		type: req.params.type,
