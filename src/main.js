@@ -38,18 +38,6 @@ app.get("/api/echo", (req, res) => {
 });
 
 /**
- * GET - check authentication
- * responses:
- * - 200: {auth: true, path: String}
- * - 401: {auth: false, path: String}
- */
-app.get("/api/auth", async (req, res) => {
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
-	res.status(200).send({ auth: true });
-});
-
-/**
  * GET - proxy proxmox api without privilege elevation
  * request and responses passed through to/from proxmox
  */
@@ -70,6 +58,18 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 });
 
 /**
+ * GET - check authentication
+ * responses:
+ * - 200: {auth: true, path: String}
+ * - 401: {auth: false, path: String}
+ */
+app.get("/api/auth", async (req, res) => {
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
+	res.status(200).send({ auth: true });
+});
+
+/**
  * POST - safer ticket generation using proxmox authentication but adding HttpOnly
  * request:
  * - username: String
@@ -78,7 +78,7 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
  * - 200: {auth: true, path: String}
  * - 401: {auth: false, path: String}
  */
-app.post("/api/ticket", async (req, res) => {
+app.post("/api/auth/ticket", async (req, res) => {
 	let response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
 	if (!(response.status === 200)) {
 		res.status(response.status).send({ auth: false });
@@ -101,7 +101,7 @@ app.post("/api/ticket", async (req, res) => {
  * responses:
  * - 200: {auth: false, path: String}
  */
-app.delete("/api/ticket", async (req, res) => {
+app.delete("/api/auth/ticket", async (req, res) => {
 	let expire = new Date(0);
 	res.cookie("PVEAuthCookie", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
 	res.cookie("CSRFPreventionToken", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
@@ -111,12 +111,34 @@ app.delete("/api/ticket", async (req, res) => {
 });
 
 /**
+ * GET - get db global resource configuration
+ * responses:
+ * - 200: Object
+ */
+app.get("/api/global/config/:key", async (req, res) => {
+	let params = {
+		key: req.params.key
+	}
+	// check auth
+	let auth = await checkAuth(req.cookies, res);
+	if (!auth) { return; }
+	let allowKeys =  ["resources"];
+	if (allowKeys.includes(params.key)){
+		let config = db.getGlobalConfig();
+		res.status(200).send(config[params.key]);
+	}
+	else {
+		res.status(401).send({auth: false, error: `User is not authorized to access /global/config/${params.key}.`});
+	}
+});
+
+/**
  * GET - get db user resource information including allocated, free, and maximum resource values along with resource metadata
  * responses:
  * - 200: {avail: Object, max: Object, used: Object, resources: Object}
  * - 401: {auth: false, path: String}
  */
-app.get("/api/user/resources", async (req, res) => {
+app.get("/api/user/dynamic/resources", async (req, res) => {
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
@@ -125,59 +147,30 @@ app.get("/api/user/resources", async (req, res) => {
 });
 
 /**
- * GET - get db global resource configuration
- * responses:
- * - 200: Object
- */
-app.get("/api/global/config/resources", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
-	let config = db.getResourceConfig();
-	res.status(200).send(config);
-});
-
-/**
- * GET - get db user resource configuration
+ * GET - get db user configuration by key
+ * request:
+ * - key: User config key
  * responses:
  * - 200: Object
  * - 401: {auth: false, path: String}
+ * - 401: {auth: false, error: String}
  */
-app.get("/api/user/config/resources", async (req, res) => {
+app.get(`/api/user/config/:key`, async (req, res) => {
+	let params = {
+		key: req.params.key
+	}
 	// check auth
 	let auth = await checkAuth(req.cookies, res);
 	if (!auth) { return; }
-	let config = db.getUserConfig(req.cookies.username);
-	res.status(200).send(config.resources);
+	let allowKeys =  ["resources", "cluster", "nodes"];
+	if (allowKeys.includes(params.key)){
+		let config = db.getUserConfig(req.cookies.username);
+		res.status(200).send(config[params.key]);
+	}
+	else {
+		res.status(401).send({auth: false, error: `User is not authorized to access /user/config/${params.key}.`});
+	}
 });
-
-/**
- * GET - get db user cluster configuration
- * responses:
- * - 200: {pool: String, templates: {lxc: Object, qemu: Object}, vmid: {min: Number, max: Number}}
- * - 401: {auth: false, path: String}
- */
-app.get("/api/user/config/cluster", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
-	let config = db.getUserConfig(req.cookies.username);
-	res.status(200).send(config.cluster)
-});
-
-/**
- * GET - get db user node configuration
- * responses:
- * - 200: {nodes: String[]}
- * - 401: {auth: false, path: String}
- */
-app.get("/api/user/config/nodes", async (req, res) => {
-	// check auth
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
-	let config = db.getUserConfig(req.cookies.username);
-	res.status(200).send(config.nodes)
-})
 
 /**
  * POST - detach mounted disk from instance
@@ -259,7 +252,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 	}
 	// target disk must be allowed according to source disk's storage options
 	let diskConfig = await getDiskInfo(params.node, params.type, params.vmid, `unused${params.source}`); // get target disk
-	let resourceConfig = db.getResourceConfig();
+	let resourceConfig = db.getGlobalConfig().resources;
 	if (!resourceConfig[diskConfig.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
 		res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[diskConfig.storage].disks}].` });
 		res.end();
@@ -486,7 +479,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 			return;
 		}
 		// target disk must be allowed according to storage options
-		let resourceConfig = db.getResourceConfig();
+		let resourceConfig = db.getGlobalConfig().resources;
 		if (!resourceConfig[params.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
 			res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[params.storage].disks}].` });
 			res.end();
@@ -811,7 +804,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 	action[`hostpci${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	action = JSON.stringify(action);
 	// commit action
-	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getApplicationConfig().pveroot), null);
+	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -888,7 +881,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 	action[`hostpci${hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	action = JSON.stringify(action);
 	// commit action
-	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getApplicationConfig().pveroot), null);
+	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -942,7 +935,7 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 	// setup action
 	let action = JSON.stringify({ delete: `hostpci${params.hostpci}` });
 	// commit action, need to use root user here because proxmox api only allows root to modify hostpci for whatever reason
-	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getApplicationConfig().pveroot), null);
+	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
 	if (!(rootauth.status === 200)) {
 		res.status(response.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
