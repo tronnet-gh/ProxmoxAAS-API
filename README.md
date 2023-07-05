@@ -22,7 +22,7 @@ In Proxmox VE, follow the following steps:
 ## Installation - API
 1. Clone this repo onto `Client Host`
 2. Run `npm install` to initiaze the package requirements
-3. Copy `localdb.json.template` as `localdb.json` and modify the following values under `pveAPIToken`:
+3. Copy `template.localdb.json` as `localdb.json` and modify the following values under `pveAPIToken`:
     - pveAPI - the URI to the Proxmox API, ie `<proxmoxhost>:8006/api2/json` or `<proxmox URL>/api2/json` if Proxmox VE is behind a reverse proxy. 
     - hostname - the ProxmoxAAS-Client URL, ie `host.domain.tld`
 	- domain - the base domain for the client and proxmox, ie `domain.tld`

@@ -28,7 +28,7 @@ export async function checkAuth (cookies, res, vmpath = null) {
 }
 
 export async function getUserResources (req, username) {
-	const dbResources = db.getResourceConfig();
+	const dbResources = db.getGlobalConfig().resources;
 	const used = await getUsedResources(req, dbResources);
 	const max = db.getUserConfig(username).resources.max;
 	const avail = {};

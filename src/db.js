@@ -22,27 +22,18 @@ class LocalDB {
 		writeFileSync(path, JSON.stringify(this.#data));
 	}
 
-	getApplicationConfig () {
-		return this.#data.application;
-	}
-
-	getResourceConfig () {
-		return this.#data.resources;
+	getGlobalConfig () {
+		return this.#data.global;
 	}
 
 	getUserConfig (username) {
-		if (this.#data.users[username]) {
-			return this.#data.users[username];
-		}
-		else {
-			return null;
-		}
+		return this.#data.users[username];
 	}
 }
 
 export const db = new LocalDB();
-export const pveAPI = db.getApplicationConfig().pveAPI;
-export const pveAPIToken = db.getApplicationConfig().pveAPIToken;
-export const listenPort = db.getApplicationConfig().listenPort;
-export const hostname = db.getApplicationConfig().hostname;
-export const domain = db.getApplicationConfig().domain;
+export const pveAPI = db.getGlobalConfig().application.pveAPI;
+export const pveAPIToken = db.getGlobalConfig().application.pveAPIToken;
+export const listenPort = db.getGlobalConfig().application.listenPort;
+export const hostname = db.getGlobalConfig().application.hostname;
+export const domain = db.getGlobalConfig().application.domain;
