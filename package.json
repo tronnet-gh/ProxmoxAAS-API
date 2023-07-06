@@ -20,6 +20,6 @@
 		"eslint-plugin-promise": "^6.1.1"
 	},
 	"scripts": {
-		"lint": "eslint --fix ."
+		"lint": "DEBUG=eslint:cli-engine eslint --fix ."
 	}
 }

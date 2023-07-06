@@ -3,8 +3,8 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan";
-import api from "../package.json" assert {type: "json"};
 
+import { api } from "./package.js";
 import { requestPVE, handleResponse, getDiskInfo, getDeviceInfo, getNodeAvailDevices } from "./pve.js";
 import { checkAuth, approveResources, getUserResources } from "./utils.js";
 import { db, pveAPIToken, listenPort, hostname, domain } from "./db.js";
@@ -42,8 +42,8 @@ app.get("/api/echo", (req, res) => {
  * request and responses passed through to/from proxmox
  */
 app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for GET proxmox api with no token
-	let path = req.url.replace("/api/proxmox", "");
-	let result = await requestPVE(path, "GET", req.cookies);
+	const path = req.url.replace("/api/proxmox", "");
+	const result = await requestPVE(path, "GET", req.cookies);
 	res.status(result.status).send(result.data);
 });
 
@@ -52,8 +52,8 @@ app.get("/api/proxmox/*", async (req, res) => { // proxy endpoint for GET proxmo
  * request and responses passed through to/from proxmox
  */
 app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST proxmox api with no token
-	let path = req.url.replace("/api/proxmox", "");
-	let result = await requestPVE(path, "POST", req.cookies, JSON.stringify(req.body)); // need to stringify body because of other issues
+	const path = req.url.replace("/api/proxmox", "");
+	const result = await requestPVE(path, "POST", req.cookies, JSON.stringify(req.body)); // need to stringify body because of other issues
 	res.status(result.status).send(result.data);
 });
 
@@ -64,8 +64,10 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
  * - 401: {auth: false, path: String}
  */
 app.get("/api/auth", async (req, res) => {
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
 	res.status(200).send({ auth: true });
 });
 
@@ -79,20 +81,20 @@ app.get("/api/auth", async (req, res) => {
  * - 401: {auth: false, path: String}
  */
 app.post("/api/auth/ticket", async (req, res) => {
-	let response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
+	const response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
 	if (!(response.status === 200)) {
 		res.status(response.status).send({ auth: false });
 		res.end();
 		return;
 	}
-	let ticket = response.data.data.ticket;
-	let csrftoken = response.data.data.CSRFPreventionToken;
-	let username = response.data.data.username;
-	let expire = new Date(Date.now() + (2 * 60 * 60 * 1000));
-	res.cookie("PVEAuthCookie", ticket, { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
-	res.cookie("CSRFPreventionToken", csrftoken, { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
-	res.cookie("username", username, { domain: domain, path: "/", secure: true, expires: expire });
-	res.cookie("auth", 1, { domain: domain, path: "/", secure: true, expires: expire });
+	const ticket = response.data.data.ticket;
+	const csrftoken = response.data.data.CSRFPreventionToken;
+	const username = response.data.data.username;
+	const expire = new Date(Date.now() + (2 * 60 * 60 * 1000));
+	res.cookie("PVEAuthCookie", ticket, { domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("CSRFPreventionToken", csrftoken, { domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("username", username, { domain, path: "/", secure: true, expires: expire });
+	res.cookie("auth", 1, { domain, path: "/", secure: true, expires: expire });
 	res.status(200).send({ auth: true });
 });
 
@@ -102,11 +104,11 @@ app.post("/api/auth/ticket", async (req, res) => {
  * - 200: {auth: false, path: String}
  */
 app.delete("/api/auth/ticket", async (req, res) => {
-	let expire = new Date(0);
-	res.cookie("PVEAuthCookie", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
-	res.cookie("CSRFPreventionToken", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
-	res.cookie("username", "", { domain: domain, path: "/", httpOnly: true, secure: true, expires: expire });
-	res.cookie("auth", 0, { domain: domain, path: "/", expires: expire });
+	const expire = new Date(0);
+	res.cookie("PVEAuthCookie", "", { domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("CSRFPreventionToken", "", { domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("username", "", { domain, path: "/", httpOnly: true, secure: true, expires: expire });
+	res.cookie("auth", 0, { domain, path: "/", expires: expire });
 	res.status(200).send({ auth: false });
 });
 
@@ -116,19 +118,21 @@ app.delete("/api/auth/ticket", async (req, res) => {
  * - 200: Object
  */
 app.get("/api/global/config/:key", async (req, res) => {
-	let params = {
+	const params = {
 		key: req.params.key
-	}
+	};
 	// check auth
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
-	let allowKeys =  ["resources"];
-	if (allowKeys.includes(params.key)){
-		let config = db.getGlobalConfig();
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+	const allowKeys = ["resources"];
+	if (allowKeys.includes(params.key)) {
+		const config = db.getGlobalConfig();
 		res.status(200).send(config[params.key]);
 	}
 	else {
-		res.status(401).send({auth: false, error: `User is not authorized to access /global/config/${params.key}.`});
+		res.status(401).send({ auth: false, error: `User is not authorized to access /global/config/${params.key}.` });
 	}
 });
 
@@ -140,9 +144,11 @@ app.get("/api/global/config/:key", async (req, res) => {
  */
 app.get("/api/user/dynamic/resources", async (req, res) => {
 	// check auth
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
-	let resources = await getUserResources(req, req.cookies.username);
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+	const resources = await getUserResources(req, req.cookies.username);
 	res.status(200).send(resources);
 });
 
@@ -155,20 +161,22 @@ app.get("/api/user/dynamic/resources", async (req, res) => {
  * - 401: {auth: false, path: String}
  * - 401: {auth: false, error: String}
  */
-app.get(`/api/user/config/:key`, async (req, res) => {
-	let params = {
+app.get("/api/user/config/:key", async (req, res) => {
+	const params = {
 		key: req.params.key
-	}
+	};
 	// check auth
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
-	let allowKeys =  ["resources", "cluster", "nodes"];
-	if (allowKeys.includes(params.key)){
-		let config = db.getUserConfig(req.cookies.username);
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+	const allowKeys = ["resources", "cluster", "nodes"];
+	if (allowKeys.includes(params.key)) {
+		const config = db.getUserConfig(req.cookies.username);
 		res.status(200).send(config[params.key]);
 	}
 	else {
-		res.status(401).send({auth: false, error: `User is not authorized to access /user/config/${params.key}.`});
+		res.status(401).send({ auth: false, error: `User is not authorized to access /user/config/${params.key}.` });
 	}
 });
 
@@ -186,18 +194,20 @@ app.get(`/api/user/config/:key`, async (req, res) => {
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/detach`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
 		disk: req.params.disk
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// get current config
-	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
+	const config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
 	// disk must exist
 	if (!config[params.disk]) {
 		res.status(500).send({ error: `Disk ${params.disk} does not exist.` });
@@ -210,9 +220,9 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 		res.end();
 		return;
 	}
-	let action = JSON.stringify({ delete: params.disk });
-	let method = params.type === "qemu" ? "POST" : "PUT";
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const action = JSON.stringify({ delete: params.disk });
+	const method = params.type === "qemu" ? "POST" : "PUT";
+	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -231,7 +241,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/attach`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -239,11 +249,13 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 		source: req.body.source
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// get current config
-	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
+	const config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
 	// disk must exist
 	if (!config[`unused${params.source}`]) {
 		res.status(403).send({ error: `Requested disk unused${params.source} does not exist.` });
@@ -251,8 +263,8 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 		return;
 	}
 	// target disk must be allowed according to source disk's storage options
-	let diskConfig = await getDiskInfo(params.node, params.type, params.vmid, `unused${params.source}`); // get target disk
-	let resourceConfig = db.getGlobalConfig().resources;
+	const diskConfig = await getDiskInfo(params.node, params.type, params.vmid, `unused${params.source}`); // get target disk
+	const resourceConfig = db.getGlobalConfig().resources;
 	if (!resourceConfig[diskConfig.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
 		res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[diskConfig.storage].disks}].` });
 		res.end();
@@ -262,9 +274,9 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 	let action = {};
 	action[params.disk] = config[`unused${params.source}`];
 	action = JSON.stringify(action);
-	let method = params.type === "qemu" ? "POST" : "PUT";
+	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -284,7 +296,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/resize`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -292,29 +304,31 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 		size: req.body.size
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// check disk existence
-	let diskConfig = await getDiskInfo(params.node, params.type, params.vmid, params.disk); // get target disk
+	const diskConfig = await getDiskInfo(params.node, params.type, params.vmid, params.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
 		res.status(500).send({ error: `requested disk ${params.disk} does not exist.` });
 		res.end();
 		return;
 	}
 	// setup request
-	let storage = diskConfig.storage; // get the storage
-	let request = {};
+	const storage = diskConfig.storage; // get the storage
+	const request = {};
 	request[storage] = Number(params.size * 1024 ** 3); // setup request object
 	// check request approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Storage ${storage} could not fulfill request of size ${params.size}G.` });
+		res.status(500).send({ request, error: `Storage ${storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
 		return;
 	}
 	// action approved, commit to action
-	let action = JSON.stringify({ disk: params.disk, size: `+${params.size}G` });
-	let result = await requestPVE(`${vmpath}/resize`, "PUT", req.cookies, action, pveAPIToken);
+	const action = JSON.stringify({ disk: params.disk, size: `+${params.size}G` });
+	const result = await requestPVE(`${vmpath}/resize`, "PUT", req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -326,7 +340,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
  * - vmid: Number - vm id number
  * - disk: String - disk id (sata0 NOT unused)
  * - storage: String - target storage to move disk
- * - delete: Number - delete original disk (0, 1) 
+ * - delete: Number - delete original disk (0, 1)
  * responses:
  * - 200: PVE Task Object
  * - 401: {auth: false, path: String}
@@ -335,7 +349,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/move`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -344,42 +358,43 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 		delete: req.body.delete
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// check disk existence
-	let diskConfig = await getDiskInfo(params.node, params.type, params.vmid, params.disk); // get target disk
+	const diskConfig = await getDiskInfo(params.node, params.type, params.vmid, params.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
 		res.status(500).send({ error: `requested disk ${params.disk} does not exist.` });
 		res.end();
 		return;
 	}
 	// setup request
-	let size = parseInt(diskConfig.size); // get source disk size
-	let srcStorage = diskConfig.storage; // get source storage
-	let dstStorage = params.storage; // get destination storage
-	let request = {};
+	const size = parseInt(diskConfig.size); // get source disk size
+	const dstStorage = params.storage; // get destination storage
+	const request = {};
 	if (!params.delete) { // if not delete, then request storage, otherwise it is net 0
 		request[dstStorage] = Number(size); // always decrease destination storage by size
 	}
 	// check request approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
+		res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
 		return;
 	}
 	// create action
 	let action = { storage: params.storage, delete: params.delete };
 	if (params.type === "qemu") {
-		action.disk = params.disk
+		action.disk = params.disk;
 	}
 	else {
-		action.volume = params.disk
+		action.volume = params.disk;
 	}
 	action = JSON.stringify(action);
-	let route = params.type === "qemu" ? "move_disk" : "move_volume";
+	const route = params.type === "qemu" ? "move_disk" : "move_volume";
 	// commit action
-	let result = await requestPVE(`${vmpath}/${route}`, "POST", req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/${route}`, "POST", req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -397,18 +412,20 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
  * - 500: PVE Task Object
  */
 app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/delete`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
 		disk: req.params.disk
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// get current config
-	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
+	const config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
 	// disk must exist
 	if (!config[params.disk]) {
 		res.status(403).send({ error: `Requested disk unused${params.source} does not exist.` });
@@ -422,10 +439,10 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 		return;
 	}
 	// create action
-	let action = JSON.stringify({ delete: params.disk });
-	let method = params.type === "qemu" ? "POST" : "PUT";
+	const action = JSON.stringify({ delete: params.disk });
+	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -446,7 +463,7 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/create`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -456,11 +473,13 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 		iso: req.body.iso
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// get current config
-	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
+	const config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies, null, null)).data.data;
 	// disk must not exist
 	if (config[params.disk]) {
 		res.status(403).send({ error: `Requested disk ${params.disk} already exists.` });
@@ -468,18 +487,18 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 		return;
 	}
 	// setup request
-	let request = {};
+	const request = {};
 	if (!params.disk.includes("ide")) {
 		// setup request
 		request[params.storage] = Number(params.size * 1024 ** 3);
 		// check request approval
 		if (!await approveResources(req, req.cookies.username, request)) {
-			res.status(500).send({ request: request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
+			res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 			res.end();
 			return;
 		}
 		// target disk must be allowed according to storage options
-		let resourceConfig = db.getGlobalConfig().resources;
+		const resourceConfig = db.getGlobalConfig().resources;
 		if (!resourceConfig[params.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
 			res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[params.storage].disks}].` });
 			res.end();
@@ -498,9 +517,9 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 		action[params.disk] = `${params.storage}:${params.size},mp=/${params.disk}/,backup=1`;
 	}
 	action = JSON.stringify(action);
-	let method = params.type === "qemu" ? "POST" : "PUT";
+	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -521,7 +540,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/create`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -530,11 +549,13 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
 		name: req.body.name
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// get current config
-	let currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
+	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
 	// net interface must not exist
 	if (currentConfig.data.data[`net${params.netid}`]) {
 		res.status(500).send({ error: `Network interface net${params.netid} already exists.` });
@@ -542,21 +563,21 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
 		return;
 	}
 	if (params.type === "lxc" && !params.name) {
-		res.status(500).send({ error: `Network interface must have name parameter.` });
+		res.status(500).send({ error: "Network interface must have name parameter." });
 		res.end();
 		return;
 	}
-	let request = {
+	const request = {
 		network: Number(params.rate)
 	};
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
+		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
 	}
 	// setup action
-	let nc = db.getUserConfig(req.cookies.username).templates.network[params.type];
+	const nc = db.getUserConfig(req.cookies.username).templates.network[params.type];
 	let action = {};
 	if (params.type === "lxc") {
 		action[`net${params.netid}`] = `name=${params.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${params.rate}`;
@@ -565,9 +586,9 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
 		action[`net${params.netid}`] = `${nc.type},bridge=${nc.bridge},tag=${nc.vlan},rate=${params.rate}`;
 	}
 	action = JSON.stringify(action);
-	let method = params.type === "qemu" ? "POST" : "PUT";
+	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -587,7 +608,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/modify`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -595,25 +616,27 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
 		rate: req.body.rate
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// get current config
-	let currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
+	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
 	// net interface must already exist
 	if (!currentConfig.data.data[`net${params.netid}`]) {
 		res.status(500).send({ error: `Network interface net${params.netid} does not exist.` });
 		res.end();
 		return;
 	}
-	let currentNetworkConfig = currentConfig.data.data[`net${params.netid}`];
-	let currentNetworkRate = currentNetworkConfig.split("rate=")[1].split(",")[0];
-	let request = {
+	const currentNetworkConfig = currentConfig.data.data[`net${params.netid}`];
+	const currentNetworkRate = currentNetworkConfig.split("rate=")[1].split(",")[0];
+	const request = {
 		network: Number(params.rate) - Number(currentNetworkRate)
 	};
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
+		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
 	}
@@ -621,9 +644,9 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
 	let action = {};
 	action[`net${params.netid}`] = currentNetworkConfig.replace(`rate=${currentNetworkRate}`, `rate=${params.rate}`);
 	action = JSON.stringify(action);
-	let method = params.type === "qemu" ? "POST" : "PUT";
+	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -641,18 +664,20 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
  * - 500: PVE Task Object
  */
 app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/delete`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
 		netid: req.params.netid.replace("net", "")
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// get current config
-	let currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
+	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
 	// net interface must already exist
 	if (!currentConfig.data.data[`net${params.netid}`]) {
 		res.status(500).send({ error: `Network interface net${params.netid} does not exist.` });
@@ -660,10 +685,10 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 		return;
 	}
 	// setup action
-	let action = JSON.stringify({ delete: `net${params.netid}` });
-	let method = params.type === "qemu" ? "POST" : "PUT";
+	const action = JSON.stringify({ delete: `net${params.netid}` });
+	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -677,29 +702,31 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
  * responses:
  * - 200: PVE PCI Device Object
  * - 401: {auth: false, path: String}
- * - 500: {error: String} 
+ * - 500: {error: String}
  */
 app.get(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
 		hostpci: req.params.hostpci.replace("hostpci", "")
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// check device is in instance config
-	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
+	const config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
 	if (!config[`hostpci${params.hostpci}`]) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci} in ${params.vmid}.` });
 		res.end();
 		return;
 	}
-	let device = config[`hostpci${params.hostpci}`].split(",")[0];
+	const device = config[`hostpci${params.hostpci}`].split(",")[0];
 	// get node's pci devices
-	let deviceData = await getDeviceInfo(params.node, params.type, params.vmid, device);
+	const deviceData = await getDeviceInfo(params.node, params.type, params.vmid, device);
 	if (!deviceData) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci}=${device} in ${params.node}.` });
 		res.end();
@@ -707,7 +734,6 @@ app.get(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci
 	}
 	res.status(200).send(deviceData);
 	res.end();
-	return;
 });
 
 /**
@@ -717,23 +743,26 @@ app.get(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci
  * responses:
  * - 200: PVE PCI Device Object
  * - 401: {auth: false, path: String}
- * - 500: {error: String} 
+ * - 500: {error: String}
  */
 app.get(`/api/:node(${nodeRegexP})/pci`, async (req, res) => {
-	let params = {
-		node: req.params.node,
+	const params = {
+		node: req.params.node
 	};
 	// check auth
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
 	// get remaining user resources
-	let userAvailPci = (await getUserResources(req, req.cookies.username)).avail.pci;
+	const userAvailPci = (await getUserResources(req, req.cookies.username)).avail.pci;
 	// get node avail devices
 	let nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
-	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => { return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail); }));
+	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => {
+		return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail);
+	}));
 	res.status(200).send(nodeAvailPci);
 	res.end();
-	return;
 });
 
 /**
@@ -752,7 +781,7 @@ app.get(`/api/:node(${nodeRegexP})/pci`, async (req, res) => {
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci/modify`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -762,19 +791,21 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 	};
 	// check if type is qemu
 	if (params.type !== "qemu") {
-		res.status(500).send({ error: `Type must be qemu (vm).` });
+		res.status(500).send({ error: "Type must be qemu (vm)." });
 		res.end();
 		return;
 	}
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// get instance config to check if device has not changed
-	let config = (await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", params.cookies, null, pveAPIToken)).data.data;
-	let currentDeviceData = await getDeviceInfo(params.node, params.type, params.vmid, config[`hostpci${params.hostpci}`].split(",")[0]);
+	const config = (await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", params.cookies, null, pveAPIToken)).data.data;
+	const currentDeviceData = await getDeviceInfo(params.node, params.type, params.vmid, config[`hostpci${params.hostpci}`].split(",")[0]);
 	if (!currentDeviceData) {
 		res.status(500).send({ error: `No device in hostpci${params.hostpci}.` });
 		res.end();
@@ -783,16 +814,16 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 	// only check user and node availability if base id is different
 	if (currentDeviceData.id.split(".")[0] !== params.device) {
 		// setup request
-		let deviceData = await getDeviceInfo(params.node, params.type, params.vmid, params.device);
-		let request = { pci: deviceData.device_name };
+		const deviceData = await getDeviceInfo(params.node, params.type, params.vmid, params.device);
+		const request = { pci: deviceData.device_name };
 		// check resource approval
 		if (!await approveResources(req, req.cookies.username, request)) {
-			res.status(500).send({ request: request, error: `Could not fulfil request for ${deviceData.device_name}.` });
+			res.status(500).send({ request, error: `Could not fulfil request for ${deviceData.device_name}.` });
 			res.end();
 			return;
 		}
 		// check node availability
-		let nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
+		const nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
 		if (!nodeAvailPci.some(element => element.id.split(".")[0] === params.device)) {
 			res.status(500).send({ error: `Device ${params.device} is already in use on ${params.node}.` });
 			res.end();
@@ -804,17 +835,17 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 	action[`hostpci${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	action = JSON.stringify(action);
 	// commit action
-	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
+	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
 		return;
 	}
-	let rootcookies = {
+	const rootcookies = {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	let result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	const result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
 	await handleResponse(params.node, result, res);
 });
 
@@ -833,7 +864,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/create`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -842,35 +873,37 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 	};
 	// check if type is qemu
 	if (params.type !== "qemu") {
-		res.status(500).send({ error: `Type must be qemu (vm).` });
+		res.status(500).send({ error: "Type must be qemu (vm)." });
 		res.end();
 		return;
 	}
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// get instance config to find next available hostpci slot
-	let config = requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", params.cookies, null, null);
+	const config = requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", params.cookies, null, null);
 	let hostpci = 0;
 	while (config[`hostpci${hostpci}`]) {
 		hostpci++;
 	}
 	// setup request
-	let deviceData = await getDeviceInfo(params.node, params.type, params.vmid, params.device);
-	let request = {
+	const deviceData = await getDeviceInfo(params.node, params.type, params.vmid, params.device);
+	const request = {
 		pci: deviceData.device_name
 	};
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Could not fulfil request for ${deviceData.device_name}.` });
+		res.status(500).send({ request, error: `Could not fulfil request for ${deviceData.device_name}.` });
 		res.end();
 		return;
 	}
 	// check node availability
-	let nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
+	const nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
 	if (!nodeAvailPci.some(element => element.id.split(".")[0] === params.device)) {
 		res.status(500).send({ error: `Device ${params.device} is already in use on ${params.node}.` });
 		res.end();
@@ -881,17 +914,17 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 	action[`hostpci${hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	action = JSON.stringify(action);
 	// commit action
-	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
+	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
 		return;
 	}
-	let rootcookies = {
+	const rootcookies = {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	let result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	const result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
 	await handleResponse(params.node, result, res);
 });
 
@@ -909,7 +942,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
  * - 500: PVE Task Object
  */
 app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci/delete`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -917,35 +950,37 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 	};
 	// check if type is qemu
 	if (params.type !== "qemu") {
-		res.status(500).send({ error: `Type must be qemu (vm).` });
+		res.status(500).send({ error: "Type must be qemu (vm)." });
 		res.end();
 		return;
 	}
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// check device is in instance config
-	let config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
+	const config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
 	if (!config[`hostpci${params.hostpci}`]) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci} in ${params.vmid}.` });
 		res.end();
 		return;
 	}
 	// setup action
-	let action = JSON.stringify({ delete: `hostpci${params.hostpci}` });
+	const action = JSON.stringify({ delete: `hostpci${params.hostpci}` });
 	// commit action, need to use root user here because proxmox api only allows root to modify hostpci for whatever reason
-	let rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
+	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
 	if (!(rootauth.status === 200)) {
-		res.status(response.status).send({ auth: false, error: "API could not authenticate as root user." });
+		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
 		return;
 	}
-	let rootcookies = {
+	const rootcookies = {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	let result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	const result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
 	await handleResponse(params.node, result, res);
 });
 
@@ -966,7 +1001,7 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/resources`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -976,12 +1011,14 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/re
 		swap: req.body.swap
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// get current config
-	let currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
-	let request = {
+	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
+	const request = {
 		cores: Number(params.cores) - Number(currentConfig.data.data.cores),
 		memory: Number(params.memory) - Number(currentConfig.data.data.memory)
 	};
@@ -993,7 +1030,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/re
 	}
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) {
-		res.status(500).send({ request: request, error: `Could not fulfil request.` });
+		res.status(500).send({ request, error: "Could not fulfil request." });
 		res.end();
 		return;
 	}
@@ -1006,9 +1043,9 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/re
 		action.cpu = params.proctype;
 	}
 	action = JSON.stringify(action);
-	let method = params.type === "qemu" ? "POST" : "PUT";
+	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	let result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -1035,7 +1072,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/re
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/create`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
@@ -1050,16 +1087,18 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/cr
 		rootfssize: req.body.rootfssize
 	};
 	// check auth
-	let auth = await checkAuth(req.cookies, res);
-	if (!auth) { return; }
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
 	// get user db config
-	let user = await db.getUserConfig(req.cookies.username);
-	let vmid = Number.parseInt(params.vmid);
-	let vmid_min = user.cluster.vmid.min;
-	let vmid_max = user.cluster.vmid.max;
+	const user = await db.getUserConfig(req.cookies.username);
+	const vmid = Number.parseInt(params.vmid);
+	const vmidMin = user.cluster.vmid.min;
+	const vmidMax = user.cluster.vmid.max;
 	// check vmid is within allowed range
-	if (vmid < vmid_min || vmid > vmid_max) {
-		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmid_min},${vmid_max}].` });
+	if (vmid < vmidMin || vmid > vmidMax) {
+		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmidMin},${vmidMax}].` });
 		res.end();
 		return;
 	}
@@ -1070,7 +1109,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/cr
 		return;
 	}
 	// setup request
-	let request = {
+	const request = {
 		cores: Number(params.cores),
 		memory: Number(params.memory)
 	};
@@ -1078,8 +1117,8 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/cr
 		request.swap = params.swap;
 		request[params.rootfslocation] = params.rootfssize;
 	}
-	for (let key of Object.keys(user.templates.instances[params.type])) {
-		let item = user.templates.instances[params.type][key];
+	for (const key of Object.keys(user.templates.instances[params.type])) {
+		const item = user.templates.instances[params.type][key];
 		if (item.resource) {
 			if (request[item.resource.name]) {
 				request[item.resource.name] += item.resource.amount;
@@ -1091,7 +1130,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/cr
 	}
 	// check resource approval
 	if (!await approveResources(req, req.cookies.username, request)) { // check resource approval
-		res.status(500).send({ request: request, error: `Not enough resources to satisfy request.` });
+		res.status(500).send({ request, error: "Not enough resources to satisfy request." });
 		res.end();
 		return;
 	}
@@ -1102,7 +1141,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/cr
 		memory: Number(params.memory),
 		pool: user.cluster.pool
 	};
-	for (let key of Object.keys(user.templates.instances[params.type])) {
+	for (const key of Object.keys(user.templates.instances[params.type])) {
 		action[key] = user.templates.instances[params.type][key].value;
 	}
 	if (params.type === "lxc") {
@@ -1118,7 +1157,7 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/cr
 	}
 	action = JSON.stringify(action);
 	// commit action
-	let result = await requestPVE(`/nodes/${params.node}/${params.type}`, "POST", req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`/nodes/${params.node}/${params.type}`, "POST", req.cookies, action, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
@@ -1134,17 +1173,19 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/cr
  * - 500: PVE Task Object
  */
 app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/delete`, async (req, res) => {
-	let params = {
+	const params = {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid
 	};
 	// check auth for specific instance
-	let vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	let auth = await checkAuth(req.cookies, res, vmpath);
-	if (!auth) { return; }
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
 	// commit action
-	let result = await requestPVE(vmpath, "DELETE", req.cookies, null, pveAPIToken);
+	const result = await requestPVE(vmpath, "DELETE", req.cookies, null, pveAPIToken);
 	await handleResponse(params.node, result, res);
 });
 
