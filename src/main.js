@@ -60,8 +60,8 @@ app.post("/api/proxmox/*", async (req, res) => { // proxy endpoint for POST prox
 /**
  * GET - check authentication
  * responses:
- * - 200: {auth: true, path: String}
- * - 401: {auth: false, path: String}
+ * - 200: {auth: true}
+ * - 401: {auth: false}
  */
 app.get("/api/auth", async (req, res) => {
 	const auth = await checkAuth(req.cookies, res);
@@ -77,8 +77,8 @@ app.get("/api/auth", async (req, res) => {
  * - username: String
  * - password: String
  * responses:
- * - 200: {auth: true, path: String}
- * - 401: {auth: false, path: String}
+ * - 200: {auth: true}
+ * - 401: {auth: false}
  */
 app.post("/api/auth/ticket", async (req, res) => {
 	const response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
@@ -101,7 +101,7 @@ app.post("/api/auth/ticket", async (req, res) => {
 /**
  * DELETE - request to destroy ticket
  * responses:
- * - 200: {auth: false, path: String}
+ * - 200: {auth: false}
  */
 app.delete("/api/auth/ticket", async (req, res) => {
 	const expire = new Date(0);
@@ -140,7 +140,7 @@ app.get("/api/global/config/:key", async (req, res) => {
  * GET - get db user resource information including allocated, free, and maximum resource values along with resource metadata
  * responses:
  * - 200: {avail: Object, max: Object, used: Object, resources: Object}
- * - 401: {auth: false, path: String}
+ * - 401: {auth: false}
  */
 app.get("/api/user/dynamic/resources", async (req, res) => {
 	// check auth
@@ -158,7 +158,7 @@ app.get("/api/user/dynamic/resources", async (req, res) => {
  * - key: User config key
  * responses:
  * - 200: Object
- * - 401: {auth: false, path: String}
+ * - 401: {auth: false}
  * - 401: {auth: false, error: String}
  */
 app.get("/api/user/config/:key", async (req, res) => {
@@ -184,7 +184,7 @@ app.get("/api/user/config/:key", async (req, res) => {
  * POST - detach mounted disk from instance
  * request:
  * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
+ * -y tpe: String - vm type (lxc, qemu)
  * - vmid: Number - vm id number
  * - disk: String - disk id (sata0, NOT unused)
  * responses:
@@ -742,6 +742,7 @@ app.get(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci
  * - node: String - vm host node id
  * responses:
  * - 200: PVE PCI Device Object
+ * - 401: {auth: false}
  * - 401: {auth: false, path: String}
  * - 500: {error: String}
  */
@@ -752,6 +753,12 @@ app.get(`/api/:node(${nodeRegexP})/pci`, async (req, res) => {
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
+		return;
+	}
+	let userNodes = db.getUserConfig(req.cookies.username).nodes;
+	if (!userNodes.includes(params.node)){
+		res.status(401).send({auth: false, path: params.node});
+		res.end();
 		return;
 	}
 	// get remaining user resources
