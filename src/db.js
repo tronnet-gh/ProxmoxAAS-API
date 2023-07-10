@@ -6,7 +6,7 @@ class LocalDB {
 	#data = null;
 	constructor () {
 		try {
-			this.load(this.#filename);
+			this.load();
 		}
 		catch {
 			console.log("Error: localdb.json was not found. Please follow the directions in the README to initialize localdb.json.");
@@ -14,18 +14,33 @@ class LocalDB {
 		}
 	}
 
-	load (path) {
-		this.#data = JSON.parse(readFileSync(path));
+	/**
+	 * Load db from local file system. Reads from file path store in filename.
+	 */
+	load () {
+		this.#data = JSON.parse(readFileSync(this.#filename));
 	}
 
-	save (path) {
-		writeFileSync(path, JSON.stringify(this.#data));
+	/**
+	 * Save db to local file system. Saves to file path stored in filename.
+	 */
+	save () {
+		writeFileSync(this.#filename, JSON.stringify(this.#data));
 	}
 
+	/**
+	 * Gets the global config object from db.
+	 * @returns {Object} global config data.
+	 */
 	getGlobalConfig () {
 		return this.#data.global;
 	}
 
+	/**
+	 * Gets a specific user's config from db.
+	 * @param {string} username of user to get config.
+	 * @returns {Object} specific user config data.
+	 */
 	getUserConfig (username) {
 		return this.#data.users[username];
 	}
