@@ -22,7 +22,7 @@ const vmidRegexP = "\\d+";
 /**
  * GET - get API version
  * responses:
- * - 200: {version: String}
+ * - 200: {version: string}
  */
 app.get("/api/version", (req, res) => {
 	res.status(200).send({ version: api.version });
@@ -74,8 +74,8 @@ app.get("/api/auth", async (req, res) => {
 /**
  * POST - safer ticket generation using proxmox authentication but adding HttpOnly
  * request:
- * - username: String
- * - password: String
+ * - username: string
+ * - password: string
  * responses:
  * - 200: {auth: true}
  * - 401: {auth: false}
@@ -155,11 +155,11 @@ app.get("/api/user/dynamic/resources", async (req, res) => {
 /**
  * GET - get db user configuration by key
  * request:
- * - key: User config key
+ * - key: string - user config key
  * responses:
  * - 200: Object
  * - 401: {auth: false}
- * - 401: {auth: false, error: String}
+ * - 401: {auth: false, error: string}
  */
 app.get("/api/user/config/:key", async (req, res) => {
 	const params = {
@@ -183,14 +183,14 @@ app.get("/api/user/config/:key", async (req, res) => {
 /**
  * POST - detach mounted disk from instance
  * request:
- * - node: String - vm host node id
- * -y tpe: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - disk: String - disk id (sata0, NOT unused)
+ * - node: string - vm host node id
+ * -y tpe: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - disk: string - disk id (sata0, NOT unused)
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/detach`, async (req, res) => {
@@ -229,15 +229,15 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 /**
  * POST - attach unused disk image to instance
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - disk: String - disk id (sata0 NOT unused)
- * - source: Number - source unused disk number (0 => unused0)
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - disk: string - disk id (sata0 NOT unused)
+ * - source: number - source unused disk number (0 => unused0)
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/attach`, async (req, res) => {
@@ -283,16 +283,16 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 /**
  * POST - increase size of mounted disk
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - disk: String - disk id (sata0 NOT unused)
- * - size: Number - increase size in GiB
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - disk: string - disk id (sata0 NOT unused)
+ * - size: number - increase size in GiB
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/resize`, async (req, res) => {
@@ -335,17 +335,17 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 /**
  * POST - move mounted disk from one storage to another
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - disk: String - disk id (sata0 NOT unused)
- * - storage: String - target storage to move disk
- * - delete: Number - delete original disk (0, 1)
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - disk: string - disk id (sata0 NOT unused)
+ * - storage: string - target storage to move disk
+ * - delete: number - delete original disk (0, 1)
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/move`, async (req, res) => {
@@ -401,14 +401,14 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 /**
  * DELETE - delete unused disk permanently
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - disk: String - disk id (unused0 or ide0)
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - disk: string - disk id (unused0 or ide0)
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
  * - 500: PVE Task Object
  */
 app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/delete`, async (req, res) => {
@@ -449,17 +449,17 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 /**
  * POST - create a new disk in storage of specified size
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - disk: String - disk id (sata0, ide0, NOT unused)
- * - storage: String - storage to hold disk
- * - size: Number - size of disk in GiB
- * - iso: String (optional) - file name to mount as cdrom
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - disk: string - disk id (sata0, ide0, NOT unused)
+ * - storage: string - storage to hold disk
+ * - size: number - size of disk in GiB
+ * - iso: string (optional) - file name to mount as cdrom
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/disk/:disk/create`, async (req, res) => {
@@ -526,17 +526,17 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/di
 /**
  * POST - create new virtual network interface
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - netid: Number - network interface id number (0 => net0)
- * - rate: Number - new bandwidth rate for interface in MB/s
- * - name: String, optional - required interface name for lxc only
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - netid: number - network interface id number (0 => net0)
+ * - rate: number - new bandwidth rate for interface in MB/s
+ * - name: string, optional - required interface name for lxc only
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/create`, async (req, res) => {
@@ -595,16 +595,16 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
 /**
  * POST - modify virtual network interface
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - netid: Number - network interface id number (0 => net0)
- * - rate: Number - new bandwidth rate for interface in MB/s
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - netid: number - network interface id number (0 => net0)
+ * - rate: number - new bandwidth rate for interface in MB/s
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/modify`, async (req, res) => {
@@ -653,14 +653,14 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/ne
 /**
  * DELETE - delete virtual network interface
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - netid: Number - network interface id number (0 => net0)
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - netid: number - network interface id number (0 => net0)
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
  * - 500: PVE Task Object
  */
 app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/net/:netid/delete`, async (req, res) => {
@@ -695,14 +695,14 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 /**
  * GET - get instance pcie device data
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number to destroy
- * - hostpci: String - hostpci number
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number to destroy
+ * - hostpci: string - hostpci number
  * responses:
  * - 200: PVE PCI Device Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
  */
 app.get(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci`, async (req, res) => {
 	const params = {
@@ -739,12 +739,12 @@ app.get(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci
 /**
  * GET - get available pcie devices given node and user
  * request:
- * - node: String - vm host node id
+ * - node: string - vm host node id
  * responses:
  * - 200: PVE PCI Device Object
  * - 401: {auth: false}
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
  */
 app.get(`/api/:node(${nodeRegexP})/pci`, async (req, res) => {
 	const params = {
@@ -775,16 +775,16 @@ app.get(`/api/:node(${nodeRegexP})/pci`, async (req, res) => {
 /**
  * POST - modify existing instance pci device
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number to destroy
- * - hostpci: String - hostpci number
- * - device: String - new device id
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number to destroy
+ * - hostpci: string - hostpci number
+ * - device: string - new device id
  * - pcie: Boolean - whether to use pci express or pci
  * response:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci/modify`, async (req, res) => {
@@ -859,15 +859,15 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 /**
  * POST - add new instance pci device
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number to destroy
- * - device: String - new device id
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number to destroy
+ * - device: string - new device id
  * - pcie: Boolean - whether to use pci express or pci
  * response:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/create`, async (req, res) => {
@@ -938,14 +938,14 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pc
 /**
  * DELETE - delete instance pci device
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number to destroy
- * - hostpci: String - hostpci number
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number to destroy
+ * - hostpci: string - hostpci number
  * response:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/pci/:hostpci/delete`, async (req, res) => {
@@ -994,17 +994,17 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 /**
  * POST - set basic resources for vm
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number
- * - proctype: String - vm processor type
- * - cores: Number, optional - number of processor cores for instance
- * - memory: Number - amount of memory for instance
- * - swap: Number, optional - new amount of swap for instance
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - proctype: string - vm processor type
+ * - cores: number, optional - number of processor cores for instance
+ * - memory: number - amount of memory for instance
+ * - swap: number, optional - new amount of swap for instance
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/resources`, async (req, res) => {
@@ -1059,23 +1059,23 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/re
 /**
  * POST - create new instance
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number for instance
- * - hostname: String, optional- hostname for lxc instance
- * - name: String, optional - hostname for qemu instance
- * - cores: Number - number of cores for instance
- * - memory: Number - amount of memory for instance
- * - swap: Number, optional - amount of swap for lxc instance
- * - password: String, optional - password for lxc instance
- * - ostemplate: String, optional - os template name for lxc instance
- * - rootfslocation: String, optional - storage name for lxc instance rootfs
- * - rootfssize: Number, optional, - size of lxc instance rootfs
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number for instance
+ * - hostname: string, optional- hostname for lxc instance
+ * - name: string, optional - hostname for qemu instance
+ * - cores: number - number of cores for instance
+ * - memory: number - amount of memory for instance
+ * - swap: number, optional - amount of swap for lxc instance
+ * - password: string, optional - password for lxc instance
+ * - ostemplate: string, optional - os template name for lxc instance
+ * - rootfslocation: string, optional - storage name for lxc instance rootfs
+ * - rootfssize: number, optional, - size of lxc instance rootfs
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
- * - 500: {error: String}
- * - 500: {request: Object, error: String}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
+ * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/create`, async (req, res) => {
@@ -1171,12 +1171,12 @@ app.post(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/cr
 /**
  * DELETE - destroy existing instance
  * request:
- * - node: String - vm host node id
- * - type: String - vm type (lxc, qemu)
- * - vmid: Number - vm id number to destroy
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number to destroy
  * responses:
  * - 200: PVE Task Object
- * - 401: {auth: false, path: String}
+ * - 401: {auth: false, path: string}
  * - 500: PVE Task Object
  */
 app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/delete`, async (req, res) => {
@@ -1194,6 +1194,15 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 	// commit action
 	const result = await requestPVE(vmpath, "DELETE", req.cookies, null, pveAPIToken);
 	await handleResponse(params.node, result, res);
+});
+
+/**
+ * GET - get hash of current cluster resources states
+ * responses:
+ * - string 
+ */
+app.get(`/cluster/statushash`, async (req, res) => {
+
 });
 
 app.listen(listenPort, () => {
