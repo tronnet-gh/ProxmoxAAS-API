@@ -1,6 +1,13 @@
 import { getUsedResources, requestPVE } from "./pve.js";
 import { db } from "./db.js";
 
+/**
+ * Check if a user is authorized to access a specified vm, or the cluster in general.
+ * @param {Object} cookies user auth cookies.
+ * @param {Object} res ProxmoxAAS API response object, used to send auth error responses.
+ * @param {string} vmpath vm path to check. Optional, if null then the general /version path is used.
+ * @returns {boolean} true if the user is authorized to access the specific vm or cluster in general, false otheriwse.
+ */
 export async function checkAuth (cookies, res, vmpath = null) {
 	let auth = false;
 
@@ -27,6 +34,12 @@ export async function checkAuth (cookies, res, vmpath = null) {
 	return auth;
 }
 
+/**
+ * Get user resource data including used, available, and maximum resources.
+ * @param {Object} req ProxmoxAAS API request object.
+ * @param {string} username of user to get resource data.
+ * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
+ */
 export async function getUserResources (req, username) {
 	const dbResources = db.getGlobalConfig().resources;
 	const used = await getUsedResources(req, dbResources);
@@ -47,6 +60,13 @@ export async function getUserResources (req, username) {
 	return { used, max, avail, resources: dbResources };
 }
 
+/**
+ * Check approval for user requesting additional resources. Generally, subtracts the request from available resources and ensures request can be fulfilled by the available resources.
+ * @param {Object} req ProxmoxAAS API request object.
+ * @param {string} username of user requesting additional resources.
+ * @param {Object} request k-v pairs of resources and requested amounts
+ * @returns {boolean} true if the available resources can fullfill the requested resources, false otherwise.
+ */
 export async function approveResources (req, username, request) {
 	const user = await getUserResources(req, username);
 	const avail = user.avail;

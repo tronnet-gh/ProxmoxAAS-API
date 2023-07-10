@@ -755,9 +755,9 @@ app.get(`/api/:node(${nodeRegexP})/pci`, async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	let userNodes = db.getUserConfig(req.cookies.username).nodes;
-	if (!userNodes.includes(params.node)){
-		res.status(401).send({auth: false, path: params.node});
+	const userNodes = db.getUserConfig(req.cookies.username).nodes;
+	if (!userNodes.includes(params.node)) {
+		res.status(401).send({ auth: false, path: params.node });
 		res.end();
 		return;
 	}
