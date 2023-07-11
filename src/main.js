@@ -6,8 +6,9 @@ import morgan from "morgan";
 
 import { api } from "./package.js";
 import { requestPVE, handleResponse, getDiskInfo, getDeviceInfo, getNodeAvailDevices } from "./pve.js";
-import { checkAuth, approveResources, getUserResources, getObjectHash } from "./utils.js";
+import { checkAuth, approveResources, getUserResources } from "./utils.js";
 import { db, pveAPIToken, listenPort, hostname, domain } from "./db.js";
+import { setupClientSync } from "./clientsync.js";
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -1196,32 +1197,7 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 	await handleResponse(params.node, result, res);
 });
 
-/**
- * GET - get hash of current cluster resources states
- * Client can use this endpoint to check for cluster state changes to avoid costly data transfers to the client.
- * responses:
- * - 401: {auth: false}
- * - 200: string
- */
-app.get(`/api/cluster/statushash`, async (req, res) => {
-	// check auth
-	const auth = await checkAuth(req.cookies, res);
-	if (!auth) {
-		return;
-	}
-	// get current cluster resources
-	let status = (await requestPVE("/cluster/resources", "GET", req.cookies)).data.data;
-	// filter out just state information of resources that are needed
-	let resources = ["lxc", "qemu", "node"]; 
-	let state = {};
-	status.forEach((element) => {
-		if (resources.includes(element.type)) {
-			state[element.id] = element.status;
-		}
-	});
-	res.status(200).send(getObjectHash(state));
-});
-
-app.listen(listenPort, () => {
+const server = app.listen(listenPort, () => {
 	console.log(`proxmoxaas-api v${api.version} listening on port ${listenPort}`);
 });
+setupClientSync(app, server, db.getGlobalConfig().clientsync);
