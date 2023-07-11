@@ -1,3 +1,5 @@
+import {createHash} from "crypto";
+
 import { getUsedResources, requestPVE } from "./pve.js";
 import { db } from "./db.js";
 
@@ -90,4 +92,11 @@ export async function approveResources (req, username, request) {
 		}
 	});
 	return approved; // if all requested resources pass, allow
+}
+
+
+export function getObjectHash (object, alg = "sha256", format = "hex") {
+	const hash = createHash(alg);
+	hash.update(JSON.stringify(object, Object.keys(object).sort()));
+	return hash.digest(format);
 }
