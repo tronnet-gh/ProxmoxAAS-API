@@ -87,6 +87,11 @@
 				"whitelist": true,
 				"display": true
 			}
+		},
+		"clientsync": {
+			"always": true,
+			"hash": true,
+			"interrupt": true
 		}
 	},
 	"users": {
