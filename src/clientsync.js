@@ -46,6 +46,7 @@ export function setupClientSync (app, server, schemes) {
 			res.status(200).send(getObjectHash(state));
 		});
 	}
+	
 	if (schemes.interrupt) {
 		const wsServer = new WebSocketServer({ noServer: true, path: "/api/sync/interrupt" });
 		wsServer.on("connection", (socket, username) => {
