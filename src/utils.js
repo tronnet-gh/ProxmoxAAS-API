@@ -99,3 +99,7 @@ export function getObjectHash (object, alg = "sha256", format = "hex") {
 	hash.update(JSON.stringify(object, Object.keys(object).sort()));
 	return hash.digest(format);
 }
+
+export function getTimeLeft (timeout) {
+	return Math.ceil((timeout._idleStart + timeout._idleTimeout - (global.process.uptime() * 1000)));
+}

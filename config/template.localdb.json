@@ -89,9 +89,24 @@
 			}
 		},
 		"clientsync": {
-			"always": true,
-			"hash": true,
-			"interrupt": true
+			"resourcetypes": [
+				"lxc",
+				"qemu",
+				"node"
+			],
+			"schemes": {
+				"always": {
+					"enabled": true
+				},
+				"hash": {
+					"enabled": true
+				},
+				"interrupt": {
+					"min-rate": 1,
+					"max-rate": 60,
+					"enabled": true
+				}
+			}
 		}
 	},
 	"users": {
