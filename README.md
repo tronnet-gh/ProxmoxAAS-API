@@ -16,6 +16,7 @@ In Proxmox VE, follow the following steps:
     - VM.* except VM.Audit, VM.Backup, VM.Clone, VM.Console, VM.Monitor, VM.PowerMgmt, VM.Snapshot, VM.Snapshot.Rollback
     - Datastore.Allocate, Datastore.AllocateSpace, Datastore.Audit
     - User.Modify
+	- Pool.Audit
 4. Add a new API Token Permission with path: `/`, select the API token created previously, and role: `proxmoxaas-api`
 5. Add a new User Permission with  path: `/`, select the `proxmoxaas-api` user, and role: `proxmoxaas-api`
 
