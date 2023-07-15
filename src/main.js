@@ -1197,8 +1197,8 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 	await handleResponse(params.node, result, res);
 });
 
-setupClientSync(app, server, db.getGlobalConfig().clientsync);
-
 const server = app.listen(listenPort, () => {
 	console.log(`proxmoxaas-api v${api.version} listening on port ${listenPort}`);
 });
+
+setupClientSync(app, server, db.getGlobalConfig().clientsync);
