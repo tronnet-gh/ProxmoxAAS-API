@@ -15,6 +15,8 @@ const requestedRates = {};
 let timer = null;
 // previous cluster state for interrupt handler
 let prevState = {};
+// target ms value
+let targetMSTime = null;
 
 export function setupClientSync (app, server, options) {
 	const schemes = options.schemes;
@@ -101,6 +103,7 @@ export function setupClientSync (app, server, options) {
 				if (Object.keys(requestedRates).length === 0) { // if there are no requested rates left, clear the timer
 					clearTimeout(timer);
 					timer = null;
+					targetMSTime = null;
 				}
 				// terminate socket
 				socket.terminate();
@@ -116,6 +119,8 @@ export function setupClientSync (app, server, options) {
 					// if timer has not started, start it with requested rate
 					if (!timer) {
 						timer = setTimeout(handleInterruptSync, rate);
+						const time = global.process.uptime();
+						targetMSTime = time - Math.floor(time);
 					}
 					// otherwise, if the timer has started but the rate is lower than the current minimum
 					// AND if the next event trigger is more than the new rate in the future,
@@ -124,6 +129,8 @@ export function setupClientSync (app, server, options) {
 					else if (rate < Math.min.apply(null, Object.values(requestedRates)) && getTimeLeft(timer) > rate) {
 						clearTimeout(timer);
 						timer = setTimeout(handleInterruptSync, rate);
+						const time = global.process.uptime();
+						targetMSTime = time - Math.floor(time);
 					}
 					// otherwise just add the rate to the list, when the next even trigger happens it will be requeued with the new requested rates
 					requestedRates[socket.rateIndex] = rate;
@@ -159,11 +166,14 @@ export function setupClientSync (app, server, options) {
 			const minRequestedRate = Math.min.apply(null, Object.values(requestedRates));
 			// if the minimum rate is not Infinity, schedule the next timer
 			if (minRequestedRate < Infinity) {
-				timer = setTimeout(handleInterruptSync, minRequestedRate);
+				const time = global.process.uptime() - targetMSTime;
+				const delay = (time - Math.round(time)) * 1000;
+				timer = setTimeout(handleInterruptSync, minRequestedRate - delay);
 			}
 			// if the minimum rate is Infinity, then don't schedule anything and set timer to null
 			else {
 				timer = null;
+				targetMSTime = null;
 				return;
 			}
 			// get current cluster resources
