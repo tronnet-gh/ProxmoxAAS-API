@@ -1197,6 +1197,25 @@ app.delete(`/api/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})/
 	await handleResponse(params.node, result, res);
 });
 
+app.get("/api/user/iso", async (req, res) => {
+	// check auth
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+	// get user iso config
+	const userIsoConfig = db.getGlobalConfig().useriso;
+	// get all isos
+	const isos = (await requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", null, null, pveAPIToken)).data.data;
+	const userIsos = [];
+	isos.forEach((iso) => {
+		iso.name = iso.volid.replace(`${userIsoConfig.storage}:iso/`, "");
+		userIsos.push(iso);
+	});
+	userIsos.sort();
+	res.status(200).send(userIsos);
+});
+
 const server = app.listen(listenPort, () => {
 	console.log(`proxmoxaas-api v${api.version} listening on port ${listenPort}`);
 });
