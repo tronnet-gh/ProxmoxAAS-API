@@ -107,6 +107,10 @@
 					"enabled": true
 				}
 			}
+		},
+		"useriso": {
+			"node": "examplenode1",
+			"storage": "cephfs"
 		}
 	},
 	"users": {
