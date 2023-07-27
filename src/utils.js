@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 
 import { getUsedResources, requestPVE } from "./pve.js";
-import { db } from "./db.js";
+import db from "./db.js";
 
 /**
  * Check if a user is authorized to access a specified vm, or the cluster in general.

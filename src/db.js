@@ -7,6 +7,11 @@ class LocalDB {
 	constructor () {
 		try {
 			this.load();
+			this.pveAPI = this.getGlobalConfig().application.pveAPI;
+			this.pveAPIToken = this.getGlobalConfig().application.pveAPIToken;
+			this.listenPort = this.getGlobalConfig().application.listenPort;
+			this.hostname = this.getGlobalConfig().application.hostname;
+			this.domain = this.getGlobalConfig().application.domain;
 		}
 		catch {
 			console.log("Error: localdb.json was not found. Please follow the directions in the README to initialize localdb.json.");
@@ -46,9 +51,4 @@ class LocalDB {
 	}
 }
 
-export const db = new LocalDB();
-export const pveAPI = db.getGlobalConfig().application.pveAPI;
-export const pveAPIToken = db.getGlobalConfig().application.pveAPIToken;
-export const listenPort = db.getGlobalConfig().application.listenPort;
-export const hostname = db.getGlobalConfig().application.hostname;
-export const domain = db.getGlobalConfig().application.domain;
+export default new LocalDB();
