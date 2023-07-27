@@ -1,5 +1,7 @@
 import axios from "axios";
-import { pveAPI, pveAPIToken } from "./db.js";
+import db from "./db.js";
+const pveAPI = db.pveAPI;
+const pveAPIToken = db.pveAPIToken;
 
 /**
  * Send HTTP request to proxmox API. Allows requests to be made with user cookie credentials or an API token for controlled priviledge elevation.
