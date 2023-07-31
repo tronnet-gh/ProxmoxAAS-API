@@ -2,7 +2,7 @@ import { WebSocketServer } from "ws";
 import * as cookie from "cookie";
 
 import { Router } from "express";
-export const router = Router();
+export const router = Router({ mergeParams: true }); ;
 
 const requestPVE = global.pve.requestPVE;
 const checkAuth = global.utils.checkAuth;

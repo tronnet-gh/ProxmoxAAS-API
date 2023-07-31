@@ -1,5 +1,5 @@
 import { Router } from "express";
-export const router = Router();
+export const router = Router({ mergeParams: true }); ;
 
 const requestPVE = global.pve.requestPVE;
 

@@ -1,13 +1,13 @@
 import { Router } from "express";
-export const router = Router();
+export const router = Router({ mergeParams: true }); ;
 
+const db = global.db;
 const requestPVE = global.pve.requestPVE;
 const handleResponse = global.pve.handleResponse;
 const getDeviceInfo = global.pve.getDeviceInfo;
 const getNodeAvailDevices = global.pve.getNodeAvailDevices;
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;
-const getUserResources = global.utils.getUserResources;
 const pveAPIToken = global.db.pveAPIToken;
 
 /**
@@ -22,7 +22,7 @@ const pveAPIToken = global.db.pveAPIToken;
  * - 401: {auth: false, path: string}
  * - 500: {error: string}
  */
-router.get(`/:hostpci`, async (req, res) => {
+router.get("/:hostpci", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -70,7 +70,7 @@ router.get(`/:hostpci`, async (req, res) => {
  * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
-router.post(`/:hostpci/modify`, async (req, res) => {
+router.post("/:hostpci/modify", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -154,7 +154,7 @@ router.post(`/:hostpci/modify`, async (req, res) => {
  * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
-router.post(`/create`, async (req, res) => {
+router.post("/create", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -233,7 +233,7 @@ router.post(`/create`, async (req, res) => {
  * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
-router.delete(`/:hostpci/delete`, async (req, res) => {
+router.delete("/:hostpci/delete", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
