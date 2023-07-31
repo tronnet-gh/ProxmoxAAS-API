@@ -24,8 +24,6 @@ app.use(morgan("combined"));
 // legacy defs
 const requestPVE = global.pve.requestPVE;
 const handleResponse = global.pve.handleResponse;
-const getDiskInfo = global.pve.getDiskInfo;
-const getDeviceInfo = global.pve.getDeviceInfo;
 const getNodeAvailDevices = global.pve.getNodeAvailDevices;
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;

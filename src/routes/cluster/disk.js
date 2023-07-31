@@ -1,6 +1,7 @@
 import { Router } from "express";
-export const router = Router();
+export const router = Router({ mergeParams: true });
 
+const db = global.db;
 const requestPVE = global.pve.requestPVE;
 const handleResponse = global.pve.handleResponse;
 const getDiskInfo = global.pve.getDiskInfo;
@@ -21,7 +22,7 @@ const pveAPIToken = global.db.pveAPIToken;
  * - 500: {error: string}
  * - 500: PVE Task Object
  */
-router.post(`/:disk/detach`, async (req, res) => {
+router.post("/:disk/detach", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -69,7 +70,7 @@ router.post(`/:disk/detach`, async (req, res) => {
  * - 500: {error: string}
  * - 500: PVE Task Object
  */
-router.post(`/:disk/attach`, async (req, res) => {
+router.post("/:disk/attach", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -125,7 +126,7 @@ router.post(`/:disk/attach`, async (req, res) => {
  * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
-router.post(`/:disk/resize`, async (req, res) => {
+router.post("/:disk/resize", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -179,7 +180,7 @@ router.post(`/:disk/resize`, async (req, res) => {
  * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
-router.post(`/:disk/move`, async (req, res) => {
+router.post("/:disk/move", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -243,7 +244,7 @@ router.post(`/:disk/move`, async (req, res) => {
  * - 500: {error: string}
  * - 500: PVE Task Object
  */
-router.delete(`/:disk/delete`, async (req, res) => {
+router.delete("/:disk/delete", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -295,7 +296,7 @@ router.delete(`/:disk/delete`, async (req, res) => {
  * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
-router.post(`/:disk/create`, async (req, res) => {
+router.post("/:disk/create", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,

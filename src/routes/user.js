@@ -1,6 +1,7 @@
 import { Router } from "express";
-export const router = Router();
+export const router = Router({ mergeParams: true }); ;
 
+const db = global.db;
 const requestPVE = global.pve.requestPVE;
 const checkAuth = global.utils.checkAuth;
 const getUserResources = global.utils.getUserResources;

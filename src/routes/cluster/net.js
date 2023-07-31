@@ -1,6 +1,7 @@
 import { Router } from "express";
-export const router = Router();
+export const router = Router({ mergeParams: true }); ;
 
+const db = global.db;
 const requestPVE = global.pve.requestPVE;
 const handleResponse = global.pve.handleResponse;
 const checkAuth = global.utils.checkAuth;
@@ -23,7 +24,7 @@ const pveAPIToken = global.db.pveAPIToken;
  * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
-router.post(`/:netid/create`, async (req, res) => {
+router.post("/:netid/create", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -92,7 +93,7 @@ router.post(`/:netid/create`, async (req, res) => {
  * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
-router.post(`/:netid/modify`, async (req, res) => {
+router.post("/:netid/modify", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
@@ -149,7 +150,7 @@ router.post(`/:netid/modify`, async (req, res) => {
  * - 500: {error: string}
  * - 500: PVE Task Object
  */
-router.delete(`/:netid/delete`, async (req, res) => {
+router.delete("/:netid/delete", async (req, res) => {
 	req.params = Object.assign({}, req.routeparams, req.params);
 	const params = {
 		node: req.params.node,
