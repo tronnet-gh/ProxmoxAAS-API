@@ -1,7 +1,4 @@
 import axios from "axios";
-import db from "./db.js";
-const pveAPI = db.pveAPI;
-const pveAPIToken = db.pveAPIToken;
 
 /**
  * Send HTTP request to proxmox API. Allows requests to be made with user cookie credentials or an API token for controlled priviledge elevation.
@@ -13,6 +10,7 @@ const pveAPIToken = db.pveAPIToken;
  * @returns {Obejct} HTTP response object or HTTP error object
  */
 export async function requestPVE (path, method, cookies, body = null, token = null) {
+	const pveAPI = global.db.pveAPI;
 	const url = `${pveAPI}${path}`;
 	const content = {
 		method,
@@ -53,6 +51,7 @@ export async function requestPVE (path, method, cookies, body = null, token = nu
  * @param {Object} res response object of ProxmoxAAS API call.
  */
 export async function handleResponse (node, result, res) {
+	const pveAPIToken = global.db.pveAPIToken;
 	const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
 	if (result.data.data && typeof (result.data.data) === "string" && result.data.data.startsWith("UPID:")) {
 		const upid = result.data.data;
@@ -144,6 +143,7 @@ export async function getUsedResources (req, resourceMeta) {
  * @returns {Objetc} k-v pairs of specific disk data, including storage and size of unused disks.
  */
 export async function getDiskInfo (node, type, vmid, disk) {
+	const pveAPIToken = global.db.pveAPIToken;
 	try {
 		const config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
 		const storageID = config.data.data[disk].split(":")[0];
@@ -166,6 +166,7 @@ export async function getDiskInfo (node, type, vmid, disk) {
  * @returns {Object} k-v pairs of specific device data, including device name and manufacturer.
  */
 export async function getDeviceInfo (node, type, vmid, qid) {
+	const pveAPIToken = global.db.pveAPIToken;
 	try {
 		const result = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", null, null, pveAPIToken)).data.data;
 		const deviceData = [];
@@ -193,6 +194,7 @@ export async function getDeviceInfo (node, type, vmid, qid) {
  * @returns {Array.<Object>} array of k-v pairs of specific device data, including device name and manufacturer, which are available on the specified node.
  */
 export async function getNodeAvailDevices (node, cookies) {
+	const pveAPIToken = global.db.pveAPIToken;
 	// get node pci devices
 	let nodeAvailPci = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", cookies, null, pveAPIToken)).data.data;
 	// for each node container, get its config and remove devices which are already used

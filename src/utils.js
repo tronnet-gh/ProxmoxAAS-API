@@ -1,7 +1,6 @@
 import { createHash } from "crypto";
 
 import { getUsedResources, requestPVE } from "./pve.js";
-import db from "./db.js";
 
 /**
  * Check if a user is authorized to access a specified vm, or the cluster in general.
@@ -11,6 +10,7 @@ import db from "./db.js";
  * @returns {boolean} true if the user is authorized to access the specific vm or cluster in general, false otheriwse.
  */
 export async function checkAuth (cookies, res, vmpath = null) {
+	const db = global.db;
 	let auth = false;
 
 	if (db.getUserConfig(cookies.username) === null) {
@@ -43,6 +43,7 @@ export async function checkAuth (cookies, res, vmpath = null) {
  * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
  */
 export async function getUserResources (req, username) {
+	const db = global.db;
 	const dbResources = db.getGlobalConfig().resources;
 	const used = await getUsedResources(req, dbResources);
 	const max = db.getUserConfig(username).resources.max;

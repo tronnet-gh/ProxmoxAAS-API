@@ -8,6 +8,7 @@ const requestPVE = global.pve.requestPVE;
  * request and responses passed through to/from proxmox
  */
 router.get("/*", async (req, res) => { // proxy endpoint for GET proxmox api with no token
+	console.log(req.url);
 	const path = req.url.replace("/api/proxmox", "");
 	const result = await requestPVE(path, "GET", req.cookies);
 	res.status(result.status).send(result.data);
