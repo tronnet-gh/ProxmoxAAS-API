@@ -7,7 +7,7 @@ import morgan from "morgan";
 import api from "./package.js";
 import * as pve from "./pve.js";
 import * as utils from "./utils.js";
-import db from "./db.js";
+import LocalDB from "./db.js";
 
 import parseArgs from "minimist";
 global.argv = parseArgs(process.argv.slice(2), {
@@ -19,16 +19,16 @@ global.argv = parseArgs(process.argv.slice(2), {
 global.api = api;
 global.pve = pve;
 global.utils = utils;
-global.db = new db(global.argv.localdb);
+global.db = new LocalDB(global.argv.localdb);
 
 const app = express();
 global.app = app;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(cors({ origin: db.hostname }));
+app.use(cors({ origin: global.db.hostname }));
 app.use(morgan("combined"));
 
-global.server = app.listen(db.listenPort, () => {
+global.server = app.listen(global.db.listenPort, () => {
 	console.log(`proxmoxaas-api v${api.version} listening on port ${global.db.listenPort}`);
 });
 
