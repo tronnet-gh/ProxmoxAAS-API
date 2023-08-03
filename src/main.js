@@ -30,7 +30,7 @@ import("./routes/auth.js").then((module) => {
 });
 
 import("./routes/cluster.js").then((module) => {
-	app.use("/api", module.router);
+	app.use("/api/cluster", module.router);
 });
 
 import("./routes/global.js").then((module) => {
