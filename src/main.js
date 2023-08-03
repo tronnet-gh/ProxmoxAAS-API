@@ -29,7 +29,7 @@ app.use(cors({ origin: db.hostname }));
 app.use(morgan("combined"));
 
 global.server = app.listen(db.listenPort, () => {
-	console.log(`proxmoxaas-api v${api.version} listening on port ${db.listenPort}`);
+	console.log(`proxmoxaas-api v${api.version} listening on port ${global.db.listenPort}`);
 });
 
 import("./routes/auth.js").then((module) => {
