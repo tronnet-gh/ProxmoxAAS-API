@@ -2,10 +2,11 @@ import { readFileSync, writeFileSync } from "fs";
 import { exit } from "process";
 
 class LocalDB {
-	#filename = "config/localdb.json";
+	#path = null;
 	#data = null;
-	constructor () {
+	constructor (path) {
 		try {
+			this.#path = path;
 			this.load();
 			this.pveAPI = this.getGlobalConfig().application.pveAPI;
 			this.pveAPIToken = this.getGlobalConfig().application.pveAPIToken;
@@ -14,7 +15,7 @@ class LocalDB {
 			this.domain = this.getGlobalConfig().application.domain;
 		}
 		catch {
-			console.log("Error: localdb.json was not found. Please follow the directions in the README to initialize localdb.json.");
+			console.log(`Error: ${path} was not found. Please follow the directions in the README to initialize localdb.json.`);
 			exit(1);
 		}
 	}
@@ -23,14 +24,14 @@ class LocalDB {
 	 * Load db from local file system. Reads from file path store in filename.
 	 */
 	load () {
-		this.#data = JSON.parse(readFileSync(this.#filename));
+		this.#data = JSON.parse(readFileSync(this.#path));
 	}
 
 	/**
 	 * Save db to local file system. Saves to file path stored in filename.
 	 */
 	save () {
-		writeFileSync(this.#filename, JSON.stringify(this.#data));
+		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
 	/**
@@ -51,4 +52,4 @@ class LocalDB {
 	}
 }
 
-export default new LocalDB();
+export default LocalDB;

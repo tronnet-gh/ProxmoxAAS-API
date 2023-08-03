@@ -9,10 +9,17 @@ import * as pve from "./pve.js";
 import * as utils from "./utils.js";
 import db from "./db.js";
 
+import parseArgs from "minimist";
+global.argv = parseArgs(process.argv.slice(2), {
+	default: {
+		localdb: "config/localdb.json"
+	}
+});
+
 global.api = api;
 global.pve = pve;
 global.utils = utils;
-global.db = db;
+global.db = new db(global.argv.localdb);
 
 const app = express();
 global.app = app;
