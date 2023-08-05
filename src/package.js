@@ -1,2 +1,4 @@
 import { readFileSync } from "fs";
-export default JSON.parse(readFileSync("package.json"));
+export default (path) => {
+	return JSON.parse(readFileSync(path));
+};

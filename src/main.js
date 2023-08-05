@@ -12,11 +12,12 @@ import LocalDB from "./db.js";
 import parseArgs from "minimist";
 global.argv = parseArgs(process.argv.slice(2), {
 	default: {
+		package: "package.json",
 		localdb: "config/localdb.json"
 	}
 });
 
-global.api = api;
+global.api = api(global.argv.package);
 global.pve = pve;
 global.utils = utils;
 global.db = new LocalDB(global.argv.localdb);
@@ -29,7 +30,7 @@ app.use(cors({ origin: global.db.hostname }));
 app.use(morgan("combined"));
 
 global.server = app.listen(global.db.listenPort, () => {
-	console.log(`proxmoxaas-api v${api.version} listening on port ${global.db.listenPort}`);
+	console.log(`proxmoxaas-api v${global.api.version} listening on port ${global.db.listenPort}`);
 });
 
 import("./routes/auth.js").then((module) => {
@@ -62,7 +63,7 @@ import("./routes/user.js").then((module) => {
  * - 200: {version: string}
  */
 app.get("/api/version", (req, res) => {
-	res.status(200).send({ version: api.version });
+	res.status(200).send({ version: global.api.version });
 });
 
 /**
