@@ -13,7 +13,7 @@ const pveAPIToken = global.db.pveAPIToken;
  * POST - detach mounted disk from instance
  * request:
  * - node: string - vm host node id
- * -y tpe: string - vm type (lxc, qemu)
+ * - type: string - vm type (lxc, qemu)
  * - vmid: number - vm id number
  * - disk: string - disk id (sata0, NOT unused)
  * responses:

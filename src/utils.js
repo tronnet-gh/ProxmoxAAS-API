@@ -95,12 +95,24 @@ export async function approveResources (req, username, request) {
 	return approved; // if all requested resources pass, allow
 }
 
+/**
+ * Get the hash value of an object with data values.
+ * @param {Object} object to be hashed.
+ * @param {string} alg algorithm used to get digest.
+ * @param {string} format format of digest.
+ * @returns {string} digest of hash function.
+ */
 export function getObjectHash (object, alg = "sha256", format = "hex") {
 	const hash = createHash(alg);
 	hash.update(JSON.stringify(object, Object.keys(object).sort()));
 	return hash.digest(format);
 }
 
+/**
+ * Get the time remaining of scheduler timeout object.
+ * @param {Object} timeout object to get time reamining.
+ * @returns {number} milliseconds remaining until next event.
+ */
 export function getTimeLeft (timeout) {
 	return Math.ceil((timeout._idleStart + timeout._idleTimeout - (global.process.uptime() * 1000)));
 }

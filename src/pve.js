@@ -7,7 +7,7 @@ import axios from "axios";
  * @param {Object} cookies user cookies for authorization if an API token is not used. Safest option for authentication.
  * @param {string} body body parameters and data to be sent. Optional.
  * @param {string} token proxmox API token to be used for controled priviledge elevation, allows user requests to perform admin actions safely. Optional
- * @returns {Obejct} HTTP response object or HTTP error object
+ * @returns {Object} HTTP response object or HTTP error object
  */
 export async function requestPVE (path, method, cookies, body = null, token = null) {
 	const pveAPI = global.db.pveAPI;
