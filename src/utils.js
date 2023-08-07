@@ -1,4 +1,7 @@
 import { createHash } from "crypto";
+import path from 'path';
+import url from 'url';
+import * as fs from "fs";
 
 import { getUsedResources, requestPVE } from "./pve.js";
 
@@ -115,4 +118,29 @@ export function getObjectHash (object, alg = "sha256", format = "hex") {
  */
 export function getTimeLeft (timeout) {
 	return Math.ceil((timeout._idleStart + timeout._idleTimeout - (global.process.uptime() * 1000)));
+}
+
+/**
+ * Recursively import routes from target folder.
+ * @param {Object} router or app object.
+ * @param {string} baseroute API route for each imported module.
+ * @param {string} target folder to import modules.
+ * @param {string} from source folder of calling module, optional for imports from the same base directory.
+ */
+export function recursiveImport (router, baseroute, target, from = import.meta.url) {
+	const thisPath = path.dirname(url.fileURLToPath(import.meta.url));
+	const fromPath = path.relative(".",  path.dirname(url.fileURLToPath(from)));
+	const targetPath = path.relative(".", `${fromPath}/${target}`);
+	const importPath = path.relative(thisPath, targetPath);
+	const files = fs.readdirSync(targetPath);
+	files.forEach((file) => {
+		if (file.endsWith(".js")) {
+			const path = `./${importPath}/${file}`;
+			const route = `${baseroute}/${file.replace(".js", "")}`
+			import(path).then((module) => {
+				router.use(route, module.router);
+			});
+			console.log(`routes: loaded ${path} as ${route}`);
+		}
+	});
 }
