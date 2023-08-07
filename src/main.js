@@ -33,29 +33,7 @@ global.server = app.listen(global.db.listenPort, () => {
 	console.log(`proxmoxaas-api v${global.api.version} listening on port ${global.db.listenPort}`);
 });
 
-import("./routes/auth.js").then((module) => {
-	app.use("/api/auth", module.router);
-});
-
-import("./routes/cluster.js").then((module) => {
-	app.use("/api/cluster", module.router);
-});
-
-import("./routes/global.js").then((module) => {
-	app.use("/api/global", module.router);
-});
-
-import("./routes/proxmox.js").then((module) => {
-	app.use("/api/proxmox", module.router);
-});
-
-import("./routes/sync.js").then((module) => {
-	app.use("/api/sync", module.router);
-});
-
-import("./routes/user.js").then((module) => {
-	app.use("/api/user", module.router);
-});
+global.utils.recursiveImport(app, "/api", "routes");
 
 /**
  * GET - get API version
