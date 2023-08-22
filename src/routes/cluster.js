@@ -78,7 +78,8 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		proctype: req.body.proctype,
 		cores: req.body.cores,
 		memory: req.body.memory,
-		swap: req.body.swap
+		swap: req.body.swap,
+		boot: req.body.boot
 	};
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
@@ -111,6 +112,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 	}
 	else if (params.type === "qemu") {
 		action.cpu = params.proctype;
+		action.boot = `order=${params.boot.toString().replace(",", ";")}`;
 	}
 	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
