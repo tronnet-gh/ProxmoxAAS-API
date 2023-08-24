@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
-import path from 'path';
-import url from 'url';
+import path from "path";
+import url from "url";
 import * as fs from "fs";
 
 import { getUsedResources, requestPVE } from "./pve.js";
@@ -129,14 +129,14 @@ export function getTimeLeft (timeout) {
  */
 export function recursiveImport (router, baseroute, target, from = import.meta.url) {
 	const thisPath = path.dirname(url.fileURLToPath(import.meta.url));
-	const fromPath = path.relative(".",  path.dirname(url.fileURLToPath(from)));
+	const fromPath = path.relative(".", path.dirname(url.fileURLToPath(from)));
 	const targetPath = path.relative(".", `${fromPath}/${target}`);
 	const importPath = path.relative(thisPath, targetPath);
 	const files = fs.readdirSync(targetPath);
 	files.forEach((file) => {
 		if (file.endsWith(".js")) {
 			const path = `./${importPath}/${file}`;
-			const route = `${baseroute}/${file.replace(".js", "")}`
+			const route = `${baseroute}/${file.replace(".js", "")}`;
 			import(path).then((module) => {
 				router.use(route, module.router);
 			});
