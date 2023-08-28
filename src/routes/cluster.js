@@ -112,7 +112,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 	}
 	else if (params.type === "qemu") {
 		action.cpu = params.proctype;
-		action.boot = `order=${params.boot.toString().replace(",", ";")}`;
+		action.boot = `order=${params.boot.toString().replaceAll(",", ";")};`;
 	}
 	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
