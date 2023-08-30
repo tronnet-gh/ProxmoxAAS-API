@@ -23,6 +23,7 @@
 				"display": false
 			},
 			"cores": {
+				"title": "vCPU",
 				"type": "numeric",
 				"multiplier": 1,
 				"base": 1024,
@@ -31,6 +32,7 @@
 				"display": true
 			},
 			"memory": {
+				"title": "RAM",
 				"type": "numeric",
 				"multiplier": 1048576,
 				"base": 1024,
@@ -39,6 +41,7 @@
 				"display": true
 			},
 			"swap": {
+				"title": "SWAP",
 				"type": "numeric",
 				"multiplier": 1048576,
 				"base": 1024,
@@ -47,6 +50,7 @@
 				"display": true
 			},
 			"local": {
+				"title": "local",
 				"type": "storage",
 				"multiplier": 1,
 				"base": 1024,
@@ -61,6 +65,7 @@
 				"display": true
 			},
 			"cephpl": {
+				"title": "cephpl",
 				"type": "storage",
 				"multiplier": 1,
 				"base": 1024,
@@ -75,6 +80,7 @@
 				"display": true
 			},
 			"network": {
+				"title": "Network",
 				"type": "network",
 				"multiplier": 1000000,
 				"base": 1000,
