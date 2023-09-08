@@ -23,7 +23,7 @@
 				"display": false
 			},
 			"cores": {
-				"title": "vCPU",
+				"name": "vCPU",
 				"type": "numeric",
 				"multiplier": 1,
 				"base": 1024,
@@ -32,7 +32,7 @@
 				"display": true
 			},
 			"memory": {
-				"title": "RAM",
+				"name": "RAM",
 				"type": "numeric",
 				"multiplier": 1048576,
 				"base": 1024,
@@ -41,7 +41,7 @@
 				"display": true
 			},
 			"swap": {
-				"title": "SWAP",
+				"name": "SWAP",
 				"type": "numeric",
 				"multiplier": 1048576,
 				"base": 1024,
@@ -50,7 +50,7 @@
 				"display": true
 			},
 			"local": {
-				"title": "local",
+				"name": "local",
 				"type": "storage",
 				"multiplier": 1,
 				"base": 1024,
@@ -65,7 +65,7 @@
 				"display": true
 			},
 			"cephpl": {
-				"title": "cephpl",
+				"name": "cephpl",
 				"type": "storage",
 				"multiplier": 1,
 				"base": 1024,
@@ -80,8 +80,8 @@
 				"display": true
 			},
 			"network": {
-				"title": "Network",
-				"type": "network",
+				"name": "Network",
+				"type": "numeric",
 				"multiplier": 1000000,
 				"base": 1000,
 				"compact": true,
@@ -122,22 +122,48 @@
 	"users": {
 		"exampleuser@examplepool": {
 			"resources": {
-				"max": {
-					"cpu": [
-						"kvm64",
-						"host"
-					],
-					"cores": 128,
-					"memory": 131072,
-					"swap": 131072,
-					"local": 1099511627776,
-					"cephpl": 1099511627776,
-					"network": 100000,
-					"pci": [
-						"Device Name Matcher 1",
-						"Device Name Matcher 2"
-					]
-				}
+				"cpu": [
+					{
+						"match": "kvm64",
+						"name": "kvm64",
+						"max": 1
+					},
+					{
+						"match": "host",
+						"name": "host",
+						"max": 1
+					}
+				],
+				"cores": {
+					"max": 128
+				},
+				"memory": {
+					"max": 131072
+				},
+				"swap": {
+					"max": 131072
+				},
+				"local": {
+					"max": 1099511627776
+				},
+				"cephpl": {
+					"max": 1099511627776
+				},
+				"network": {
+					"max": 100000
+				},
+				"pci": [
+					{
+						"match": "Device Name Matcher 1",
+						"name": "Device Display Name",
+						"max": 1
+					},
+					{
+						"match": "Device Name Matcher 2",
+						"name": "Device Display Name",
+						"max": 1
+					}
+				]
 			},
 			"nodes": [
 				"examplenode1",

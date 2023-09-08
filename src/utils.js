@@ -49,21 +49,25 @@ export async function getUserResources (req, username) {
 	const db = global.db;
 	const dbResources = db.getGlobalConfig().resources;
 	const used = await getUsedResources(req, dbResources);
-	const max = db.getUserConfig(username).resources.max;
-	const avail = {};
-	Object.keys(max).forEach((k) => {
+	const userResources = db.getUserConfig(username).resources;
+	Object.keys(userResources).forEach((k) => {
 		if (dbResources[k] && dbResources[k].type === "list") {
-			avail[k] = structuredClone(max[k]);
+			userResources[k].forEach((listResource) => {
+				listResource.used = 0;
+				listResource.avail = listResource.max;
+			});
 			used[k].forEach((usedDeviceName) => {
-				const index = avail[k].findIndex((maxElement) => usedDeviceName.includes(maxElement));
-				avail[k].splice(index, 1);
+				const index = userResources[k].findIndex((availEelement) => usedDeviceName.includes(availEelement.match));
+				userResources[k][index].used++;
+				userResources[k][index].avail--;
 			});
 		}
 		else {
-			avail[k] = max[k] - used[k];
+			userResources[k].used = used[k];
+			userResources[k].avail = userResources[k].max - used[k];
 		}
 	});
-	return { used, max, avail, resources: dbResources };
+	return userResources;
 }
 
 /**
@@ -74,24 +78,26 @@ export async function getUserResources (req, username) {
  * @returns {boolean} true if the available resources can fullfill the requested resources, false otherwise.
  */
 export async function approveResources (req, username, request) {
-	const user = await getUserResources(req, username);
-	const avail = user.avail;
-	const resources = user.resources;
+	const db = global.db;
+	const dbResources = db.getGlobalConfig().resources;
+	const userResources = await getUserResources(req, username);
 	let approved = true;
 	Object.keys(request).forEach((key) => {
-		if (!(key in avail)) { // if requested resource is not in avail, block
+		if (!(key in userResources)) { // if requested resource is not in avail, block
 			approved = false;
 		}
-		else if (resources[key].type === "list") {
-			const inAvail = avail[key].some(availElem => request[key].includes(availElem));
-			if (inAvail !== resources[key].whitelist) {
+		else if (dbResources[key].type === "list") { // if the resource type is list, check if the requested resource exists in the list
+			const index = userResources[key].findIndex((availElement) => request[key].includes(availElement.match));
+			// if no matching resource when index == -1, then remaining is -1 otherwise use the remaining value
+			const avail = index === -1 ? false : userResources[key][index].avail > 0;
+			if (avail !== dbResources[key].whitelist) {
 				approved = false;
 			}
 		}
-		else if (isNaN(avail[key]) || isNaN(request[key])) { // if either the requested or avail resource is NaN, block
+		else if (isNaN(userResources[key].avail) || isNaN(request[key])) { // if either the requested or avail resource is NaN, block
 			approved = false;
 		}
-		else if (avail[key] - request[key] < 0) { // if the avail resources is less than the requested resources, block
+		else if (userResources[key].avail - request[key] < 0) { // if the avail resources is less than the requested resources, block
 			approved = false;
 		}
 	});
