@@ -44,11 +44,11 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 		return;
 	}
 	// get remaining user resources
-	const userAvailPci = (await getUserResources(req, req.cookies.username)).avail.pci;
+	const userAvailPci = (await getUserResources(req, req.cookies.username)).pci;
 	// get node avail devices
 	let nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
 	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => {
-		return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail);
+		return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
 	}));
 	res.status(200).send(nodeAvailPci);
 	res.end();
