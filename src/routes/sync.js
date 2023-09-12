@@ -55,7 +55,7 @@ if (schemes.hash.enabled) {
 			return;
 		}
 		// get current cluster resources
-		const status = (await requestPVE("/cluster/resources", "GET", req.cookies)).data.data;
+		const status = (await requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
 		// filter out just state information of resources that are needed
 		const state = extractClusterState(status, resourceTypes);
 		res.status(200).send(getObjectHash(state));
@@ -158,7 +158,7 @@ if (schemes.interrupt.enabled) {
 	// handle the wss upgrade request
 	global.server.on("upgrade", async (req, socket, head) => {
 		const cookies = cookie.parse(req.headers.cookie || "");
-		const auth = (await requestPVE("/version", "GET", cookies)).status === 200;
+		const auth = (await requestPVE("/version", "GET", { cookies })).status === 200;
 		if (!auth) {
 			socket.destroy();
 		}
@@ -185,7 +185,7 @@ if (schemes.interrupt.enabled) {
 			return;
 		}
 		// get current cluster resources
-		const status = (await requestPVE("/cluster/resources", "GET", null, null, pveAPIToken)).data.data;
+		const status = (await requestPVE("/cluster/resources", "GET", { token: pveAPIToken })).data.data;
 		// filter out just state information of resources that are needed, and hash each one
 		const currState = extractClusterState(status, resourceTypes, true);
 		// get a map of users to send sync notifications

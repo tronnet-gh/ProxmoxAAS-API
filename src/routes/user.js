@@ -66,7 +66,7 @@ router.get("/iso", async (req, res) => {
 	// get user iso config
 	const userIsoConfig = db.getGlobalConfig().useriso;
 	// get all isos
-	const isos = (await requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", null, null, pveAPIToken)).data.data;
+	const isos = (await requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", { token: pveAPIToken })).data.data;
 	const userIsos = [];
 	isos.forEach((iso) => {
 		iso.name = iso.volid.replace(`${userIsoConfig.storage}:iso/`, "");

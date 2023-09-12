@@ -37,7 +37,7 @@ router.get("/:hostpci", async (req, res) => {
 		return;
 	}
 	// check device is in instance config
-	const config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
+	const config = (await requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	if (!config[`hostpci${params.hostpci}`]) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci} in ${params.vmid}.` });
 		res.end();
@@ -95,7 +95,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// get instance config to check if device has not changed
-	const config = (await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", params.cookies, null, pveAPIToken)).data.data;
+	const config = (await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: pveAPIToken })).data.data;
 	const currentDeviceData = await getDeviceInfo(params.node, params.type, params.vmid, config[`hostpci${params.hostpci}`].split(",")[0]);
 	if (!currentDeviceData) {
 		res.status(500).send({ error: `No device in hostpci${params.hostpci}.` });
@@ -126,7 +126,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 	action[`hostpci${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	action = JSON.stringify(action);
 	// commit action
-	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
+	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot));
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -136,7 +136,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	const result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	const result = await requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
 	await handleResponse(params.node, result, res);
 });
 
@@ -178,7 +178,7 @@ router.post("/create", async (req, res) => {
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// get instance config to find next available hostpci slot
-	const config = requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", params.cookies, null, null);
+	const config = requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { cookies: params.cookies });
 	let hostpci = 0;
 	while (config[`hostpci${hostpci}`]) {
 		hostpci++;
@@ -206,7 +206,7 @@ router.post("/create", async (req, res) => {
 	action[`hostpci${hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	action = JSON.stringify(action);
 	// commit action
-	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
+	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot));
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -216,7 +216,7 @@ router.post("/create", async (req, res) => {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	const result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	const result = await requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
 	await handleResponse(params.node, result, res);
 });
 
@@ -254,7 +254,7 @@ router.delete("/:hostpci/delete", async (req, res) => {
 		return;
 	}
 	// check device is in instance config
-	const config = (await requestPVE(`${vmpath}/config`, "GET", req.cookies)).data.data;
+	const config = (await requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	if (!config[`hostpci${params.hostpci}`]) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci} in ${params.vmid}.` });
 		res.end();
@@ -263,7 +263,7 @@ router.delete("/:hostpci/delete", async (req, res) => {
 	// setup action
 	const action = JSON.stringify({ delete: `hostpci${params.hostpci}` });
 	// commit action, need to use root user here because proxmox api only allows root to modify hostpci for whatever reason
-	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot), null);
+	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobalConfig().application.pveroot));
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -273,6 +273,6 @@ router.delete("/:hostpci/delete", async (req, res) => {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	const result = await requestPVE(`${vmpath}/config`, "POST", rootcookies, action, null);
+	const result = await requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
 	await handleResponse(params.node, result, res);
 });
