@@ -4,12 +4,11 @@ import axios from "axios";
  * Send HTTP request to proxmox API. Allows requests to be made with user cookie credentials or an API token for controlled priviledge elevation.
  * @param {string} path HTTP path, prepended with the proxmox API base path.
  * @param {string} method HTTP method.
- * @param {Object} cookies user cookies for authorization if an API token is not used. Safest option for authentication.
+ * @param {Object} auth authentication method. Set auth.cookies with user cookies or auth.token with PVE API Token. Optional.
  * @param {string} body body parameters and data to be sent. Optional.
- * @param {string} token proxmox API token to be used for controled priviledge elevation, allows user requests to perform admin actions safely. Optional
- * @returns {Object} HTTP response object or HTTP error object
+ * @returns {Object} HTTP response object or HTTP error object.
  */
-export async function requestPVE (path, method, cookies, body = null, token = null) {
+export async function requestPVE (path, method, auth = null, body = null) {
 	const pveAPI = global.db.pveAPI;
 	const url = `${pveAPI}${path}`;
 	const content = {
@@ -21,12 +20,12 @@ export async function requestPVE (path, method, cookies, body = null, token = nu
 		}
 	};
 
-	if (token) {
-		content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
+	if (auth && auth.cookies) {
+		content.headers.CSRFPreventionToken = auth.cookies.CSRFPreventionToken;
+		content.headers.Cookie = `PVEAuthCookie=${auth.cookies.PVEAuthCookie}; CSRFPreventionToken=${auth.cookies.CSRFPreventionToken}`;
 	}
-	else if (cookies) {
-		content.headers.CSRFPreventionToken = cookies.CSRFPreventionToken;
-		content.headers.Cookie = `PVEAuthCookie=${cookies.PVEAuthCookie}; CSRFPreventionToken=${cookies.CSRFPreventionToken}`;
+	else if (auth && auth.token) {
+		content.headers.Authorization = `PVEAPIToken=${auth.token.user}@${auth.token.realm}!${auth.token.id}=${auth.token.uuid}`;
 	}
 
 	if (body) {
@@ -55,21 +54,21 @@ export async function handleResponse (node, result, res) {
 	const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
 	if (result.data.data && typeof (result.data.data) === "string" && result.data.data.startsWith("UPID:")) {
 		const upid = result.data.data;
-		let taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", null, null, pveAPIToken);
+		let taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: pveAPIToken });
 		while (taskStatus.data.data.status !== "stopped") {
 			await waitFor(1000);
-			taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", null, null, pveAPIToken);
+			taskStatus = await requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: pveAPIToken });
 		}
 		if (taskStatus.data.data.exitstatus === "OK") {
 			const result = taskStatus.data.data;
-			const taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", null, null, pveAPIToken);
+			const taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", { token: pveAPIToken });
 			result.log = taskLog.data.data;
 			res.status(200).send(result);
 			res.end();
 		}
 		else {
 			const result = taskStatus.data.data;
-			const taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", null, null, pveAPIToken);
+			const taskLog = await requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", { token: pveAPIToken });
 			result.log = taskLog.data.data;
 			res.status(500).send(result);
 			res.end();
@@ -88,7 +87,7 @@ export async function handleResponse (node, result, res) {
  * @returns {Object} k-v pairs of resource name and used amounts
  */
 export async function getUsedResources (req, resourceMeta) {
-	const response = await requestPVE("/cluster/resources", "GET", req.cookies);
+	const response = await requestPVE("/cluster/resources", "GET", { cookies: req.cookies });
 	const used = {};
 	const diskprefixes = [];
 	for (const resourceName of Object.keys(resourceMeta)) {
@@ -107,7 +106,7 @@ export async function getUsedResources (req, resourceMeta) {
 	}
 	for (const instance of response.data.data) {
 		if (instance.type === "lxc" || instance.type === "qemu") {
-			let config = await requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", req.cookies);
+			let config = await requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", { cookies: req.cookies });
 			config = config.data.data;
 			for (const key of Object.keys(config)) {
 				if (Object.keys(used).includes(key) && resourceMeta[key].type === "numeric") {
@@ -145,10 +144,10 @@ export async function getUsedResources (req, resourceMeta) {
 export async function getDiskInfo (node, type, vmid, disk) {
 	const pveAPIToken = global.db.pveAPIToken;
 	try {
-		const config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", null, null, pveAPIToken);
+		const config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", { token: pveAPIToken });
 		const storageID = config.data.data[disk].split(":")[0];
 		const volID = config.data.data[disk].split(",")[0];
-		const volInfo = await requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", null, null, pveAPIToken);
+		const volInfo = await requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", { token: pveAPIToken });
 		volInfo.data.data.storage = storageID;
 		return volInfo.data.data;
 	}
@@ -168,7 +167,7 @@ export async function getDiskInfo (node, type, vmid, disk) {
 export async function getDeviceInfo (node, type, vmid, qid) {
 	const pveAPIToken = global.db.pveAPIToken;
 	try {
-		const result = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", null, null, pveAPIToken)).data.data;
+		const result = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", { token: pveAPIToken })).data.data;
 		const deviceData = [];
 		result.forEach((element) => {
 			if (element.id.startsWith(qid)) {
@@ -196,11 +195,11 @@ export async function getDeviceInfo (node, type, vmid, qid) {
 export async function getNodeAvailDevices (node, cookies) {
 	const pveAPIToken = global.db.pveAPIToken;
 	// get node pci devices
-	let nodeAvailPci = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", cookies, null, pveAPIToken)).data.data;
+	let nodeAvailPci = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", { token: pveAPIToken })).data.data;
 	// for each node container, get its config and remove devices which are already used
-	const vms = (await requestPVE(`/nodes/${node}/qemu`, "GET", cookies, null, pveAPIToken)).data.data;
+	const vms = (await requestPVE(`/nodes/${node}/qemu`, "GET", { token: pveAPIToken })).data.data;
 	for (const vm of vms) {
-		const config = (await requestPVE(`/nodes/${node}/qemu/${vm.vmid}/config`, "GET", cookies, null, pveAPIToken)).data.data;
+		const config = (await requestPVE(`/nodes/${node}/qemu/${vm.vmid}/config`, "GET", { token: pveAPIToken })).data.data;
 		Object.keys(config).forEach((key) => {
 			if (key.startsWith("hostpci")) {
 				const deviceID = config[key].split(",")[0];

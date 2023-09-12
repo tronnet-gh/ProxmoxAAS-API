@@ -88,7 +88,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		return;
 	}
 	// get current config
-	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", null, null, pveAPIToken);
+	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: pveAPIToken });
 	const request = {
 		cores: Number(params.cores) - Number(currentConfig.data.data.cores),
 		memory: Number(params.memory) - Number(currentConfig.data.data.memory)
@@ -117,7 +117,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	const result = await requestPVE(`${vmpath}/config`, method, req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`${vmpath}/config`, method, { token: pveAPIToken }, action);
 	await handleResponse(params.node, result, res);
 });
 
@@ -229,7 +229,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 	}
 	action = JSON.stringify(action);
 	// commit action
-	const result = await requestPVE(`/nodes/${params.node}/${params.type}`, "POST", req.cookies, action, pveAPIToken);
+	const result = await requestPVE(`/nodes/${params.node}/${params.type}`, "POST", { token: pveAPIToken }, action);
 	await handleResponse(params.node, result, res);
 });
 
@@ -257,6 +257,6 @@ router.delete(`${basePath}/delete`, async (req, res) => {
 		return;
 	}
 	// commit action
-	const result = await requestPVE(vmpath, "DELETE", req.cookies, null, pveAPIToken);
+	const result = await requestPVE(vmpath, "DELETE", { token: pveAPIToken });
 	await handleResponse(params.node, result, res);
 });

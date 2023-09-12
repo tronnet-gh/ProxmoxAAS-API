@@ -24,11 +24,11 @@ export async function checkAuth (cookies, res, vmpath = null) {
 	}
 
 	if (vmpath) {
-		const result = await requestPVE(`/${vmpath}/config`, "GET", cookies);
+		const result = await requestPVE(`/${vmpath}/config`, "GET", { cookies });
 		auth = result.status === 200;
 	}
 	else { // if no path is specified, then do a simple authentication
-		const result = await requestPVE("/version", "GET", cookies);
+		const result = await requestPVE("/version", "GET", { cookies });
 		auth = result.status === 200;
 	}
 
