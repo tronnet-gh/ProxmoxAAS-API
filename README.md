@@ -1,5 +1,5 @@
-# ProxmoxAAS API - Client REST API
-ProxmoxAAS API provides functionality to the Client by both providing a proxy API for the Proxmox API, and an API for requesting resources within a defined quota.
+# ProxmoxAAS API - REST API for ProxmoxAAS Dashboard
+ProxmoxAAS API provides functionality for the Dashboard by providing a proxy API for the Proxmox API, and an API for requesting resources within a defined quota.
 
 ## Prerequisites
 - [ProxmoxAAS-Client](https://git.tronnet.net/tronnet/ProxmoxAAS-Dashboard)
@@ -52,4 +52,4 @@ server {
 2. Start nginx with the new configurations by running `systemctl reload nginx`
 
 ## Result
-After these steps, the ProxmoxAAS Client should be available and fully functional at `client.<FQDN>`. 
+After these steps, the ProxmoxAAS Client should be available and fully functional at `dashboard.<FQDN>`. 
