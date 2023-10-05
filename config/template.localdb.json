@@ -13,7 +13,7 @@
 				"password": "rootpassword"
 			},
 			"listenPort": 80,
-			"hostname": "client.mydomain.example",
+			"hostname": "dashboard.mydomain.example",
 			"domain": "mydomain.example"
 		},
 		"resources": {
