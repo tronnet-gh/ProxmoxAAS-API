@@ -30,7 +30,7 @@ In Proxmox VE, follow the following steps:
     - listenPort - the port you want the API to listen on, ie `8080`
     - pveAPIToken - the user(name), authentication realm, token id, and token secrey key (uuid)
 4. (Optional) In order to allow users to customize instance pcie devices, the API must use the root credentials for privilege elevation. Modify the following values under `pveroot` in order to use this feature:
-	- username: root user, typically `root@pam`
+	- username: root user name, typically `root@pam`
 	- password: root user password
 5. You may also wish to configure users at this point as well. An example user config is shown in the template.
 6. Start the service using `node .`, or call the provided shell script, or use the provided systemctl service script
@@ -40,16 +40,21 @@ In Proxmox VE, follow the following steps:
 ```
 server {
 	listen 443 ssl;
-	server_name dashboard.<FQDN>;
+	server_name paas.<FQDN>;
 	location / {
-		proxy_pass http://<Dashboard Host>:80;
+		return 301 "/dashboard/";
+	}
+	location /dashboard/ {
+		proxy_pass http://proxmoxaas.dmz:8080/;
+		proxy_redirect default;
 	}
 	location /api/ {
-		proxy_pass http://<Dashboard Host>:8080;
+		proxy_pass http://proxmoxaas.dmz:80/api/;
+		proxy_redirect default;
 	}
 }
 ```
-2. Start nginx with the new configurations by running `systemctl reload nginx`
+2. Start nginx with the new configurations
 
 ## Result
-After these steps, the ProxmoxAAS Dashboard should be available and fully functional at `dashboard.<FQDN>`. 
+After these steps, the ProxmoxAAS Dashboard should be available and fully functional at `paas.<FQDN>` or `paas.<FQDN>/dashboard/`. 
