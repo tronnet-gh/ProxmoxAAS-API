@@ -33,8 +33,7 @@ export async function requestPVE (path, method, auth = null, body = null) {
 	}
 
 	try {
-		const response = await axios.request(url, content);
-		return response;
+		return await axios.request(url, content);
 	}
 	catch (error) {
 		return error.response;
@@ -81,13 +80,46 @@ export async function handleResponse (node, result, res) {
 }
 
 /**
+ * Get the full config of an instance, including searching disk information.
+ * @param {Object} req ProxmoxAAS API request object.
+ * @param {Object} instance to get config as object containing node, type, and id.
+ * @param {Array} diskprefixes Array containing prefixes for disks.
+ * @returns
+ */
+async function getFullInstanceConfig (req, instance, diskprefixes) {
+	const config = (await requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", { cookies: req.cookies })).data.data;
+	// fetch all instance disk and device data concurrently
+	const promises = [];
+	const mappings = [];
+	for (const key in config) {
+		if (diskprefixes.some(prefix => key.startsWith(prefix))) {
+			promises.push(getDiskInfo(instance.node, config, key));
+			mappings.push(key);
+		}
+		else if (key.startsWith("hostpci")) {
+			promises.push(getDeviceInfo(instance.node, config[key].split(",")[0]));
+			mappings.push(key);
+		}
+	}
+	const results = await Promise.all(promises);
+	results.forEach((e, i) => {
+		const key = mappings[i];
+		config[key] = e;
+	});
+	return config;
+}
+
+/**
  * Get the amount of resources used by specified user.
  * @param {Object} req ProxmoxAAS API request object.
  * @param {Object} resourceMeta data about application resources, to indicate which resources are tracked.
  * @returns {Object} k-v pairs of resource name and used amounts
  */
 export async function getUsedResources (req, resourceMeta) {
-	const response = await requestPVE("/cluster/resources", "GET", { cookies: req.cookies });
+	// get the basic resources list
+	const resources = (await requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
+
+	// setup the used object and diskPrefixes object
 	const used = {};
 	const diskprefixes = [];
 	for (const resourceName of Object.keys(resourceMeta)) {
@@ -104,49 +136,63 @@ export async function getUsedResources (req, resourceMeta) {
 			used[resourceName] = 0;
 		}
 	}
-	for (const instance of response.data.data) {
-		if (instance.type === "lxc" || instance.type === "qemu") {
-			let config = await requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", { cookies: req.cookies });
-			config = config.data.data;
-			for (const key of Object.keys(config)) {
-				if (Object.keys(used).includes(key) && resourceMeta[key].type === "numeric") {
-					used[key] += Number(config[key]);
+
+	// filter resources by their type, we only want lxc and qemu
+	const instances = [];
+	for (const resource of resources) {
+		if (resource.type === "lxc" || resource.type === "qemu") {
+			instances.push(resource);
+		}
+	}
+
+	const promises = [];
+	const mappings = [];
+	for (let i = 0; i < instances.length; i++) {
+		const instance = instances[i];
+		promises.push(getFullInstanceConfig(req, instance, diskprefixes));
+		mappings.push(i);
+	}
+	const configs = await Promise.all(promises);
+
+	// for each instance, sum each resource
+	for (const config of configs) {
+		for (const key of Object.keys(config)) {
+			if (Object.keys(used).includes(key) && resourceMeta[key].type === "numeric") {
+				used[key] += Number(config[key]);
+			}
+			else if (diskprefixes.some(prefix => key.startsWith(prefix))) {
+				const diskInfo = config[key];
+				if (diskInfo) { // only count if disk exists
+					used[diskInfo.storage] += Number(diskInfo.size);
 				}
-				else if (diskprefixes.some(prefix => key.startsWith(prefix))) {
-					const diskInfo = await getDiskInfo(instance.node, instance.type, instance.vmid, key);
-					if (diskInfo) { // only count if disk exists
-						used[diskInfo.storage] += Number(diskInfo.size);
-					}
-				}
-				else if (key.startsWith("net") && config[key].includes("rate=")) { // only count net instances with a rate limit
-					used.network += Number(config[key].split("rate=")[1].split(",")[0]);
-				}
-				else if (key.startsWith("hostpci")) {
-					const deviceInfo = await getDeviceInfo(instance.node, instance.type, instance.vmid, config[key].split(",")[0]);
-					if (deviceInfo) { // only count if device exists
-						used.pci.push(deviceInfo.device_name);
-					}
+			}
+			else if (key.startsWith("net") && config[key].includes("rate=")) { // only count net instances with a rate limit
+				used.network += Number(config[key].split("rate=")[1].split(",")[0]);
+			}
+			else if (key.startsWith("hostpci")) {
+				const deviceInfo = config[key];
+				if (deviceInfo) { // only count if device exists
+					used.pci.push(deviceInfo.device_name);
 				}
 			}
 		}
 	}
+
 	return used;
 }
 
 /**
  * Get meta data for a specific disk. Adds info that is not normally available in a instance's config.
  * @param {string} node containing the query disk.
- * @param {string} type of instance with query disk.
- * @param {string} vmid of instance with query disk
+ * @param {string} config of instance with query disk.
  * @param {string} disk name of the query disk, ie. sata0.
  * @returns {Objetc} k-v pairs of specific disk data, including storage and size of unused disks.
  */
-export async function getDiskInfo (node, type, vmid, disk) {
+export async function getDiskInfo (node, config, disk) {
 	const pveAPIToken = global.db.pveAPIToken;
 	try {
-		const config = await requestPVE(`/nodes/${node}/${type}/${vmid}/config`, "GET", { token: pveAPIToken });
-		const storageID = config.data.data[disk].split(":")[0];
-		const volID = config.data.data[disk].split(",")[0];
+		const storageID = config[disk].split(":")[0];
+		const volID = config[disk].split(",")[0];
 		const volInfo = await requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", { token: pveAPIToken });
 		volInfo.data.data.storage = storageID;
 		return volInfo.data.data;
@@ -159,12 +205,10 @@ export async function getDiskInfo (node, type, vmid, disk) {
 /**
  * Get meta data for a specific pci device. Adds info that is not normally available in a instance's config.
  * @param {string} node containing the query device.
- * @param {string} type of instance with query device.
- * @param {string} vmid of instance with query device.
  * @param {string} qid pci bus id number of the query device, ie. 89ab:cd:ef.0.
  * @returns {Object} k-v pairs of specific device data, including device name and manufacturer.
  */
-export async function getDeviceInfo (node, type, vmid, qid) {
+export async function getDeviceInfo (node, qid) {
 	const pveAPIToken = global.db.pveAPIToken;
 	try {
 		const result = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", { token: pveAPIToken })).data.data;
@@ -189,17 +233,25 @@ export async function getDeviceInfo (node, type, vmid, qid) {
 /**
  * Get available devices on specific node.
  * @param {string} node to get devices from.
- * @param {Object} cookies user authentication, unused since the API token is required.
  * @returns {Array.<Object>} array of k-v pairs of specific device data, including device name and manufacturer, which are available on the specified node.
  */
-export async function getNodeAvailDevices (node, cookies) {
+export async function getNodeAvailDevices (node) {
 	const pveAPIToken = global.db.pveAPIToken;
 	// get node pci devices
-	let nodeAvailPci = (await requestPVE(`/nodes/${node}/hardware/pci`, "GET", { token: pveAPIToken })).data.data;
+	let nodeAvailPci = requestPVE(`/nodes/${node}/hardware/pci`, "GET", { token: pveAPIToken });
 	// for each node container, get its config and remove devices which are already used
-	const vms = (await requestPVE(`/nodes/${node}/qemu`, "GET", { token: pveAPIToken })).data.data;
+	let vms = (await requestPVE(`/nodes/${node}/qemu`, "GET", { token: pveAPIToken })).data.data;
+
+	const promises = [];
 	for (const vm of vms) {
-		const config = (await requestPVE(`/nodes/${node}/qemu/${vm.vmid}/config`, "GET", { token: pveAPIToken })).data.data;
+		promises.push(requestPVE(`/nodes/${node}/qemu/${vm.vmid}/config`, "GET", { token: pveAPIToken }));
+	}
+	const configs = await Promise.all(promises);
+	configs.forEach((e,i) => {configs[i] = e.data.data});
+
+	nodeAvailPci = (await nodeAvailPci).data.data;
+
+	for (const config of configs) {
 		Object.keys(config).forEach((key) => {
 			if (key.startsWith("hostpci")) {
 				const deviceID = config[key].split(",")[0];

@@ -94,7 +94,7 @@ router.post("/:disk/attach", async (req, res) => {
 		return;
 	}
 	// target disk must be allowed according to source disk's storage options
-	const diskConfig = await getDiskInfo(params.node, params.type, params.vmid, `unused${params.source}`); // get target disk
+	const diskConfig = await getDiskInfo(params.node, config, `unused${params.source}`); // get target disk
 	const resourceConfig = db.getGlobalConfig().resources;
 	if (!resourceConfig[diskConfig.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
 		res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[diskConfig.storage].disks}].` });
@@ -141,8 +141,10 @@ router.post("/:disk/resize", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get current config
+	const config = (await requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	// check disk existence
-	const diskConfig = await getDiskInfo(params.node, params.type, params.vmid, params.disk); // get target disk
+	const diskConfig = await getDiskInfo(params.node, config, params.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
 		res.status(500).send({ error: `requested disk ${params.disk} does not exist.` });
 		res.end();
@@ -196,8 +198,10 @@ router.post("/:disk/move", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get current config
+	const config = (await requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	// check disk existence
-	const diskConfig = await getDiskInfo(params.node, params.type, params.vmid, params.disk); // get target disk
+	const diskConfig = await getDiskInfo(params.node, config, params.disk); // get target disk
 	if (!diskConfig) { // exit if disk does not exist
 		res.status(500).send({ error: `requested disk ${params.disk} does not exist.` });
 		res.end();

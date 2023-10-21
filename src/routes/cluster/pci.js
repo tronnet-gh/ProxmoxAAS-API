@@ -45,7 +45,7 @@ router.get("/:hostpci", async (req, res) => {
 	}
 	const device = config[`hostpci${params.hostpci}`].split(",")[0];
 	// get node's pci devices
-	const deviceData = await getDeviceInfo(params.node, params.type, params.vmid, device);
+	const deviceData = await getDeviceInfo(params.node, device);
 	if (!deviceData) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci}=${device} in ${params.node}.` });
 		res.end();
@@ -96,7 +96,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 	params.device = params.device.split(".")[0];
 	// get instance config to check if device has not changed
 	const config = (await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: pveAPIToken })).data.data;
-	const currentDeviceData = await getDeviceInfo(params.node, params.type, params.vmid, config[`hostpci${params.hostpci}`].split(",")[0]);
+	const currentDeviceData = await getDeviceInfo(params.node, config[`hostpci${params.hostpci}`].split(",")[0]);
 	if (!currentDeviceData) {
 		res.status(500).send({ error: `No device in hostpci${params.hostpci}.` });
 		res.end();
@@ -105,7 +105,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 	// only check user and node availability if base id is different
 	if (currentDeviceData.id.split(".")[0] !== params.device) {
 		// setup request
-		const deviceData = await getDeviceInfo(params.node, params.type, params.vmid, params.device);
+		const deviceData = await getDeviceInfo(params.node, params.device);
 		const request = { pci: deviceData.device_name };
 		// check resource approval
 		if (!await approveResources(req, req.cookies.username, request)) {
@@ -184,7 +184,7 @@ router.post("/create", async (req, res) => {
 		hostpci++;
 	}
 	// setup request
-	const deviceData = await getDeviceInfo(params.node, params.type, params.vmid, params.device);
+	const deviceData = await getDeviceInfo(params.node, params.device);
 	const request = {
 		pci: deviceData.device_name
 	};
