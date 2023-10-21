@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan";
 
-import api from "./package.js";
+import _package from "./package.js";
 import * as pve from "./pve.js";
 import * as utils from "./utils.js";
 import LocalDB from "./db.js";
@@ -17,7 +17,7 @@ global.argv = parseArgs(process.argv.slice(2), {
 	}
 });
 
-global.api = api(global.argv.package);
+global.api = _package(global.argv.package);
 global.pve = pve;
 global.utils = utils;
 global.db = new LocalDB(global.argv.localdb);
