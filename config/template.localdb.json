@@ -117,6 +117,58 @@
 		"useriso": {
 			"node": "examplenode1",
 			"storage": "cephfs"
+		},
+		"defaultuser": {
+			"resources": {
+				"cpu": [],
+				"cores": {
+					"max": 0
+				},
+				"memory": {
+					"max": 0
+				},
+				"swap": {
+					"max": 0
+				},
+				"local": {
+					"max": 0
+				},
+				"cephpl": {
+					"max": 0
+				},
+				"network": {
+					"max": 0
+				},
+				"pci": []
+			},
+			"nodes": [],
+			"cluster": {
+				"vmid": {
+					"min": -1,
+					"max": -1
+				},
+				"pool": ""
+			},
+			"templates": {
+				"instances": {
+					"lxc": {},
+					"qemu": {}
+				}
+			},
+			"network": {
+				"lxc": {
+					"type": "veth",
+					"bridge": "vmbr0",
+					"vlan": 10,
+					"ip": "dhcp",
+					"ip6": "dhcp"
+				},
+				"qemu": {
+					"type": "virtio",
+					"bridge": "vmbr0",
+					"vlan": 10
+				}
+			}
 		}
 	},
 	"users": {

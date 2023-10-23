@@ -95,7 +95,7 @@ router.post("/:disk/attach", async (req, res) => {
 	}
 	// target disk must be allowed according to source disk's storage options
 	const diskConfig = await getDiskInfo(params.node, config, `unused${params.source}`); // get target disk
-	const resourceConfig = db.getGlobalConfig().resources;
+	const resourceConfig = db.getGlobal().resources;
 	if (!resourceConfig[diskConfig.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
 		res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[diskConfig.storage].disks}].` });
 		res.end();
@@ -337,7 +337,7 @@ router.post("/:disk/create", async (req, res) => {
 			return;
 		}
 		// target disk must be allowed according to storage options
-		const resourceConfig = db.getGlobalConfig().resources;
+		const resourceConfig = db.getGlobal().resources;
 		if (!resourceConfig[params.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
 			res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[params.storage].disks}].` });
 			res.end();

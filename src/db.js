@@ -7,12 +7,12 @@ class LocalDB {
 	constructor (path) {
 		try {
 			this.#path = path;
-			this.load();
-			this.pveAPI = this.getGlobalConfig().application.pveAPI;
-			this.pveAPIToken = this.getGlobalConfig().application.pveAPIToken;
-			this.listenPort = this.getGlobalConfig().application.listenPort;
-			this.hostname = this.getGlobalConfig().application.hostname;
-			this.domain = this.getGlobalConfig().application.domain;
+			this.#load();
+			this.pveAPI = this.getConfig().application.pveAPI;
+			this.pveAPIToken = this.getConfig().application.pveAPIToken;
+			this.listenPort = this.getConfig().application.listenPort;
+			this.hostname = this.getConfig().application.hostname;
+			this.domain = this.getConfig().application.domain;
 		}
 		catch {
 			console.log(`Error: ${path} was not found. Please follow the directions in the README to initialize localdb.json.`);
@@ -21,34 +21,63 @@ class LocalDB {
 	}
 
 	/**
-	 * Load db from local file system. Reads from file path store in filename.
+	 * Load db from local file system. Reads from file path store in path.
 	 */
-	load () {
+	#load () {
 		this.#data = JSON.parse(readFileSync(this.#path));
 	}
 
 	/**
-	 * Save db to local file system. Saves to file path stored in filename.
+	 * Save db to local file system. Saves to file path stored in path.
 	 */
-	save () {
+	#save () {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
-	/**
-	 * Gets the global config object from db.
-	 * @returns {Object} global config data.
-	 */
-	getGlobalConfig () {
+	getGlobal () {
 		return this.#data.global;
 	}
+	
+	setGloal (config) {
+		this.#data.global = config;
+		this.#save();
+	}
 
-	/**
-	 * Gets a specific user's config from db.
-	 * @param {string} username of user to get config.
-	 * @returns {Object} specific user config data.
-	 */
-	getUserConfig (username) {
-		return this.#data.users[username];
+	addUser (username, config = null) {
+		config = config ? config : this.#data.global.defaultuser;
+		this.#data.users[username] = config;
+		this.#save();
+	}
+
+	getUser (username) {
+		if (this.#data.users[username]) {
+			return this.#data.users[username];
+		}
+		else {
+			return null;
+		}
+	}
+
+	setUser (username, config) {
+		if (this.#data.users[username]) {
+			this.#data.users[username] = config;
+			this.#save();
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	delUser (username) {
+		if (this.#data.users[username]) {
+			delete this.#data.users[username];
+			this.#save();
+			return true;
+		}
+		else {
+			return false;
+		}
 	}
 }
 

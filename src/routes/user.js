@@ -43,7 +43,7 @@ router.get("/config/:key", async (req, res) => {
 	}
 	const allowKeys = ["resources", "cluster", "nodes"];
 	if (allowKeys.includes(params.key)) {
-		const config = db.getUserConfig(req.cookies.username);
+		const config = db.getUser(req.cookies.username);
 		res.status(200).send(config[params.key]);
 	}
 	else {
@@ -64,7 +64,7 @@ router.get("/iso", async (req, res) => {
 		return;
 	}
 	// get user iso config
-	const userIsoConfig = db.getGlobalConfig().useriso;
+	const userIsoConfig = db.getGlobal().useriso;
 	// get all isos
 	const isos = (await requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", { token: pveAPIToken })).data.data;
 	const userIsos = [];

@@ -37,7 +37,7 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	const userNodes = db.getUserConfig(req.cookies.username).nodes;
+	const userNodes = db.getUser(req.cookies.username).nodes;
 	if (!userNodes.includes(params.node)) {
 		res.status(401).send({ auth: false, path: params.node });
 		res.end();
@@ -164,7 +164,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		return;
 	}
 	// get user db config
-	const user = await db.getUserConfig(req.cookies.username);
+	const user = await db.getUser(req.cookies.username);
 	const vmid = Number.parseInt(params.vmid);
 	const vmidMin = user.cluster.vmid.min;
 	const vmidMax = user.cluster.vmid.max;

@@ -63,7 +63,7 @@ router.post("/:netid/create", async (req, res) => {
 		return;
 	}
 	// setup action
-	const nc = db.getUserConfig(req.cookies.username).templates.network[params.type];
+	const nc = db.getUser(req.cookies.username).network[params.type];
 	let action = {};
 	if (params.type === "lxc") {
 		action[`net${params.netid}`] = `name=${params.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${params.rate}`;

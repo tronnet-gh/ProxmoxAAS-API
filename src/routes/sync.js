@@ -24,8 +24,8 @@ let prevState = {};
 // target ms value
 let targetMSTime = null;
 
-const schemes = db.getGlobalConfig().clientsync.schemes;
-const resourceTypes = db.getGlobalConfig().clientsync.resourcetypes;
+const schemes = db.getGlobal().clientsync.schemes;
+const resourceTypes = db.getGlobal().clientsync.resourcetypes;
 /**
  * GET - get list of supported synchronization schemes
  * responses:
@@ -164,7 +164,7 @@ if (schemes.interrupt.enabled) {
 		}
 		else {
 			wsServer.handleUpgrade(req, socket, head, (socket) => {
-				const pool = db.getUserConfig(cookies.username).cluster.pool;
+				const pool = db.getUser(cookies.username).cluster.pool;
 				wsServer.emit("connection", socket, cookies.username, pool);
 			});
 		}
