@@ -16,7 +16,7 @@ export async function checkAuth (cookies, res, vmpath = null) {
 	const db = global.db;
 	let auth = false;
 
-	if (db.getUserConfig(cookies.username) === null) {
+	if (db.getUser(cookies.username) === null) {
 		auth = false;
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in localdb.` });
 		res.end();
@@ -47,9 +47,9 @@ export async function checkAuth (cookies, res, vmpath = null) {
  */
 export async function getUserResources (req, username) {
 	const db = global.db;
-	const dbResources = db.getGlobalConfig().resources;
+	const dbResources = db.getGlobal().resources;
 	const used = await getUsedResources(req, dbResources);
-	const userResources = db.getUserConfig(username).resources;
+	const userResources = db.getUser(username).resources;
 	Object.keys(userResources).forEach((k) => {
 		if (dbResources[k] && dbResources[k].type === "list") {
 			userResources[k].forEach((listResource) => {
@@ -79,7 +79,7 @@ export async function getUserResources (req, username) {
  */
 export async function approveResources (req, username, request) {
 	const db = global.db;
-	const dbResources = db.getGlobalConfig().resources;
+	const dbResources = db.getGlobal().resources;
 	const userResources = await getUserResources(req, username);
 	let approved = true;
 	Object.keys(request).forEach((key) => {

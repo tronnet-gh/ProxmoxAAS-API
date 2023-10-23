@@ -20,7 +20,7 @@ router.get("/config/:key", async (req, res) => {
 	}
 	const allowKeys = ["resources"];
 	if (allowKeys.includes(params.key)) {
-		const config = db.getGlobalConfig();
+		const config = db.getGlobal();
 		res.status(200).send(config[params.key]);
 	}
 	else {
