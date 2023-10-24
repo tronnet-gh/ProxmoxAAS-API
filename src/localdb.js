@@ -5,14 +5,14 @@ class LocalDB {
 	#path = null;
 	#data = null;
 	constructor (path) {
-		try {
+	try {
 			this.#path = path;
 			this.#load();
-			this.pveAPI = this.getConfig().application.pveAPI;
-			this.pveAPIToken = this.getConfig().application.pveAPIToken;
-			this.listenPort = this.getConfig().application.listenPort;
-			this.hostname = this.getConfig().application.hostname;
-			this.domain = this.getConfig().application.domain;
+			this.pveAPI = this.getGlobal().application.pveAPI;
+			this.pveAPIToken = this.getGlobal().application.pveAPIToken;
+			this.listenPort = this.getGlobal().application.listenPort;
+			this.hostname = this.getGlobal().application.hostname;
+			this.domain = this.getGlobal().application.domain;
 		}
 		catch {
 			console.log(`Error: ${path} was not found. Please follow the directions in the README to initialize localdb.json.`);

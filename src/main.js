@@ -7,20 +7,21 @@ import morgan from "morgan";
 import _package from "./package.js";
 import * as pve from "./pve.js";
 import * as utils from "./utils.js";
-import LocalDB from "./db.js";
 
 import parseArgs from "minimist";
 global.argv = parseArgs(process.argv.slice(2), {
 	default: {
 		package: "package.json",
-		localdb: "config/localdb.json"
+		db: "./localdb.js", // relative to main.js
+		dbconfig: "config/localdb.json"
 	}
 });
 
 global.api = _package(global.argv.package);
 global.pve = pve;
 global.utils = utils;
-global.db = new LocalDB(global.argv.localdb);
+const db = (await import(global.argv.db)).default;
+global.db = new db(global.argv.dbconfig);
 
 const app = express();
 global.app = app;
