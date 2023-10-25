@@ -20,8 +20,8 @@ global.argv = parseArgs(process.argv.slice(2), {
 global.api = _package(global.argv.package);
 global.pve = pve;
 global.utils = utils;
-const db = (await import(global.argv.db)).default;
-global.db = new db(global.argv.dbconfig);
+const DB = (await import(global.argv.db)).default;
+global.db = new DB(global.argv.dbconfig);
 
 const app = express();
 global.app = app;
