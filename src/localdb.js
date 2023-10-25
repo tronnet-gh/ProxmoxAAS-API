@@ -5,7 +5,7 @@ class LocalDB {
 	#path = null;
 	#data = null;
 	constructor (path) {
-	try {
+		try {
 			this.#path = path;
 			this.#load();
 			this.pveAPI = this.getGlobal().application.pveAPI;
@@ -37,14 +37,14 @@ class LocalDB {
 	getGlobal () {
 		return this.#data.global;
 	}
-	
+
 	setGloal (config) {
 		this.#data.global = config;
 		this.#save();
 	}
 
 	addUser (username, config = null) {
-		config = config ? config : this.#data.global.defaultuser;
+		config = config || this.#data.global.defaultuser;
 		this.#data.users[username] = config;
 		this.#save();
 	}

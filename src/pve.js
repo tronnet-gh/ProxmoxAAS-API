@@ -240,14 +240,16 @@ export async function getNodeAvailDevices (node) {
 	// get node pci devices
 	let nodeAvailPci = requestPVE(`/nodes/${node}/hardware/pci`, "GET", { token: pveAPIToken });
 	// for each node container, get its config and remove devices which are already used
-	let vms = (await requestPVE(`/nodes/${node}/qemu`, "GET", { token: pveAPIToken })).data.data;
+	const vms = (await requestPVE(`/nodes/${node}/qemu`, "GET", { token: pveAPIToken })).data.data;
 
 	const promises = [];
 	for (const vm of vms) {
 		promises.push(requestPVE(`/nodes/${node}/qemu/${vm.vmid}/config`, "GET", { token: pveAPIToken }));
 	}
 	const configs = await Promise.all(promises);
-	configs.forEach((e,i) => {configs[i] = e.data.data});
+	configs.forEach((e, i) => {
+		configs[i] = e.data.data;
+	});
 
 	nodeAvailPci = (await nodeAvailPci).data.data;
 
