@@ -34,6 +34,10 @@ class LocalDB {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
+	getStatic () {
+		return this.#data.static;
+	}
+
 	getGlobal () {
 		return this.#data.global;
 	}

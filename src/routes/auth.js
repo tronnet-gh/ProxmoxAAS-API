@@ -1,9 +1,11 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
+const db = global.db;
 const domain = global.db.domain;
 const checkAuth = global.utils.checkAuth;
 const requestPVE = global.pve.requestPVE;
+const pveAPIToken = global.db.pveAPIToken;
 
 /**
  * GET - check authentication
@@ -58,4 +60,25 @@ router.delete("/ticket", async (req, res) => {
 	res.cookie("username", "", { domain, path: "/", httpOnly: true, secure: true, expires: expire });
 	res.cookie("auth", 0, { domain, path: "/", expires: expire });
 	res.status(200).send({ auth: false });
+});
+
+router.post("/password", async (req, res) => {
+	const params = {
+		password: req.body.password,
+		userid: req.cookies.username
+	};
+	const useridparsed = params.userid.split("@");
+	const realmName = useridparsed[useridparsed.length - 1];
+	const domains = (await requestPVE(`/access/domains`, "GET", pveAPIToken)).data.data;
+	const realm = domains.find((e) => e.realm === realmName);
+	const type = realm.type;
+	const types = db.getStatic().types.auth;
+
+	if (types[type] === "pve") {
+		const response = await requestPVE("/access/password", "PUT", {cookies: req.cookies}, JSON.stringify(params));
+		res.status(response.status).send(response.data)
+	}
+	else {
+		res.status(501).send({error: `Auth type ${type} not implemented yet.`})
+	}
 });
