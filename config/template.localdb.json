@@ -1,4 +1,12 @@
 {
+	"static": {
+		"types": {
+			"auth": {
+				"pve": "pve",
+				"ldap": "ldap"
+			}
+		}
+	},
 	"global": {
 		"application": {
 			"pveAPI": "https://pve.mydomain.example/api2/json",
