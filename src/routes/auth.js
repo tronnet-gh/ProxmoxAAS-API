@@ -67,18 +67,18 @@ router.post("/password", async (req, res) => {
 		password: req.body.password,
 		userid: req.cookies.username
 	};
-	const useridparsed = params.userid.split("@");
-	const realmName = useridparsed[useridparsed.length - 1];
-	const domains = (await requestPVE(`/access/domains`, "GET", pveAPIToken)).data.data;
-	const realm = domains.find((e) => e.realm === realmName);
-	const type = realm.type;
-	const types = db.getStatic().types.auth;
+	
+	const userRealm = params.userid.split("@").at(-1);
+	const domains = (await requestPVE("/access/domains", "GET", pveAPIToken)).data.data;
+	const realm = domains.find((e) => e.realm === userRealm);
+	const authTypes = db.getStatic().types.auth;
+	const realmType = authTypes[realm.type];
 
-	if (types[type] === "pve") {
-		const response = await requestPVE("/access/password", "PUT", {cookies: req.cookies}, JSON.stringify(params));
-		res.status(response.status).send(response.data)
+	if (realmType === "pve") {
+		const response = await requestPVE("/access/password", "PUT", { cookies: req.cookies }, JSON.stringify(params));
+		res.status(response.status).send(response.data);
 	}
 	else {
-		res.status(501).send({error: `Auth type ${type} not implemented yet.`})
+		res.status(501).send({ error: `Auth type ${realmType} not implemented yet.` });
 	}
 });
