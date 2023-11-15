@@ -128,26 +128,50 @@
 		},
 		"defaultuser": {
 			"resources": {
-				"cpu": [],
+				"cpu": {
+					"global": [],
+					"nodes": {}
+				},
 				"cores": {
-					"max": 0
+					"global": {
+						"max": 0
+					},
+					"nodes": {}
 				},
 				"memory": {
-					"max": 0
+					"global": {
+						"max": 0
+					},
+					"nodes": {}
 				},
 				"swap": {
-					"max": 0
+					"global": {
+						"max": 0
+					},
+					"nodes": {}
 				},
 				"local": {
-					"max": 0
+					"global": {
+						"max": 0
+					},
+					"nodes": {}
 				},
 				"cephpl": {
-					"max": 0
+					"global": {
+						"max": 0
+					},
+					"nodes": {}
 				},
 				"network": {
-					"max": 0
+					"global": {
+						"max": 0
+					},
+					"nodes": {}
 				},
-				"pci": []
+				"pci": {
+					"global": [],
+					"nodes": {}
+				}
 			},
 			"nodes": [],
 			"cluster": {
@@ -182,48 +206,76 @@
 	"users": {
 		"exampleuser@examplepool": {
 			"resources": {
-				"cpu": [
-					{
-						"match": "kvm64",
-						"name": "kvm64",
-						"max": 1
-					},
-					{
-						"match": "host",
-						"name": "host",
-						"max": 1
-					}
-				],
+				"cpu": {
+					"global": [
+						{
+							"match": "kvm64",
+							"name": "kvm64",
+							"max": 1
+						},
+						{
+							"match": "host",
+							"name": "host",
+							"max": 1
+						}
+					],
+					"nodes": {}
+				},
 				"cores": {
-					"max": 128
+					"global": {
+						"max": 128
+					},
+					"nodes": {}
 				},
 				"memory": {
-					"max": 131072
+					"global": {
+						"max": 131072
+					},
+					"nodes": {}
 				},
 				"swap": {
-					"max": 131072
+					"global": {
+						"max": 131072
+					},
+					"nodes": {}
 				},
 				"local": {
-					"max": 1099511627776
+					"global": {
+						"max": 1099511627776
+					},
+					"nodes": {}
 				},
 				"cephpl": {
-					"max": 1099511627776
+					"global": {
+						"max": 1099511627776
+					},
+					"nodes": {}
 				},
 				"network": {
-					"max": 100000
-				},
-				"pci": [
-					{
-						"match": "Device Name Matcher 1",
-						"name": "Device Display Name",
-						"max": 1
+					"global": {
+						"max": 100000
 					},
-					{
-						"match": "Device Name Matcher 2",
-						"name": "Device Display Name",
-						"max": 1
+					"nodes": {}
+				},
+				"pci": {
+					"global": [],
+					"nodes": {
+						"examplenode1": [
+							{
+								"match": "[exampledevice1]",
+								"name": "exampledevice1",
+								"max": 1
+							}
+						],
+						"examplenode2": [
+							{
+								"match": "[exampledevice2]",
+								"name": "exampledevice2",
+								"max": 1
+							}
+						]
 					}
-				]
+				}
 			},
 			"nodes": [
 				"examplenode1",
