@@ -67,7 +67,7 @@ router.post("/password", async (req, res) => {
 		password: req.body.password,
 		userid: req.cookies.username
 	};
-	
+
 	const userRealm = params.userid.split("@").at(-1);
 	const domains = (await requestPVE("/access/domains", "GET", pveAPIToken)).data.data;
 	const realm = domains.find((e) => e.realm === userRealm);

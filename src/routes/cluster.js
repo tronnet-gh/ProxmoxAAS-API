@@ -44,7 +44,7 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 		return;
 	}
 	// get remaining user resources
-	const userAvailPci = (await getUserResources(req, req.cookies.username)).pci;
+	const userAvailPci = (await getUserResources(req, req.cookies.username)).pci.nodes[params.node];
 	// get node avail devices
 	let nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
 	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => {
@@ -100,7 +100,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		request.cpu = params.proctype;
 	}
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request)) {
+	if (!await approveResources(req, req.cookies.username, request,  params.node)) {
 		res.status(500).send({ request, error: "Could not fulfil request." });
 		res.end();
 		return;
@@ -201,7 +201,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		}
 	}
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request)) { // check resource approval
+	if (!await approveResources(req, req.cookies.username, request,  params.node)) { // check resource approval
 		res.status(500).send({ request, error: "Not enough resources to satisfy request." });
 		res.end();
 		return;
