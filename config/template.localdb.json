@@ -20,7 +20,6 @@
 				"username": "root@pam",
 				"password": "rootpassword"
 			},
-			"listenPort": 80,
 			"hostname": "paas.mydomain.example",
 			"domain": "mydomain.example"
 		},

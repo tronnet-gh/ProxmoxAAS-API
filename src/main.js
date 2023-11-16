@@ -12,6 +12,7 @@ import parseArgs from "minimist";
 global.argv = parseArgs(process.argv.slice(2), {
 	default: {
 		package: "package.json",
+		listenPort: 80,
 		db: "./localdb.js", // relative to main.js
 		dbconfig: "config/localdb.json"
 	}
@@ -30,8 +31,8 @@ app.use(cookieParser());
 app.use(cors({ origin: global.db.hostname }));
 app.use(morgan("combined"));
 
-global.server = app.listen(global.db.listenPort, () => {
-	console.log(`proxmoxaas-api v${global.api.version} listening on port ${global.db.listenPort}`);
+global.server = app.listen(global.argv.listenPort, () => {
+	console.log(`proxmoxaas-api v${global.api.version} listening on port ${global.argv.listenPort}`);
 });
 
 global.utils.recursiveImport(app, "/api", "routes");
