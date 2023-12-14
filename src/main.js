@@ -12,13 +12,13 @@ import parseArgs from "minimist";
 global.argv = parseArgs(process.argv.slice(2), {
 	default: {
 		package: "package.json",
-		listenPort: 80,
+		listenPort: 8081,
 		db: "./localdb.js", // relative to main.js
 		dbconfig: "config/localdb.json"
 	}
 });
 
-global.api = _package(global.argv.package);
+global.package = _package(global.argv.package);
 global.pve = pve;
 global.utils = utils;
 const DB = (await import(global.argv.db)).default;
@@ -32,7 +32,7 @@ app.use(cors({ origin: global.db.hostname }));
 app.use(morgan("combined"));
 
 global.server = app.listen(global.argv.listenPort, () => {
-	console.log(`proxmoxaas-api v${global.api.version} listening on port ${global.argv.listenPort}`);
+	console.log(`proxmoxaas-api v${global.package.version} listening on port ${global.argv.listenPort}`);
 });
 
 global.utils.recursiveImport(app, "/api", "routes");
@@ -43,7 +43,7 @@ global.utils.recursiveImport(app, "/api", "routes");
  * - 200: {version: string}
  */
 app.get("/api/version", (req, res) => {
-	res.status(200).send({ version: global.api.version });
+	res.status(200).send({ version: global.package.version });
 });
 
 /**
