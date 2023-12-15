@@ -100,7 +100,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		request.cpu = params.proctype;
 	}
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request,  params.node)) {
+	if (!await approveResources(req, req.cookies.username, request, params.node)) {
 		res.status(500).send({ request, error: "Could not fulfil request." });
 		res.end();
 		return;
@@ -201,7 +201,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		}
 	}
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request,  params.node)) { // check resource approval
+	if (!await approveResources(req, req.cookies.username, request, params.node)) { // check resource approval
 		res.status(500).send({ request, error: "Not enough resources to satisfy request." });
 		res.end();
 		return;

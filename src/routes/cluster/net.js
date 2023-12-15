@@ -57,7 +57,7 @@ router.post("/:netid/create", async (req, res) => {
 		network: Number(params.rate)
 	};
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request,  params.node)) {
+	if (!await approveResources(req, req.cookies.username, request, params.node)) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
@@ -122,7 +122,7 @@ router.post("/:netid/modify", async (req, res) => {
 		network: Number(params.rate) - Number(currentNetworkRate)
 	};
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request,  params.node)) {
+	if (!await approveResources(req, req.cookies.username, request, params.node)) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
