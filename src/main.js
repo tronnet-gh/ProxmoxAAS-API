@@ -3,39 +3,35 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan";
-
-import _package from "./package.js";
-import * as pve from "./pve.js";
-import * as utils from "./utils.js";
-
 import parseArgs from "minimist";
+
+import * as utils from "./utils.js";
+import _backends from "./backends/backends.js";
+
 global.argv = parseArgs(process.argv.slice(2), {
 	default: {
 		package: "package.json",
-		listenPort: 8081,
-		db: "./localdb.js", // relative to main.js
-		dbconfig: "config/localdb.json"
+		config: "config/config.json"
 	}
 });
 
-global.package = _package(global.argv.package);
-global.pve = pve;
 global.utils = utils;
-const DB = (await import(global.argv.db)).default;
-global.db = new DB(global.argv.dbconfig);
+global.package = global.utils.readJSONFile(global.argv.package);
+global.config = global.utils.readJSONFile(global.argv.config);
+await _backends();
 
 const app = express();
 global.app = app;
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(cors({ origin: global.db.hostname }));
+app.use(cors({ origin: global.config.application.hostname }));
 app.use(morgan("combined"));
 
-global.server = app.listen(global.argv.listenPort, () => {
-	console.log(`proxmoxaas-api v${global.package.version} listening on port ${global.argv.listenPort}`);
+global.server = app.listen(global.config.application.listenPort, () => {
+	console.log(`proxmoxaas-api v${global.package.version} listening on port ${global.config.application.listenPort}`);
 });
 
-global.utils.recursiveImport(app, "/api", "routes");
+global.utils.recursiveImportRoutes(app, "/api", "routes");
 
 /**
  * GET - get API version

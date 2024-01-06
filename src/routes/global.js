@@ -1,7 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
-const db = global.db;
 const checkAuth = global.utils.checkAuth;
 
 /**
@@ -20,7 +19,7 @@ router.get("/config/:key", async (req, res) => {
 	}
 	const allowKeys = ["resources"];
 	if (allowKeys.includes(params.key)) {
-		const config = db.getGlobal();
+		const config = global.config;
 		res.status(200).send(config[params.key]);
 	}
 	else {

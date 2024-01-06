@@ -1,6 +1,7 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
+const config = global.config;
 const checkAuth = global.utils.checkAuth;
 const getUserResources = global.utils.getUserResources;
 
@@ -61,7 +62,7 @@ router.get("/iso", async (req, res) => {
 		return;
 	}
 	// get user iso config
-	const userIsoConfig = global.config.useriso;
+	const userIsoConfig = config.useriso;
 	// get all isos
 	const isos = (await global.pve.requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", { token: true })).data.data;
 	const userIsos = [];

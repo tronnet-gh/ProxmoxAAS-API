@@ -1,11 +1,7 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
-const db = global.db;
-const domain = global.db.domain;
 const checkAuth = global.utils.checkAuth;
-const requestPVE = global.pve.requestPVE;
-const pveAPIToken = global.db.pveAPIToken;
 
 /**
  * GET - check authentication
@@ -31,12 +27,13 @@ router.get("/", async (req, res) => {
  * - 401: {auth: false}
  */
 router.post("/ticket", async (req, res) => {
-	const response = await requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
+	const response = await global.pve.requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
 	if (!(response.status === 200)) {
 		res.status(response.status).send({ auth: false });
 		res.end();
 		return;
 	}
+	const domain = global.config.application.domain;
 	const ticket = response.data.data.ticket;
 	const csrftoken = response.data.data.CSRFPreventionToken;
 	const username = response.data.data.username;
@@ -55,6 +52,7 @@ router.post("/ticket", async (req, res) => {
  */
 router.delete("/ticket", async (req, res) => {
 	const expire = new Date(0);
+	const domain = global.config.application.domain;
 	res.cookie("PVEAuthCookie", "", { domain, path: "/", httpOnly: true, secure: true, expires: expire });
 	res.cookie("CSRFPreventionToken", "", { domain, path: "/", httpOnly: true, secure: true, expires: expire });
 	res.cookie("username", "", { domain, path: "/", httpOnly: true, secure: true, expires: expire });
@@ -69,16 +67,19 @@ router.post("/password", async (req, res) => {
 	};
 
 	const userRealm = params.userid.split("@").at(-1);
-	const domains = (await requestPVE("/access/domains", "GET", pveAPIToken)).data.data;
+	const domains = (await global.pve.requestPVE("/access/domains", "GET", { token: true })).data.data;
 	const realm = domains.find((e) => e.realm === userRealm);
-	const authTypes = db.getStatic().types.auth;
-	const realmType = authTypes[realm.type];
+	const authHandlers = global.config.handlers.auth;
+	const handlerType = authHandlers[realm.type];
 
-	if (realmType === "pve") {
-		const response = await requestPVE("/access/password", "PUT", { cookies: req.cookies }, JSON.stringify(params));
+	if (handlerType === "pve") {
+		const response = await global.pve.requestPVE("/access/password", "PUT", { cookies: req.cookies }, JSON.stringify(params));
 		res.status(response.status).send(response.data);
 	}
+	else if (handlerType === "paasldap") {
+		res.status(501).send({ error: `Auth type ${handlerType} not implemented yet.` });
+	}
 	else {
-		res.status(501).send({ error: `Auth type ${realmType} not implemented yet.` });
+		res.status(501).send({ error: `Auth type ${handlerType} not implemented yet.` });
 	}
 });

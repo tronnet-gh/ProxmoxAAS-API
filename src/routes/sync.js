@@ -4,10 +4,7 @@ import * as cookie from "cookie";
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
-const requestPVE = global.pve.requestPVE;
 const checkAuth = global.utils.checkAuth;
-const db = global.db;
-const pveAPIToken = global.db.pveAPIToken;
 const getObjectHash = global.utils.getObjectHash;
 const getTimeLeft = global.utils.getTimeLeft;
 
@@ -24,8 +21,8 @@ let prevState = {};
 // target ms value
 let targetMSTime = null;
 
-const schemes = db.getGlobal().clientsync.schemes;
-const resourceTypes = db.getGlobal().clientsync.resourcetypes;
+const schemes = global.config.clientsync.schemes;
+const resourceTypes = global.config.clientsync.resourcetypes;
 /**
  * GET - get list of supported synchronization schemes
  * responses:
@@ -55,7 +52,7 @@ if (schemes.hash.enabled) {
 			return;
 		}
 		// get current cluster resources
-		const status = (await requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
+		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
 		// filter out just state information of resources that are needed
 		const state = extractClusterState(status, resourceTypes);
 		res.status(200).send(getObjectHash(state));
@@ -158,13 +155,13 @@ if (schemes.interrupt.enabled) {
 	// handle the wss upgrade request
 	global.server.on("upgrade", async (req, socket, head) => {
 		const cookies = cookie.parse(req.headers.cookie || "");
-		const auth = (await requestPVE("/version", "GET", { cookies })).status === 200;
+		const auth = (await global.pve.requestPVE("/version", "GET", { cookies })).status === 200;
 		if (!auth) {
 			socket.destroy();
 		}
 		else {
 			wsServer.handleUpgrade(req, socket, head, (socket) => {
-				const pool = db.getUser(cookies.username).cluster.pool;
+				const pool = global.db.getUser(cookies.username).cluster.pool;
 				wsServer.emit("connection", socket, cookies.username, pool);
 			});
 		}
@@ -185,7 +182,7 @@ if (schemes.interrupt.enabled) {
 			return;
 		}
 		// get current cluster resources
-		const status = (await requestPVE("/cluster/resources", "GET", { token: pveAPIToken })).data.data;
+		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { token: true })).data.data;
 		// filter out just state information of resources that are needed, and hash each one
 		const currState = extractClusterState(status, resourceTypes, true);
 		// get a map of users to send sync notifications

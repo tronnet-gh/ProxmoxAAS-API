@@ -2,12 +2,8 @@ import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
 const db = global.db;
-const requestPVE = global.pve.requestPVE;
-const handleResponse = global.pve.handleResponse;
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;
-const pveAPIToken = global.db.pveAPIToken;
-const getNodeAvailDevices = global.pve.getNodeAvailDevices;
 const getUserResources = global.utils.getUserResources;
 
 const nodeRegexP = "[\\w-]+";
@@ -16,7 +12,7 @@ const vmidRegexP = "\\d+";
 
 const basePath = `/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})`;
 
-global.utils.recursiveImport(router, basePath, "cluster", import.meta.url);
+global.utils.recursiveImportRoutes(router, basePath, "cluster", import.meta.url);
 
 /**
  * GET - get available pcie devices given node and user
@@ -46,7 +42,7 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	// get remaining user resources
 	const userAvailPci = (await getUserResources(req, req.cookies.username)).pci.nodes[params.node];
 	// get node avail devices
-	let nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
+	let nodeAvailPci = await global.pve.getNodeAvailDevices(params.node, req.cookies);
 	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => {
 		return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
 	}));
@@ -88,7 +84,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		return;
 	}
 	// get current config
-	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: pveAPIToken });
+	const currentConfig = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true });
 	const request = {
 		cores: Number(params.cores) - Number(currentConfig.data.data.cores),
 		memory: Number(params.memory) - Number(currentConfig.data.data.memory)
@@ -117,8 +113,8 @@ router.post(`${basePath}/resources`, async (req, res) => {
 	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	const result = await requestPVE(`${vmpath}/config`, method, { token: pveAPIToken }, action);
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
+	await global.pve.handleResponse(params.node, result, res);
 });
 
 /**
@@ -229,8 +225,8 @@ router.post(`${basePath}/create`, async (req, res) => {
 	}
 	action = JSON.stringify(action);
 	// commit action
-	const result = await requestPVE(`/nodes/${params.node}/${params.type}`, "POST", { token: pveAPIToken }, action);
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}`, "POST", { token: true }, action);
+	await global.pve.handleResponse(params.node, result, res);
 });
 
 /**
@@ -257,6 +253,6 @@ router.delete(`${basePath}/delete`, async (req, res) => {
 		return;
 	}
 	// commit action
-	const result = await requestPVE(vmpath, "DELETE", { token: pveAPIToken });
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(vmpath, "DELETE", { token: true });
+	await global.pve.handleResponse(params.node, result, res);
 });

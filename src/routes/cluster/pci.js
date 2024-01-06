@@ -1,14 +1,8 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
-const db = global.db;
-const requestPVE = global.pve.requestPVE;
-const handleResponse = global.pve.handleResponse;
-const getDeviceInfo = global.pve.getDeviceInfo;
-const getNodeAvailDevices = global.pve.getNodeAvailDevices;
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;
-const pveAPIToken = global.db.pveAPIToken;
 
 /**
  * GET - get instance pcie device data
@@ -37,7 +31,7 @@ router.get("/:hostpci", async (req, res) => {
 		return;
 	}
 	// check device is in instance config
-	const config = (await requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
+	const config = (await global.pve.requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	if (!config[`hostpci${params.hostpci}`]) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci} in ${params.vmid}.` });
 		res.end();
@@ -45,7 +39,7 @@ router.get("/:hostpci", async (req, res) => {
 	}
 	const device = config[`hostpci${params.hostpci}`].split(",")[0];
 	// get node's pci devices
-	const deviceData = await getDeviceInfo(params.node, device);
+	const deviceData = await global.pve.getDeviceInfo(params.node, device);
 	if (!deviceData) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci}=${device} in ${params.node}.` });
 		res.end();
@@ -95,8 +89,8 @@ router.post("/:hostpci/modify", async (req, res) => {
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// get instance config to check if device has not changed
-	const config = (await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: pveAPIToken })).data.data;
-	const currentDeviceData = await getDeviceInfo(params.node, config[`hostpci${params.hostpci}`].split(",")[0]);
+	const config = (await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true })).data.data;
+	const currentDeviceData = await global.pve.getDeviceInfo(params.node, config[`hostpci${params.hostpci}`].split(",")[0]);
 	if (!currentDeviceData) {
 		res.status(500).send({ error: `No device in hostpci${params.hostpci}.` });
 		res.end();
@@ -105,7 +99,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 	// only check user and node availability if base id is different
 	if (currentDeviceData.id.split(".")[0] !== params.device) {
 		// setup request
-		const deviceData = await getDeviceInfo(params.node, params.device);
+		const deviceData = await global.pve.getDeviceInfo(params.node, params.device);
 		const request = { pci: deviceData.device_name };
 		// check resource approval
 		if (!await approveResources(req, req.cookies.username, request, params.node)) {
@@ -114,7 +108,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 			return;
 		}
 		// check node availability
-		const nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
+		const nodeAvailPci = await global.pve.getNodeAvailDevices(params.node, req.cookies);
 		if (!nodeAvailPci.some(element => element.id.split(".")[0] === params.device)) {
 			res.status(500).send({ error: `Device ${params.device} is already in use on ${params.node}.` });
 			res.end();
@@ -126,7 +120,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 	action[`hostpci${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	action = JSON.stringify(action);
 	// commit action
-	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobal().application.pveroot));
+	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, JSON.stringify(global.config.backends.pve.config.root));
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -136,8 +130,8 @@ router.post("/:hostpci/modify", async (req, res) => {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	const result = await requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
+	await global.pve.handleResponse(params.node, result, res);
 });
 
 /**
@@ -178,13 +172,13 @@ router.post("/create", async (req, res) => {
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// get instance config to find next available hostpci slot
-	const config = requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { cookies: params.cookies });
+	const config = global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { cookies: params.cookies });
 	let hostpci = 0;
 	while (config[`hostpci${hostpci}`]) {
 		hostpci++;
 	}
 	// setup request
-	const deviceData = await getDeviceInfo(params.node, params.device);
+	const deviceData = await global.pve.getDeviceInfo(params.node, params.device);
 	const request = {
 		pci: deviceData.device_name
 	};
@@ -195,7 +189,7 @@ router.post("/create", async (req, res) => {
 		return;
 	}
 	// check node availability
-	const nodeAvailPci = await getNodeAvailDevices(params.node, req.cookies);
+	const nodeAvailPci = await global.pve.getNodeAvailDevices(params.node, req.cookies);
 	if (!nodeAvailPci.some(element => element.id.split(".")[0] === params.device)) {
 		res.status(500).send({ error: `Device ${params.device} is already in use on ${params.node}.` });
 		res.end();
@@ -206,7 +200,7 @@ router.post("/create", async (req, res) => {
 	action[`hostpci${hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	action = JSON.stringify(action);
 	// commit action
-	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobal().application.pveroot));
+	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, JSON.stringify(global.config.backends.pve.config.root));
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -216,8 +210,8 @@ router.post("/create", async (req, res) => {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	const result = await requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
+	await global.pve.handleResponse(params.node, result, res);
 });
 
 /**
@@ -254,7 +248,7 @@ router.delete("/:hostpci/delete", async (req, res) => {
 		return;
 	}
 	// check device is in instance config
-	const config = (await requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
+	const config = (await global.pve.requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	if (!config[`hostpci${params.hostpci}`]) {
 		res.status(500).send({ error: `Could not find hostpci${params.hostpci} in ${params.vmid}.` });
 		res.end();
@@ -263,7 +257,7 @@ router.delete("/:hostpci/delete", async (req, res) => {
 	// setup action
 	const action = JSON.stringify({ delete: `hostpci${params.hostpci}` });
 	// commit action, need to use root user here because proxmox api only allows root to modify hostpci for whatever reason
-	const rootauth = await requestPVE("/access/ticket", "POST", null, JSON.stringify(db.getGlobal().application.pveroot));
+	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, JSON.stringify(global.config.backends.pve.config.root));
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -273,6 +267,6 @@ router.delete("/:hostpci/delete", async (req, res) => {
 		PVEAuthCookie: rootauth.data.data.ticket,
 		CSRFPreventionToken: rootauth.data.data.CSRFPreventionToken
 	};
-	const result = await requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(`${vmpath}/config`, "POST", { cookies: rootcookies }, action);
+	await global.pve.handleResponse(params.node, result, res);
 });
