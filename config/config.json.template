@@ -1,0 +1,223 @@
+{
+	"backends": {
+		"pve": {
+			"import": "pve.js",
+			"config": {
+				"url": "https://pve.mydomain.example/api2/json",
+				"token": {
+					"user": "proxmoxaas-api",
+					"realm": "pam",
+					"id": "token",
+					"uuid": "token-secret-value"
+				},
+				"root": {
+					"username": "root@pam",
+					"password": "rootpassword"
+				}
+			}
+		},
+		"localdb": {
+			"import": "localdb.js",
+			"config": {
+				"dbfile": "localdb.json"
+			}
+		},
+		"paasldap": {
+			"import": "paasldap.js",
+			"config": {
+				"url": "http://paasldap.mydomain.example"
+			}
+		}
+	},
+	"handlers": {
+		"pve": "pve",
+		"db": "localdb",
+		"auth": {
+			"pve": "pve",
+			"ldap": "paasldap"
+		}
+	},
+	"application": {
+		"hostname": "paas.mydomain.example",
+		"domain": "mydomain.example",
+		"listenPort": 8081
+	},
+	"useriso": {
+		"node": "examplenode1",
+		"storage": "cephfs"
+	},
+	"resources": {
+		"cpu": {
+			"type": "list",
+			"whitelist": true,
+			"display": false
+		},
+		"cores": {
+			"name": "vCPU",
+			"type": "numeric",
+			"multiplier": 1,
+			"base": 1024,
+			"compact": false,
+			"unit": "Cores",
+			"display": true
+		},
+		"memory": {
+			"name": "RAM",
+			"type": "numeric",
+			"multiplier": 1048576,
+			"base": 1024,
+			"compact": true,
+			"unit": "B",
+			"display": true
+		},
+		"swap": {
+			"name": "SWAP",
+			"type": "numeric",
+			"multiplier": 1048576,
+			"base": 1024,
+			"compact": true,
+			"unit": "B",
+			"display": true
+		},
+		"local": {
+			"name": "local",
+			"type": "storage",
+			"multiplier": 1,
+			"base": 1024,
+			"compact": true,
+			"unit": "B",
+			"disks": [
+				"rootfs",
+				"mp",
+				"sata",
+				"unused"
+			],
+			"display": true
+		},
+		"cephpl": {
+			"name": "cephpl",
+			"type": "storage",
+			"multiplier": 1,
+			"base": 1024,
+			"compact": true,
+			"unit": "B",
+			"disks": [
+				"rootfs",
+				"mp",
+				"sata",
+				"unused"
+			],
+			"display": true
+		},
+		"network": {
+			"name": "Network",
+			"type": "numeric",
+			"multiplier": 1000000,
+			"base": 1000,
+			"compact": true,
+			"unit": "B/s",
+			"display": true
+		},
+		"pci": {
+			"type": "list",
+			"whitelist": true,
+			"display": true
+		}
+	},
+	"clientsync": {
+		"resourcetypes": [
+			"lxc",
+			"qemu",
+			"node"
+		],
+		"schemes": {
+			"always": {
+				"enabled": true
+			},
+			"hash": {
+				"enabled": true
+			},
+			"interrupt": {
+				"min-rate": 1,
+				"max-rate": 60,
+				"enabled": true
+			}
+		}
+	},
+	"defaultuser": {
+		"resources": {
+			"cpu": {
+				"global": [],
+				"nodes": {}
+			},
+			"cores": {
+				"global": {
+					"max": 0
+				},
+				"nodes": {}
+			},
+			"memory": {
+				"global": {
+					"max": 0
+				},
+				"nodes": {}
+			},
+			"swap": {
+				"global": {
+					"max": 0
+				},
+				"nodes": {}
+			},
+			"local": {
+				"global": {
+					"max": 0
+				},
+				"nodes": {}
+			},
+			"cephpl": {
+				"global": {
+					"max": 0
+				},
+				"nodes": {}
+			},
+			"network": {
+				"global": {
+					"max": 0
+				},
+				"nodes": {}
+			},
+			"pci": {
+				"global": [],
+				"nodes": {}
+			}
+		},
+		"nodes": [],
+		"cluster": {
+			"vmid": {
+				"min": -1,
+				"max": -1
+			},
+			"pool": ""
+		},
+		"templates": {
+			"instances": {
+				"lxc": {},
+				"qemu": {}
+			}
+		},
+		"network": {
+			"lxc": {
+				"type": "veth",
+				"bridge": "vmbr0",
+				"vlan": 10,
+				"ip": "dhcp",
+				"ip6": "dhcp"
+			},
+			"qemu": {
+				"type": "virtio",
+				"bridge": "vmbr0",
+				"vlan": 10
+			}
+		}
+	}
+}

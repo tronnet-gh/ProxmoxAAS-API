@@ -2,8 +2,8 @@ import { createHash } from "crypto";
 import path from "path";
 import url from "url";
 import * as fs from "fs";
-
-import { requestPVE, getDiskInfo, getDeviceInfo } from "./pve.js";
+import { readFileSync } from "fs";
+import { exit } from "process";
 
 /**
  * Check if a user is authorized to access a specified vm, or the cluster in general.
@@ -13,10 +13,9 @@ import { requestPVE, getDiskInfo, getDeviceInfo } from "./pve.js";
  * @returns {boolean} true if the user is authorized to access the specific vm or cluster in general, false otheriwse.
  */
 export async function checkAuth (cookies, res, vmpath = null) {
-	const db = global.db;
 	let auth = false;
 
-	if (db.getUser(cookies.username) === null) {
+	if (global.db.getUser(cookies.username) === null) {
 		auth = false;
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in localdb.` });
 		res.end();
@@ -24,11 +23,11 @@ export async function checkAuth (cookies, res, vmpath = null) {
 	}
 
 	if (vmpath) {
-		const result = await requestPVE(`/${vmpath}/config`, "GET", { cookies });
+		const result = await global.pve.requestPVE(`/${vmpath}/config`, "GET", { cookies });
 		auth = result.status === 200;
 	}
 	else { // if no path is specified, then do a simple authentication
-		const result = await requestPVE("/version", "GET", { cookies });
+		const result = await global.pve.requestPVE("/version", "GET", { cookies });
 		auth = result.status === 200;
 	}
 
@@ -47,17 +46,17 @@ export async function checkAuth (cookies, res, vmpath = null) {
  * @returns
  */
 async function getFullInstanceConfig (req, instance, diskprefixes) {
-	const config = (await requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", { cookies: req.cookies })).data.data;
+	const config = (await global.pve.requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", { cookies: req.cookies })).data.data;
 	// fetch all instance disk and device data concurrently
 	const promises = [];
 	const mappings = [];
 	for (const key in config) {
 		if (diskprefixes.some(prefix => key.startsWith(prefix))) {
-			promises.push(getDiskInfo(instance.node, config, key));
+			promises.push(global.pve.getDiskInfo(instance.node, config, key));
 			mappings.push(key);
 		}
 		else if (key.startsWith("hostpci")) {
-			promises.push(getDeviceInfo(instance.node, config[key].split(",")[0]));
+			promises.push(global.pve.getDeviceInfo(instance.node, config[key].split(",")[0]));
 			mappings.push(key);
 		}
 	}
@@ -78,7 +77,7 @@ async function getFullInstanceConfig (req, instance, diskprefixes) {
  */
 async function getAllInstanceConfigs (req, diskprefixes) {
 	// get the basic resources list
-	const resources = (await requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
+	const resources = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
 
 	// filter resources by their type, we only want lxc and qemu
 	const instances = [];
@@ -109,9 +108,8 @@ async function getAllInstanceConfigs (req, diskprefixes) {
  * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
  */
 export async function getUserResources (req, username) {
-	const db = global.db;
-	const dbResources = db.getGlobal().resources;
-	const userResources = db.getUser(username).resources;
+	const dbResources = global.config.resources;
+	const userResources = global.db.getUser(username).resources;
 
 	// setup disk prefixes object
 	const diskprefixes = [];
@@ -265,8 +263,7 @@ export async function getUserResources (req, username) {
  * @returns {boolean} true if the available resources can fullfill the requested resources, false otherwise.
  */
 export async function approveResources (req, username, request, node) {
-	const db = global.db;
-	const dbResources = db.getGlobal().resources;
+	const dbResources = global.config.resources;
 	const userResources = await getUserResources(req, username);
 	let approved = true;
 	Object.keys(request).every((key) => {
@@ -334,15 +331,15 @@ export function getTimeLeft (timeout) {
  * @param {string} target folder to import modules.
  * @param {string} from source folder of calling module, optional for imports from the same base directory.
  */
-export function recursiveImport (router, baseroute, target, from = import.meta.url) {
+export function recursiveImportRoutes (router, baseroute, target, from = import.meta.url) {
 	const thisPath = path.dirname(url.fileURLToPath(import.meta.url));
 	const fromPath = path.relative(".", path.dirname(url.fileURLToPath(from)));
 	const targetPath = path.relative(".", `${fromPath}/${target}`);
-	const importPath = path.relative(thisPath, targetPath);
+	const baseImportPath = path.relative(thisPath, targetPath);
 	const files = fs.readdirSync(targetPath);
 	files.forEach((file) => {
 		if (file.endsWith(".js")) {
-			const path = `./${importPath}/${file}`;
+			const path = `./${baseImportPath}/${file}`;
 			const route = `${baseroute}/${file.replace(".js", "")}`;
 			import(path).then((module) => {
 				router.use(route, module.router);
@@ -351,3 +348,13 @@ export function recursiveImport (router, baseroute, target, from = import.meta.u
 		}
 	});
 }
+
+export function readJSONFile (path) {
+	try {
+		return JSON.parse(readFileSync(path));
+	}
+	catch (e) {
+		console.log(`Error: ${path} was not found.`);
+		exit(1);
+	}
+};

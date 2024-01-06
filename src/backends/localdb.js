@@ -1,18 +1,16 @@
 import { readFileSync, writeFileSync } from "fs";
 import { exit } from "process";
 
-class LocalDB {
+export default class LocalDB {
 	#path = null;
 	#data = null;
-	constructor (path) {
+	#defaultuser = null;
+	constructor (config) {
+		const path = config.dbfile;
 		try {
 			this.#path = path;
 			this.#load();
-			this.pveAPI = this.getGlobal().application.pveAPI;
-			this.pveAPIToken = this.getGlobal().application.pveAPIToken;
-			this.listenPort = this.getGlobal().application.listenPort;
-			this.hostname = this.getGlobal().application.hostname;
-			this.domain = this.getGlobal().application.domain;
+			this.#defaultuser = global.config.defaultuser;
 		}
 		catch {
 			console.log(`Error: ${path} was not found. Please follow the directions in the README to initialize localdb.json.`);
@@ -34,21 +32,8 @@ class LocalDB {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
-	getStatic () {
-		return this.#data.static;
-	}
-
-	getGlobal () {
-		return this.#data.global;
-	}
-
-	setGloal (config) {
-		this.#data.global = config;
-		this.#save();
-	}
-
 	addUser (username, config = null) {
-		config = config || this.#data.global.defaultuser;
+		config = config || this.#defaultuser;
 		this.#data.users[username] = config;
 		this.#save();
 	}
@@ -84,5 +69,3 @@ class LocalDB {
 		}
 	}
 }
-
-export default LocalDB;

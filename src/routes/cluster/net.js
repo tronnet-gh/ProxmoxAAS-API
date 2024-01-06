@@ -2,11 +2,8 @@ import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
 const db = global.db;
-const requestPVE = global.pve.requestPVE;
-const handleResponse = global.pve.handleResponse;
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;
-const pveAPIToken = global.db.pveAPIToken;
 
 /**
  * POST - create new virtual network interface
@@ -41,7 +38,7 @@ router.post("/:netid/create", async (req, res) => {
 		return;
 	}
 	// get current config
-	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: pveAPIToken });
+	const currentConfig = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true });
 	// net interface must not exist
 	if (currentConfig.data.data[`net${params.netid}`]) {
 		res.status(500).send({ error: `Network interface net${params.netid} already exists.` });
@@ -74,8 +71,8 @@ router.post("/:netid/create", async (req, res) => {
 	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	const result = await requestPVE(`${vmpath}/config`, method, { token: pveAPIToken }, action);
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
+	await global.pve.handleResponse(params.node, result, res);
 });
 
 /**
@@ -109,7 +106,7 @@ router.post("/:netid/modify", async (req, res) => {
 		return;
 	}
 	// get current config
-	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: pveAPIToken });
+	const currentConfig = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true });
 	// net interface must already exist
 	if (!currentConfig.data.data[`net${params.netid}`]) {
 		res.status(500).send({ error: `Network interface net${params.netid} does not exist.` });
@@ -133,8 +130,8 @@ router.post("/:netid/modify", async (req, res) => {
 	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	const result = await requestPVE(`${vmpath}/config`, method, { token: pveAPIToken }, action);
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
+	await global.pve.handleResponse(params.node, result, res);
 });
 
 /**
@@ -165,7 +162,7 @@ router.delete("/:netid/delete", async (req, res) => {
 		return;
 	}
 	// get current config
-	const currentConfig = await requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: pveAPIToken });
+	const currentConfig = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true });
 	// net interface must already exist
 	if (!currentConfig.data.data[`net${params.netid}`]) {
 		res.status(500).send({ error: `Network interface net${params.netid} does not exist.` });
@@ -176,6 +173,6 @@ router.delete("/:netid/delete", async (req, res) => {
 	const action = JSON.stringify({ delete: `net${params.netid}` });
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	const result = await requestPVE(`${vmpath}/config`, method, { token: pveAPIToken }, action);
-	await handleResponse(params.node, result, res);
+	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
+	await global.pve.handleResponse(params.node, result, res);
 });
