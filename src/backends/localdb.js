@@ -1,11 +1,14 @@
 import { readFileSync, writeFileSync } from "fs";
 import { exit } from "process";
+import { DB_BACKEND } from "./backends.js";
 
-export default class LocalDB {
+export default class LocalDB extends DB_BACKEND {
 	#path = null;
 	#data = null;
 	#defaultuser = null;
+
 	constructor (config) {
+		super();
 		const path = config.dbfile;
 		try {
 			this.#path = path;
@@ -13,7 +16,7 @@ export default class LocalDB {
 			this.#defaultuser = global.config.defaultuser;
 		}
 		catch {
-			console.log(`Error: ${path} was not found. Please follow the directions in the README to initialize localdb.json.`);
+			console.log(`error: ${path} was not found. Please follow the directions in the README to initialize localdb.json.`);
 			exit(1);
 		}
 	}
@@ -31,6 +34,10 @@ export default class LocalDB {
 	#save () {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
+
+	openSession (credentials) { return [] }
+
+	closeSesssion (tokens) {return true }
 
 	addUser (username, config = null) {
 		config = config || this.#defaultuser;

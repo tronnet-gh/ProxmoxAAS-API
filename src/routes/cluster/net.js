@@ -61,14 +61,13 @@ router.post("/:netid/create", async (req, res) => {
 	}
 	// setup action
 	const nc = db.getUser(req.cookies.username).templates.network[params.type];
-	let action = {};
+	const action = {};
 	if (params.type === "lxc") {
 		action[`net${params.netid}`] = `name=${params.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${params.rate}`;
 	}
 	else {
 		action[`net${params.netid}`] = `${nc.type},bridge=${nc.bridge},tag=${nc.vlan},rate=${params.rate}`;
 	}
-	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
@@ -125,9 +124,8 @@ router.post("/:netid/modify", async (req, res) => {
 		return;
 	}
 	// setup action
-	let action = {};
+	const action = {};
 	action[`net${params.netid}`] = currentNetworkConfig.replace(`rate=${currentNetworkRate}`, `rate=${params.rate}`);
-	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
@@ -170,9 +168,8 @@ router.delete("/:netid/delete", async (req, res) => {
 		return;
 	}
 	// setup action
-	const action = JSON.stringify({ delete: `net${params.netid}` });
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
+	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, { delete: `net${params.netid}` });
 	await global.pve.handleResponse(params.node, result, res);
 });

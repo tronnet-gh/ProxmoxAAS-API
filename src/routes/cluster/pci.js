@@ -116,11 +116,10 @@ router.post("/:hostpci/modify", async (req, res) => {
 		}
 	}
 	// setup action
-	let action = {};
+	const action = {};
 	action[`hostpci${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
-	action = JSON.stringify(action);
 	// commit action
-	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, JSON.stringify(global.config.backends.pve.config.root));
+	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, global.config.backends.pve.config.root);
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -196,11 +195,10 @@ router.post("/create", async (req, res) => {
 		return;
 	}
 	// setup action
-	let action = {};
+	const action = {};
 	action[`hostpci${hostpci}`] = `${params.device},pcie=${params.pcie}`;
-	action = JSON.stringify(action);
 	// commit action
-	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, JSON.stringify(global.config.backends.pve.config.root));
+	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, global.config.backends.pve.config.root);
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
@@ -255,9 +253,9 @@ router.delete("/:hostpci/delete", async (req, res) => {
 		return;
 	}
 	// setup action
-	const action = JSON.stringify({ delete: `hostpci${params.hostpci}` });
+	const action = { delete: `hostpci${params.hostpci}` };
 	// commit action, need to use root user here because proxmox api only allows root to modify hostpci for whatever reason
-	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, JSON.stringify(global.config.backends.pve.config.root));
+	const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, global.config.backends.pve.config.root);
 	if (!(rootauth.status === 200)) {
 		res.status(rootauth.status).send({ auth: false, error: "API could not authenticate as root user." });
 		res.end();
