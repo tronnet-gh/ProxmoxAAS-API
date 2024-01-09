@@ -102,7 +102,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		return;
 	}
 	// setup action
-	let action = { cores: params.cores, memory: params.memory };
+	const action = { cores: params.cores, memory: params.memory };
 	if (params.type === "lxc") {
 		action.swap = Number(params.swap);
 	}
@@ -110,7 +110,6 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		action.cpu = params.proctype;
 		action.boot = `order=${params.boot.toString().replaceAll(",", ";")};`;
 	}
-	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
@@ -203,7 +202,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		return;
 	}
 	// setup action by adding non resource values
-	let action = {
+	const action = {
 		vmid: params.vmid,
 		cores: Number(params.cores),
 		memory: Number(params.memory),
@@ -223,7 +222,6 @@ router.post(`${basePath}/create`, async (req, res) => {
 	else {
 		action.name = params.name;
 	}
-	action = JSON.stringify(action);
 	// commit action
 	const result = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}`, "POST", { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);

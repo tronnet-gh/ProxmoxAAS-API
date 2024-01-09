@@ -45,7 +45,7 @@ router.post("/:disk/detach", async (req, res) => {
 		res.end();
 		return;
 	}
-	const action = JSON.stringify({ delete: params.disk });
+	const action = { delete: params.disk };
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -97,9 +97,8 @@ router.post("/:disk/attach", async (req, res) => {
 		return;
 	}
 	// setup action using source disk info from vm config
-	let action = {};
+	const action = {};
 	action[params.disk] = config[`unused${params.source}`];
-	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
@@ -156,7 +155,7 @@ router.post("/:disk/resize", async (req, res) => {
 		return;
 	}
 	// action approved, commit to action
-	const action = JSON.stringify({ disk: params.disk, size: `+${params.size}G` });
+	const action = { disk: params.disk, size: `+${params.size}G` };
 	const result = await global.pve.requestPVE(`${vmpath}/resize`, "PUT", { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
 });
@@ -216,14 +215,13 @@ router.post("/:disk/move", async (req, res) => {
 		return;
 	}
 	// create action
-	let action = { storage: params.storage, delete: params.delete };
+	const action = { storage: params.storage, delete: params.delete };
 	if (params.type === "qemu") {
 		action.disk = params.disk;
 	}
 	else {
 		action.volume = params.disk;
 	}
-	action = JSON.stringify(action);
 	const route = params.type === "qemu" ? "move_disk" : "move_volume";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/${route}`, "POST", { token: true }, action);
@@ -272,7 +270,7 @@ router.delete("/:disk/delete", async (req, res) => {
 		return;
 	}
 	// create action
-	const action = JSON.stringify({ delete: params.disk });
+	const action = { delete: params.disk };
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
@@ -340,7 +338,7 @@ router.post("/:disk/create", async (req, res) => {
 		}
 	}
 	// setup action
-	let action = {};
+	const action = {};
 	if (params.disk.includes("ide") && params.iso) {
 		action[params.disk] = `${params.iso},media=cdrom`;
 	}
@@ -350,7 +348,6 @@ router.post("/:disk/create", async (req, res) => {
 	else { // type is lxc, use mp and add mp and backup values
 		action[params.disk] = `${params.storage}:${params.size},mp=/${params.disk}/,backup=1`;
 	}
-	action = JSON.stringify(action);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);

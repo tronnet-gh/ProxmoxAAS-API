@@ -27,7 +27,8 @@ router.get("/", async (req, res) => {
  * - 401: {auth: false}
  */
 router.post("/ticket", async (req, res) => {
-	const response = await global.pve.requestPVE("/access/ticket", "POST", null, JSON.stringify(req.body));
+	const body = JSON.parse(JSON.stringify(req.body));
+	const response = await global.pve.requestPVE("/access/ticket", "POST", null, body);
 	if (!(response.status === 200)) {
 		res.status(response.status).send({ auth: false });
 		res.end();
@@ -60,26 +61,48 @@ router.delete("/ticket", async (req, res) => {
 	res.status(200).send({ auth: false });
 });
 
+/**
+ * POST - change user password
+ * request:
+ * - binduser: string
+ * - bindpass: string
+ * - username: string
+ * - password: string
+ * responses:
+ * - PAAS-LDAP API response
+ */
 router.post("/password", async (req, res) => {
 	const params = {
-		password: req.body.password,
-		userid: req.cookies.username
+		binduser: req.body.binduser,
+		bindpass: req.body.bindpass,
+		username: req.body.username,
+		password: req.body.password
 	};
 
-	const userRealm = params.userid.split("@").at(-1);
+	const userRealm = params.username.split("@").at(-1);
 	const domains = (await global.pve.requestPVE("/access/domains", "GET", { token: true })).data.data;
 	const realm = domains.find((e) => e.realm === userRealm);
 	const authHandlers = global.config.handlers.auth;
-	const handlerType = authHandlers[realm.type];
 
-	if (handlerType === "pve") {
-		const response = await global.pve.requestPVE("/access/password", "PUT", { cookies: req.cookies }, JSON.stringify(params));
-		res.status(response.status).send(response.data);
-	}
-	else if (handlerType === "paasldap") {
-		res.status(501).send({ error: `Auth type ${handlerType} not implemented yet.` });
+	if (realm.type in authHandlers) {
+		const handler = authHandlers[realm.type];
+		const userID = params.username.replace(`@${realm.realm}`, "");
+		const newAttributes = {
+			userpassword: params.password
+		};
+		const bindParams = {
+			binduser: params.binduser,
+			bindpass: params.bindpass
+		};
+		const response = await handler.modUser(userID, newAttributes, bindParams);
+		if (response.ok) {
+			res.status(response.status).send();
+		}
+		else {
+			res.status(response.status).send({error: response.data.error});
+		}
 	}
 	else {
-		res.status(501).send({ error: `Auth type ${handlerType} not implemented yet.` });
+		res.status(501).send({ error: `Auth type ${realm.type} not implemented yet.` });
 	}
 });

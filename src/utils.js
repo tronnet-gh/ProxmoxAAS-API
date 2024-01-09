@@ -354,7 +354,7 @@ export function readJSONFile (path) {
 		return JSON.parse(readFileSync(path));
 	}
 	catch (e) {
-		console.log(`Error: ${path} was not found.`);
+		console.log(`error: ${path} was not found.`);
 		exit(1);
 	}
 };

@@ -26,3 +26,39 @@ export default async () => {
 		global.auth[e] = backends[global.auth[e]];
 	});
 };
+
+/**
+ * Interface for all backend types. Contains only two methods for opening and closing a session with the backend.
+ * Users will recieve tokens from all backends when first authenticating and will delete tokens when logging out.
+ */
+export class BACKEND {
+	/**
+	 * Opens a session with the backend and creates session tokens if needed
+	 * @param {Object} credentials object containing username and password fields
+	 * @returns {Object[]} list of session token objects with token name and value
+	 */
+	openSession (credentials) {}
+	/**
+	 * Closes an opened session with the backend if needed
+	 * @param {*} token list of session token objects with token name and value
+	 * @returns {Boolean} true if session was closed successfully, false otherwise 
+	 */
+	closeSesssion (tokens) {}
+}
+
+/**
+ * Interface for user database backends.
+ */
+export class DB_BACKEND extends BACKEND {
+	addUser (username, config = null) {}
+	getUser (username) {}
+	setUser (username, config) {}
+	deluser (username) {}
+}
+
+/**
+ * Interface for user auth backends.
+ */
+export class AUTH_BACKEND extends BACKEND{
+	modUser (username, attributes, params = null) {}
+}

@@ -13,7 +13,7 @@ export default class PVE {
 
 	/**
 	 * Send HTTP request to proxmox API. Allows requests to be made with user cookie credentials or an API token for controlled priviledge elevation.
-	 * @param {string} path HTTP path, prepended with the proxmox API base path.
+	 * @param {string} path HTTP path, prepended with the proxmox API base url.
 	 * @param {string} method HTTP method.
 	 * @param {Object} auth authentication method. Set auth.cookies with user cookies or auth.token with PVE API Token. Optional.
 	 * @param {string} body body parameters and data to be sent. Optional.
@@ -27,7 +27,8 @@ export default class PVE {
 			credentials: "include",
 			headers: {
 				"Content-Type": "application/x-www-form-urlencoded"
-			}
+			},
+			data: body
 		};
 
 		if (auth && auth.cookies) {
@@ -35,12 +36,8 @@ export default class PVE {
 			content.headers.Cookie = `PVEAuthCookie=${auth.cookies.PVEAuthCookie}; CSRFPreventionToken=${auth.cookies.CSRFPreventionToken}`;
 		}
 		else if (auth && auth.token) {
-			auth.token = this.#pveAPIToken;
-			content.headers.Authorization = `PVEAPIToken=${auth.token.user}@${auth.token.realm}!${auth.token.id}=${auth.token.uuid}`;
-		}
-
-		if (body) {
-			content.data = JSON.parse(body);
+			const token = this.#pveAPIToken;
+			content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
 		}
 
 		try {

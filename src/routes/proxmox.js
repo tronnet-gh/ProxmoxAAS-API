@@ -18,6 +18,7 @@ router.get("/*", async (req, res) => { // proxy endpoint for GET proxmox api wit
  */
 router.post("/*", async (req, res) => { // proxy endpoint for POST proxmox api with no token
 	const path = req.url.replace("/api/proxmox", "");
-	const result = await global.pve.requestPVE(path, "POST", { cookies: req.cookies }, JSON.stringify(req.body)); // need to stringify body because of other issues
+	const body = JSON.parse(JSON.stringify(req.body));
+	const result = await global.pve.requestPVE(path, "POST", { cookies: req.cookies }, body); // need to stringify body because of other issues
 	res.status(result.status).send(result.data);
 });
