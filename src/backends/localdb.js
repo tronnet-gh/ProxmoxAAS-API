@@ -35,9 +35,13 @@ export default class LocalDB extends DB_BACKEND {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
-	openSession (credentials) { return [] }
+	openSession (credentials) {
+		return [];
+	}
 
-	closeSesssion (tokens) {return true }
+	closeSesssion (tokens) {
+		return true;
+	}
 
 	addUser (username, config = null) {
 		config = config || this.#defaultuser;

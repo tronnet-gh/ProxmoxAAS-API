@@ -41,7 +41,7 @@ export class BACKEND {
 	/**
 	 * Closes an opened session with the backend if needed
 	 * @param {*} token list of session token objects with token name and value
-	 * @returns {Boolean} true if session was closed successfully, false otherwise 
+	 * @returns {Boolean} true if session was closed successfully, false otherwise
 	 */
 	closeSesssion (tokens) {}
 }
@@ -59,6 +59,6 @@ export class DB_BACKEND extends BACKEND {
 /**
  * Interface for user auth backends.
  */
-export class AUTH_BACKEND extends BACKEND{
+export class AUTH_BACKEND extends BACKEND {
 	modUser (username, attributes, params = null) {}
 }
