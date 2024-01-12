@@ -99,7 +99,7 @@ router.post("/password", async (req, res) => {
 			res.status(response.status).send();
 		}
 		else {
-			res.status(response.status).send({error: response.data.error});
+			res.status(response.status).send({ error: response.data.error });
 		}
 	}
 	else {

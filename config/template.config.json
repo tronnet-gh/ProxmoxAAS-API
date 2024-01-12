@@ -33,8 +33,7 @@
 		"pve": "pve",
 		"db": "localdb",
 		"auth": {
-			"pve": "pve",
-			"ldap": "paasldap"
+			"pve": "pve"
 		}
 	},
 	"application": {
