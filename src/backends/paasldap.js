@@ -1,5 +1,6 @@
 import axios from "axios";
 import { AUTH_BACKEND } from "./backends.js";
+import * as setCookie from "set-cookie-parser";
 
 export default class PAASLDAP extends AUTH_BACKEND {
 	#url = null;
@@ -29,12 +30,13 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		};
 
 		if (auth) {
-			content.data.binduser = auth.binduser;
-			content.data.bindpass = auth.bindpass;
+			content.headers.PAASLDAPAuthTicket = auth.PAASLDAPAuthTicket;
 		}
 
 		try {
-			return await axios.request(url, content);
+			const result = await axios.request(url, content);
+			result.ok = result.status === 200;
+			return result;
 		}
 		catch (error) {
 			error.ok = false;
@@ -46,8 +48,28 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async modUser (userid, attributes, params = null) {
-		const bind = { binduser: params.binduser, bindpass: params.bindpass };
-		return await this.#request(`/users/${userid}`, "POST", bind, attributes);
+	async openSession (credentials) {
+		const userRealm = credentials.username.split("@").at(-1);
+		const uid = credentials.username.replace(`@${userRealm}`, "");
+		const content = { uid, password: credentials.password };
+		const result = await this.#request("/ticket", "POST", null, content);
+		if (result.ok) {
+			const cookies = setCookie.parse(result.headers["set-cookie"]);
+			cookies.forEach((e) => {
+				e.expiresMSFromNow = e.expires - Date.now();
+			});
+			return {
+				ok: true,
+				status: result.status,
+				cookies
+			};
+		}
+		else {
+			return result;
+		}
+	}
+
+	async modUser (userid, attributes, ticket) {
+		return await this.#request(`/users/${userid}`, "POST", ticket, attributes);
 	}
 }

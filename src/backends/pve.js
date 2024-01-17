@@ -1,14 +1,41 @@
 import axios from "axios";
+import { PVE_BACKEND } from "./backends.js";
 
-export default class PVE {
+export default class PVE extends PVE_BACKEND {
 	#pveAPIURL = null;
 	#pveAPIToken = null;
 	#pveRoot = null;
 
 	constructor (config) {
+		super();
 		this.#pveAPIURL = config.url;
 		this.#pveAPIToken = config.token;
 		this.#pveRoot = config.root;
+	}
+
+	async openSession (credentials) {
+		const response = await global.pve.requestPVE("/access/ticket", "POST", null, credentials);
+		if (!(response.status === 200)) {
+			return response;
+		}
+		const ticket = response.data.data.ticket;
+		const csrftoken = response.data.data.CSRFPreventionToken;
+		return {
+			ok: true,
+			status: response.status,
+			cookies: [
+				{
+					name: "PVEAuthCookie",
+					value: ticket,
+					expiresMSFromNow: 2 * 60 * 60 * 1000
+				},
+				{
+					name: "CSRFPreventionToken",
+					value: csrftoken,
+					expiresMSFromNow: 2 * 60 * 60 * 1000
+				}
+			]
+		};
 	}
 
 	/**
