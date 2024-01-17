@@ -35,16 +35,33 @@ export class BACKEND {
 	/**
 	 * Opens a session with the backend and creates session tokens if needed
 	 * @param {Object} credentials object containing username and password fields
-	 * @returns {Object[]} list of session token objects with token name and value
+	 * @returns {Object} response like object with ok, status, and list of session token objects with token name and value
 	 */
-	openSession (credentials) {}
+	openSession (credentials) {
+		return {
+			ok: true,
+			status: 200,
+			cookies: []
+		};
+	}
+
 	/**
 	 * Closes an opened session with the backend if needed
-	 * @param {*} token list of session token objects with token name and value
+	 * @param {Object[]} token list of session token objects with token name and value, may include irrelevant tokens for a specific backend
 	 * @returns {Boolean} true if session was closed successfully, false otherwise
 	 */
-	closeSesssion (tokens) {}
+	closeSession (tokens) {
+		return {
+			ok: true,
+			status: 200
+		};
+	}
 }
+
+/**
+ * Interface for proxmox api backends.
+ */
+export class PVE_BACKEND extends BACKEND {}
 
 /**
  * Interface for user database backends.
