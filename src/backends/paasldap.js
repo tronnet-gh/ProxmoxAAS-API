@@ -30,7 +30,7 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		};
 
 		if (auth) {
-			content.headers.PAASLDAPAuthTicket = auth.PAASLDAPAuthTicket;
+			content.headers.Cookie = `PAASLDAPAuthTicket=${auth.PAASLDAPAuthTicket};`;
 		}
 
 		try {

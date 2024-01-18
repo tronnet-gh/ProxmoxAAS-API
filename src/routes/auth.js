@@ -104,18 +104,13 @@ router.delete("/ticket", async (req, res) => {
 /**
  * POST - change user password
  * request:
- * - binduser: string
- * - bindpass: string
- * - username: string
  * - password: string
  * responses:
  * - PAAS-LDAP API response
  */
 router.post("/password", async (req, res) => {
 	const params = {
-		binduser: req.body.binduser,
-		bindpass: req.body.bindpass,
-		username: req.body.username,
+		username: req.cookies.username,
 		password: req.body.password
 	};
 
@@ -128,11 +123,7 @@ router.post("/password", async (req, res) => {
 		const newAttributes = {
 			userpassword: params.password
 		};
-		const bindParams = {
-			binduser: params.binduser,
-			bindpass: params.bindpass
-		};
-		const response = await handler.modUser(userID, newAttributes, bindParams);
+		const response = await handler.modUser(userID, newAttributes, req.cookies);
 		if (response.ok) {
 			res.status(response.status).send();
 		}
