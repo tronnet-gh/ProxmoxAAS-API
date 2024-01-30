@@ -69,7 +69,7 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async modUser (userid, attributes, ticket) {
+	async setUser (userid, attributes, ticket) {
 		return await this.#request(`/users/${userid}`, "POST", ticket, attributes);
 	}
 }

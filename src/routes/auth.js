@@ -123,7 +123,7 @@ router.post("/password", async (req, res) => {
 		const newAttributes = {
 			userpassword: params.password
 		};
-		const response = await handler.modUser(userID, newAttributes, req.cookies);
+		const response = await handler.setUser(userID, newAttributes, req.cookies);
 		if (response.ok) {
 			res.status(response.status).send();
 		}

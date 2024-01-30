@@ -1,0 +1,128 @@
+{
+    "users": {
+        "exampleuser@auth": {
+			"resources": {
+				"cpu": {
+					"global": [
+						{
+							"match": "kvm64",
+							"name": "kvm64",
+							"max": 1
+						},
+						{
+							"match": "host",
+							"name": "host",
+							"max": 1
+						}
+					],
+					"nodes": {}
+				},
+				"cores": {
+					"global": {
+						"max": 128
+					},
+					"nodes": {}
+				},
+				"memory": {
+					"global": {
+						"max": 131072
+					},
+					"nodes": {}
+				},
+				"swap": {
+					"global": {
+						"max": 131072
+					},
+					"nodes": {}
+				},
+				"local": {
+					"global": {
+						"max": 1099511627776
+					},
+					"nodes": {}
+				},
+				"cephpl": {
+					"global": {
+						"max": 1099511627776
+					},
+					"nodes": {}
+				},
+				"network": {
+					"global": {
+						"max": 100000
+					},
+					"nodes": {}
+				},
+				"pci": {
+					"global": [],
+					"nodes": {
+						"example-node-0": [
+							{
+								"match": "[device 1]",
+								"name": "Device 1",
+								"max": 1
+							},
+							{
+								"match": "[device 2]",
+								"name": "Device 2",
+								"max": 1
+							}
+						]
+					}
+				}
+			},
+			"nodes": [
+				"example-node-0",
+				"example-node-1",
+				"example-node-2"
+			],
+			"cluster": {
+				"vmid": {
+					"min": 100,
+					"max": 199
+				},
+				"pool": "examplepool"
+			},
+			"templates": {
+				"instances": {
+					"lxc": {
+						"net0": {
+							"value": "name=eth0,bridge=vmbr0,ip=dhcp,ip6=dhcp,tag=10,type=veth,rate=1000",
+							"resource": {
+								"name": "network",
+								"amount": 1000
+							}
+						}
+					},
+					"qemu": {
+						"cpu": {
+							"value": "host",
+							"resource": null
+						},
+						"net0": {
+							"value": "virtio,bridge=vmbr0,tag=10,rate=1000",
+							"resource": {
+								"name": "network",
+								"amount": 1000
+							}
+						}
+					}
+				},
+				"network": {
+					"lxc": {
+						"type": "veth",
+						"bridge": "vmbr0",
+						"vlan": 10,
+						"ip": "dhcp",
+						"ip6": "dhcp"
+					},
+					"qemu": {
+						"type": "virtio",
+						"bridge": "vmbr0",
+						"vlan": 10
+					}
+				}
+			}
+		}
+    }
+}
