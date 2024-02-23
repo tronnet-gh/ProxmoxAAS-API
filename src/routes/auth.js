@@ -125,7 +125,7 @@ router.post("/password", async (req, res) => {
 		};
 		const response = await handler.setUser(userID, newAttributes, req.cookies);
 		if (response.ok) {
-			res.status(response.status).send();
+			res.status(response.status).send(response.data);
 		}
 		else {
 			res.status(response.status).send({ error: response.data.error });
