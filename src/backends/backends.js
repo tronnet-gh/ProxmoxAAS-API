@@ -78,12 +78,12 @@ export class DB_BACKEND extends BACKEND {
  */
 export class AUTH_BACKEND extends BACKEND {
 	addUser (username, attributes, params = null) {}
-	getUser (username, params=null) {}
+	getUser (username, params = null) {}
 	setUser (username, attributes, params = null) {}
 	deluser (username, params = null) {}
 
 	addGroup (groupname, attributes, params = null) {}
-	getGroup (groupname, params=null) {}
+	getGroup (groupname, params = null) {}
 	setGroup (groupname, attributes, params = null) {}
 	delGroup (groupname, params = null) {}
 
