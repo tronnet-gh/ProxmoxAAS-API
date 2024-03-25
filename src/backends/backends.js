@@ -87,6 +87,6 @@ export class AUTH_BACKEND extends BACKEND {
 	setGroup (groupname, attributes, params = null) {}
 	delGroup (groupname, params = null) {}
 
-	addUserToGrou (username, groupname, params = null) {}
+	addUserToGroup (username, groupname, params = null) {}
 	delUserFromGroup (username, groupname, params = null) {}
 }
