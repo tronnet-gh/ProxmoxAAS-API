@@ -35,13 +35,13 @@ export default class LocalDB extends DB_BACKEND {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
-	addUser (username, config = null) {
-		config = config || this.#defaultuser;
-		this.#data.users[username] = config;
+	addUser (username, attributes, params = null) {
+		attributes = attributes || this.#defaultuser;
+		this.#data.users[username] = attributes;
 		this.#save();
 	}
 
-	getUser (username) {
+	getUser (username, params = null) {
 		if (this.#data.users[username]) {
 			return this.#data.users[username];
 		}
@@ -50,9 +50,9 @@ export default class LocalDB extends DB_BACKEND {
 		}
 	}
 
-	setUser (username, config) {
+	setUser (username, attributes, params = null) {
 		if (this.#data.users[username]) {
-			this.#data.users[username] = config;
+			this.#data.users[username] = attributes;
 			this.#save();
 			return true;
 		}
@@ -61,7 +61,7 @@ export default class LocalDB extends DB_BACKEND {
 		}
 	}
 
-	delUser (username) {
+	delUser (username, params = null) {
 		if (this.#data.users[username]) {
 			delete this.#data.users[username];
 			this.#save();
