@@ -31,7 +31,7 @@ export default async () => {
  * Interface for all backend types. Contains only two methods for opening and closing a session with the backend.
  * Users will recieve tokens from all backends when first authenticating and will delete tokens when logging out.
  */
-export class BACKEND {
+class BACKEND {
 	/**
 	 * Opens a session with the backend and creates session tokens if needed
 	 * @param {Object} credentials object containing username and password fields
@@ -59,24 +59,10 @@ export class BACKEND {
 }
 
 /**
- * Interface for proxmox api backends.
+ * Interface for backend types that store/interact with user & group data.
+ * Not all backends need to implement all interface methods.
  */
-export class PVE_BACKEND extends BACKEND {}
-
-/**
- * Interface for user database backends.
- */
-export class DB_BACKEND extends BACKEND {
-	addUser (username, config = null) {}
-	getUser (username) {}
-	setUser (username, config) {}
-	deluser (username) {}
-}
-
-/**
- * Interface for user auth backends.
- */
-export class AUTH_BACKEND extends BACKEND {
+class USER_BACKEND extends BACKEND {
 	addUser (username, attributes, params = null) {}
 	getUser (username, params = null) {}
 	setUser (username, attributes, params = null) {}
@@ -90,3 +76,18 @@ export class AUTH_BACKEND extends BACKEND {
 	addUserToGroup (username, groupname, params = null) {}
 	delUserFromGroup (username, groupname, params = null) {}
 }
+
+/**
+ * Interface for proxmox api backends.
+ */
+export class PVE_BACKEND extends BACKEND {}
+
+/**
+ * Interface for user database backends.
+ */
+export class DB_BACKEND extends USER_BACKEND {}
+
+/**
+ * Interface for user auth backends.
+ */
+export class AUTH_BACKEND extends USER_BACKEND {}
