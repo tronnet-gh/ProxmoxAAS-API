@@ -33,7 +33,7 @@ class CookieFetcher {
 				this.#cookies = this.#cookies.concat(response.cookies);
 				this.#fetchedBackends.push(backend);
 			}
-			else { // assume that a repeat backends should not be requested
+			else { // assume that repeat backends should not be requested
 				continue;
 			}
 		}
@@ -116,14 +116,14 @@ router.post("/password", async (req, res) => {
 
 	const userRealm = params.username.split("@").at(-1);
 	const authHandlers = global.config.handlers.auth;
-
+	const userID = params.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
 	if (userRealm in authHandlers) {
 		const handler = authHandlers[userRealm];
-		const userID = params.username.replace(`@${userRealm}`, "");
 		const newAttributes = {
 			userpassword: params.password
 		};
-		const response = await handler.setUser(userID, newAttributes, req.cookies);
+		const response = await handler.setUser(userObj, newAttributes, req.cookies);
 		if (response.ok) {
 			res.status(response.status).send(response.data);
 		}

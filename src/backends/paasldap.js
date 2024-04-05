@@ -69,7 +69,43 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async setUser (userid, attributes, ticket) {
-		return await this.#request(`/users/${userid}`, "POST", ticket, attributes);
+	async addUser (user, attributes, params = null) {
+		return await this.#request(`/users/${user.id}`, "POST", params, attributes);
+	}
+
+	async getUser (user, params = null) {
+		return await this.#request(`/users/${user.id}`, "GET", params);
+	}
+
+	async setUser (user, attributes, params = null) {
+		return await this.#request(`/users/${user.id}`, "POST", params, attributes);
+	}
+
+	async delUser (user, params = null) {
+		return await this.#request(`/users/${user.id}`, "DELETE", params);
+	}
+
+	async addGroup (group, attributes, params = null) {
+		return await this.#request(`/groups/${group.id}`, "POST", params);
+	}
+
+	async getGroup (group, params = null) {
+		return await this.#request(`/groups/${group.id}`, "GET", params);
+	}
+
+	async setGroup (group, attributes, params = null) {
+		// not implemented, LDAP groups do not have any attributes to change
+	}
+
+	async delGroup (group, params = null) {
+		return await this.#request(`/groups/${group.id}`, "DELETE", params);
+	}
+
+	async addUserToGroup (user, group, params = null) {
+		return await this.#request(`/groups/${group.id}/members/${user.id}`, "POST", params);
+	}
+	
+	async delUserFromGroup (user, group, params = null) {
+		return await this.#request(`/groups/${group.id}/members/${user.id}`, "DELETE", params);
 	}
 }
