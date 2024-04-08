@@ -63,7 +63,7 @@ if (schemes.hash.enabled) {
 // setup interupt scheme
 if (schemes.interrupt.enabled) {
 	const wsServer = new WebSocketServer({ noServer: true, path: "/api/sync/interrupt" });
-	wsServer.on("connection", (socket, username, pool) => {
+	wsServer.on("connection", (socket, username, pools) => {
 		// add new socket to userSocketmap
 		if (userSocketMap[username]) {
 			const index = Object.keys(userSocketMap[username]).length;
@@ -74,13 +74,15 @@ if (schemes.interrupt.enabled) {
 			userSocketMap[username] = { 0: socket };
 			socket.userIndex = 0;
 		}
-		// add user to associated pool in poolUserMap
-		if (poolUserMap[pool]) {
-			poolUserMap[pool][username] = true;
-		}
-		else {
-			poolUserMap[pool] = {};
-			poolUserMap[pool][username] = true;
+		// for each pool, add user to associated pool in poolUserMap
+		for (const pool of pools) {
+			if (poolUserMap[pool]) {
+				poolUserMap[pool][username] = true;
+			}
+			else {
+				poolUserMap[pool] = {};
+				poolUserMap[pool][username] = true;
+			}
 		}
 		// add socket entry into requestedRates
 		const index = Object.keys(requestedRates).length;
@@ -96,11 +98,13 @@ if (schemes.interrupt.enabled) {
 			if (Object.keys(userSocketMap[username]).length === 0) {
 				// delete the user entry
 				delete userSocketMap[username];
-				// remove user from poolUserMap pool entry
-				delete poolUserMap[pool][username];
-				// if the poolUserMap pool entry is empty, delete the entry
-				if (Object.keys(poolUserMap[pool]).length === 0) {
-					delete poolUserMap[pool];
+				// remove user from poolUserMap entry for each pool
+				for (const pool of pools) {
+					delete poolUserMap[pool][username];
+					// if the poolUserMap pool entry is empty, delete the entry
+					if (Object.keys(poolUserMap[pool]).length === 0) {
+						delete poolUserMap[pool];
+					}
 				}
 			}
 			// remove socket entry from requestedRates
@@ -154,6 +158,7 @@ if (schemes.interrupt.enabled) {
 	});
 	// handle the wss upgrade request
 	global.server.on("upgrade", async (req, socket, head) => {
+		// basic auth validation
 		const cookies = cookie.parse(req.headers.cookie || "");
 		const auth = (await global.pve.requestPVE("/version", "GET", { cookies })).status === 200;
 		if (!auth) {
@@ -161,8 +166,10 @@ if (schemes.interrupt.enabled) {
 		}
 		else {
 			wsServer.handleUpgrade(req, socket, head, (socket) => {
-				const pool = global.db.getUser(cookies.username).cluster.pool;
-				wsServer.emit("connection", socket, cookies.username, pool);
+				// get the user pools
+				const pools = global.db.getUser(cookies.username).cluster.pools;
+				// emit the connection to initialize socket
+				wsServer.emit("connection", socket, cookies.username, pools);
 			});
 		}
 	});

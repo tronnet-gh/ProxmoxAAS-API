@@ -145,6 +145,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		vmid: req.params.vmid,
 		hostname: req.body.hostname,
 		name: req.body.name,
+		pool: req.body.pool,
 		cores: req.body.cores,
 		memory: req.body.memory,
 		swap: req.body.swap,
@@ -206,7 +207,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		vmid: params.vmid,
 		cores: Number(params.cores),
 		memory: Number(params.memory),
-		pool: user.cluster.pool
+		pool: params.pool // TODO allow user to select pool to assign VM
 	};
 	for (const key of Object.keys(user.templates.instances[params.type])) {
 		action[key] = user.templates.instances[params.type][key].value;
