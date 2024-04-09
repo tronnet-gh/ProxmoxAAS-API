@@ -11,12 +11,16 @@ const getUserResources = global.utils.getUserResources;
  * - 401: {auth: false}
  */
 router.get("/dynamic/resources", async (req, res) => {
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
-	const resources = await getUserResources(req, req.cookies.username);
+	const resources = await getUserResources(req, userObj);
 	res.status(200).send(resources);
 });
 
@@ -33,6 +37,11 @@ router.get("/config/:key", async (req, res) => {
 	const params = {
 		key: req.params.key
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
@@ -40,7 +49,7 @@ router.get("/config/:key", async (req, res) => {
 	}
 	const allowKeys = ["resources", "cluster", "nodes"];
 	if (allowKeys.includes(params.key)) {
-		const config = global.db.getUser(req.cookies.username);
+		const config = global.db.getUser(userObj);
 		res.status(200).send(config[params.key]);
 	}
 	else {

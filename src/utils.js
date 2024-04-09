@@ -15,7 +15,11 @@ import { exit } from "process";
 export async function checkAuth (cookies, res, vmpath = null) {
 	let auth = false;
 
-	if (global.db.getUser(cookies.username) === null) {
+	const userRealm = cookies.username.split("@").at(-1);
+	const userID = cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
+	if (global.db.getUser(userObj) === null) {
 		auth = false;
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in localdb.` });
 		res.end();
@@ -104,12 +108,12 @@ async function getAllInstanceConfigs (req, diskprefixes) {
 /**
  * Get user resource data including used, available, and maximum resources.
  * @param {Object} req ProxmoxAAS API request object.
- * @param {string} username of user to get resource data.
+ * @param {{id: string, realm: string}} user object of user to get resource data.
  * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
  */
-export async function getUserResources (req, username) {
+export async function getUserResources (req, user) {
 	const dbResources = global.config.resources;
-	const userResources = global.db.getUser(username).resources;
+	const userResources = global.db.getUser(user).resources;
 
 	// setup disk prefixes object
 	const diskprefixes = [];
@@ -258,13 +262,13 @@ export async function getUserResources (req, username) {
 /**
  * Check approval for user requesting additional resources. Generally, subtracts the request from available resources and ensures request can be fulfilled by the available resources.
  * @param {Object} req ProxmoxAAS API request object.
- * @param {string} username of user requesting additional resources.
+ * @param {{id: string, realm: string}} user object of user requesting additional resources.
  * @param {Object} request k-v pairs of resources and requested amounts
  * @returns {boolean} true if the available resources can fullfill the requested resources, false otherwise.
  */
-export async function approveResources (req, username, request, node) {
+export async function approveResources (req, user, request, node) {
 	const dbResources = global.config.resources;
-	const userResources = await getUserResources(req, username);
+	const userResources = await getUserResources(req, user);
 	let approved = true;
 	Object.keys(request).every((key) => {
 		// if requested resource is not specified in user resources, assume it's not allowed
