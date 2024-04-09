@@ -92,42 +92,42 @@ class USER_BACKEND extends BACKEND {
 
 	/**
 	 * Add group to backend
-	 * @param {{id: string}} group 
+	 * @param {{id: string}} group
 	 * @param {Object} attributes group attributes
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	addGroup (group, attributes, params = null) {}
 	/**
 	 * Get group from backend
-	 * @param {{id: string}} group 
+	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	getGroup (group, params = null) {}
 	/**
 	 * Modify group in backend
-	 * @param {{id: string}} group 
+	 * @param {{id: string}} group
 	 * @param {Object} attributes new group attributes to modify
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	setGroup (group, attributes, params = null) {}
 	/**
 	 * Delete group from backend
-	 * @param {{id: string}} group 
+	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	delGroup (group, params = null) {}
 
 	/**
 	 * Add user to group
-	 * @param {{id: string, realm: string}} user 
-	 * @param {{id: string}} group 
+	 * @param {{id: string, realm: string}} user
+	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	addUserToGroup (user, group, params = null) {}
 	/**
 	 * Remove user from group
-	 * @param {{id: string, realm: string}} user 
-	 * @param {{id: string}} group 
+	 * @param {{id: string, realm: string}} user
+	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	delUserFromGroup (user, group, params = null) {}

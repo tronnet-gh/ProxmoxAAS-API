@@ -74,6 +74,11 @@ router.post("/:hostpci/modify", async (req, res) => {
 		device: req.body.device,
 		pcie: req.body.pcie
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check if type is qemu
 	if (params.type !== "qemu") {
 		res.status(500).send({ error: "Type must be qemu (vm)." });
@@ -102,7 +107,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 		const deviceData = await global.pve.getDeviceInfo(params.node, params.device);
 		const request = { pci: deviceData.device_name };
 		// check resource approval
-		if (!await approveResources(req, req.cookies.username, request, params.node)) {
+		if (!await approveResources(req, userObj, request, params.node)) {
 			res.status(500).send({ request, error: `Could not fulfil request for ${deviceData.device_name}.` });
 			res.end();
 			return;
@@ -156,6 +161,11 @@ router.post("/create", async (req, res) => {
 		device: req.body.device,
 		pcie: req.body.pcie
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check if type is qemu
 	if (params.type !== "qemu") {
 		res.status(500).send({ error: "Type must be qemu (vm)." });
@@ -182,7 +192,7 @@ router.post("/create", async (req, res) => {
 		pci: deviceData.device_name
 	};
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request, params.node)) {
+	if (!await approveResources(req, userObj, request, params.node)) {
 		res.status(500).send({ request, error: `Could not fulfil request for ${deviceData.device_name}.` });
 		res.end();
 		return;

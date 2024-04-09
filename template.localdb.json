@@ -81,10 +81,10 @@
 					"min": 100,
 					"max": 199
 				},
-				"pools": [
-					"examplepool1",
-					"examplepool2"
-				]
+				"pools": {
+					"examplepool1": true,
+					"examplepool2": true
+				}
 			},
 			"templates": {
 				"instances": {

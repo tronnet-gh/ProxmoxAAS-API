@@ -31,6 +31,11 @@ router.post("/:netid/create", async (req, res) => {
 		rate: req.body.rate,
 		name: req.body.name
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -54,13 +59,13 @@ router.post("/:netid/create", async (req, res) => {
 		network: Number(params.rate)
 	};
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request, params.node)) {
+	if (!await approveResources(req, userObj, request, params.node)) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
 	}
 	// setup action
-	const nc = db.getUser(req.cookies.username).templates.network[params.type];
+	const nc = db.getUser(userObj).templates.network[params.type];
 	const action = {};
 	if (params.type === "lxc") {
 		action[`net${params.netid}`] = `name=${params.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${params.rate}`;
@@ -98,6 +103,11 @@ router.post("/:netid/modify", async (req, res) => {
 		netid: req.params.netid.replace("net", ""),
 		rate: req.body.rate
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -118,7 +128,7 @@ router.post("/:netid/modify", async (req, res) => {
 		network: Number(params.rate) - Number(currentNetworkRate)
 	};
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request, params.node)) {
+	if (!await approveResources(req, userObj, request, params.node)) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;

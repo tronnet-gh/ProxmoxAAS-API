@@ -104,7 +104,7 @@ export default class PAASLDAP extends AUTH_BACKEND {
 	async addUserToGroup (user, group, params = null) {
 		return await this.#request(`/groups/${group.id}/members/${user.id}`, "POST", params);
 	}
-	
+
 	async delUserFromGroup (user, group, params = null) {
 		return await this.#request(`/groups/${group.id}/members/${user.id}`, "DELETE", params);
 	}
