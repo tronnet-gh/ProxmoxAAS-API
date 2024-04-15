@@ -71,19 +71,19 @@
 					}
 				}
 			},
-			"nodes": [
-				"example-node-0",
-				"example-node-1",
-				"example-node-2"
-			],
 			"cluster": {
+				"nodes": {
+					"example-node-0": true,
+					"example-node-1": true,
+					"example-node-2": true
+				},
 				"vmid": {
 					"min": 100,
 					"max": 199
 				},
 				"pools": {
-					"examplepool1": true,
-					"examplepool2": true
+					"example-pool-1": true,
+					"example-pool-2": true
 				}
 			},
 			"templates": {

@@ -38,8 +38,8 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	const userNodes = db.getUser(userObj).nodes;
-	if (!userNodes.includes(params.node)) {
+	const userNodes = db.getUser(userObj).cluster.nodes;
+	if (userNodes[params.node] !== true) {
 		res.status(401).send({ auth: false, path: params.node });
 		res.end();
 		return;
@@ -186,8 +186,14 @@ router.post(`${basePath}/create`, async (req, res) => {
 		return;
 	}
 	// check node is within allowed list
-	if (!user.nodes.includes(params.node)) {
-		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${user.nodes}].` });
+	if (user.cluster.nodes[params.node] !== true) {
+		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${user.cluster.nodes}].` });
+		res.end();
+		return;
+	}
+	// check if pool is in user allowed pools
+	if (user.cluster.pools[params.pool] !== true) {
+		res.status(500).send({ request, error: `Requested pool ${params.pool} not in allowed pools [${user.pools}]` });
 		res.end();
 		return;
 	}
@@ -222,7 +228,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		vmid: params.vmid,
 		cores: Number(params.cores),
 		memory: Number(params.memory),
-		pool: params.pool // TODO allow user to select pool to assign VM
+		pool: params.pool
 	};
 	for (const key of Object.keys(user.templates.instances[params.type])) {
 		action[key] = user.templates.instances[params.type][key].value;
