@@ -193,7 +193,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 	}
 	// check if pool is in user allowed pools
 	if (user.cluster.pools[params.pool] !== true) {
-		res.status(500).send({ request, error: `Requested pool ${params.pool} not in allowed pools [${user.pools}]` });
+		res.status(500).send({ error: `Requested pool ${params.pool} not in allowed pools [${user.pools}]` });
 		res.end();
 		return;
 	}
