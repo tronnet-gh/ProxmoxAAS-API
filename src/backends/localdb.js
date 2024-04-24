@@ -35,13 +35,15 @@ export default class LocalDB extends DB_BACKEND {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
-	addUser (username, attributes, params = null) {
+	addUser (user, attributes, params = null) {
+		const username = `${user.id}@${user.realm}`;
 		attributes = attributes || this.#defaultuser;
 		this.#data.users[username] = attributes;
 		this.#save();
 	}
 
-	getUser (username, params = null) {
+	getUser (user, params = null) {
+		const username = `${user.id}@${user.realm}`;
 		if (this.#data.users[username]) {
 			return this.#data.users[username];
 		}
@@ -50,7 +52,8 @@ export default class LocalDB extends DB_BACKEND {
 		}
 	}
 
-	setUser (username, attributes, params = null) {
+	setUser (user, attributes, params = null) {
+		const username = `${user.id}@${user.realm}`;
 		if (this.#data.users[username]) {
 			this.#data.users[username] = attributes;
 			this.#save();
@@ -61,10 +64,41 @@ export default class LocalDB extends DB_BACKEND {
 		}
 	}
 
-	delUser (username, params = null) {
+	delUser (user, params = null) {
+		const username = `${user.id}@${user.realm}`;
 		if (this.#data.users[username]) {
 			delete this.#data.users[username];
 			this.#save();
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	// group methods not implemented because db backend does not store groups
+	addGroup (group, atrributes, params = null) {}
+	getGroup (group, params = null) {}
+	setGroup (group, attributes, params = null) {}
+	delGroup (group, params = null) {}
+
+	// assume that adding to group also adds to group's pool
+	addUserToGroup (user, group, params = null) {
+		const username = `${user.id}@${user.realm}`;
+		if (this.#data.users[username]) {
+			this.#data.users[username].cluster.pools[group.id] = true;
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+
+	// assume that adding to group also adds to group's pool
+	delUserFromGroup (user, group, params = null) {
+		const username = `${user.id}@${user.realm}`;
+		if (this.#data.users[username] && this.#data.users[username].cluster.pools[group.id]) {
+			delete this.#data.users[username].cluster.pools[group.id];
 			return true;
 		}
 		else {

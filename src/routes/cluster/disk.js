@@ -129,6 +129,11 @@ router.post("/:disk/resize", async (req, res) => {
 		disk: req.params.disk,
 		size: req.body.size
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -149,7 +154,7 @@ router.post("/:disk/resize", async (req, res) => {
 	const request = {};
 	request[storage] = Number(params.size * 1024 ** 3); // setup request object
 	// check request approval
-	if (!await approveResources(req, req.cookies.username, request, params.node)) {
+	if (!await approveResources(req, userObj, request, params.node)) {
 		res.status(500).send({ request, error: `Storage ${storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
 		return;
@@ -186,6 +191,11 @@ router.post("/:disk/move", async (req, res) => {
 		storage: req.body.storage,
 		delete: req.body.delete
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -209,7 +219,7 @@ router.post("/:disk/move", async (req, res) => {
 		request[dstStorage] = Number(size); // always decrease destination storage by size
 	}
 	// check request approval
-	if (!await approveResources(req, req.cookies.username, request, params.node)) {
+	if (!await approveResources(req, userObj, request, params.node)) {
 		res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
 		return;
@@ -304,6 +314,11 @@ router.post("/:disk/create", async (req, res) => {
 		size: req.body.size,
 		iso: req.body.iso
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -324,7 +339,7 @@ router.post("/:disk/create", async (req, res) => {
 		// setup request
 		request[params.storage] = Number(params.size * 1024 ** 3);
 		// check request approval
-		if (!await approveResources(req, req.cookies.username, request, params.node)) {
+		if (!await approveResources(req, userObj, request, params.node)) {
 			res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 			res.end();
 			return;
