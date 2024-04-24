@@ -28,19 +28,24 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	const params = {
 		node: req.params.node
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
-	const userNodes = db.getUser(req.cookies.username).nodes;
-	if (!userNodes.includes(params.node)) {
+	const userNodes = db.getUser(userObj).cluster.nodes;
+	if (userNodes[params.node] !== true) {
 		res.status(401).send({ auth: false, path: params.node });
 		res.end();
 		return;
 	}
 	// get remaining user resources
-	const userAvailPci = (await getUserResources(req, req.cookies.username)).pci.nodes[params.node];
+	const userAvailPci = (await getUserResources(req, userObj)).pci.nodes[params.node];
 	// get node avail devices
 	let nodeAvailPci = await global.pve.getNodeAvailDevices(params.node, req.cookies);
 	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => {
@@ -77,6 +82,11 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		swap: req.body.swap,
 		boot: req.body.boot
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -96,7 +106,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		request.cpu = params.proctype;
 	}
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request, params.node)) {
+	if (!await approveResources(req, userObj, request, params.node)) {
 		res.status(500).send({ request, error: "Could not fulfil request." });
 		res.end();
 		return;
@@ -154,13 +164,18 @@ router.post(`${basePath}/create`, async (req, res) => {
 		rootfslocation: req.body.rootfslocation,
 		rootfssize: req.body.rootfssize
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
 	// get user db config
-	const user = await db.getUser(req.cookies.username);
+	const user = await db.getUser(userObj);
 	const vmid = Number.parseInt(params.vmid);
 	const vmidMin = user.cluster.vmid.min;
 	const vmidMax = user.cluster.vmid.max;
@@ -171,8 +186,14 @@ router.post(`${basePath}/create`, async (req, res) => {
 		return;
 	}
 	// check node is within allowed list
-	if (!user.nodes.includes(params.node)) {
-		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${user.nodes}].` });
+	if (user.cluster.nodes[params.node] !== true) {
+		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${user.cluster.nodes}].` });
+		res.end();
+		return;
+	}
+	// check if pool is in user allowed pools
+	if (user.cluster.pools[params.pool] !== true) {
+		res.status(500).send({ error: `Requested pool ${params.pool} not in allowed pools [${user.pools}]` });
 		res.end();
 		return;
 	}
@@ -197,7 +218,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		}
 	}
 	// check resource approval
-	if (!await approveResources(req, req.cookies.username, request, params.node)) { // check resource approval
+	if (!await approveResources(req, userObj, request, params.node)) { // check resource approval
 		res.status(500).send({ request, error: "Not enough resources to satisfy request." });
 		res.end();
 		return;
@@ -207,7 +228,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		vmid: params.vmid,
 		cores: Number(params.cores),
 		memory: Number(params.memory),
-		pool: params.pool // TODO allow user to select pool to assign VM
+		pool: params.pool
 	};
 	for (const key of Object.keys(user.templates.instances[params.type])) {
 		action[key] = user.templates.instances[params.type][key].value;

@@ -1,6 +1,7 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
+const config = global.config;
 const checkAuth = global.utils.checkAuth;
 const getUserResources = global.utils.getUserResources;
 
@@ -16,7 +17,12 @@ router.get("/dynamic/resources", async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	const resources = await getUserResources(req, req.cookies.username);
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
+	const resources = await getUserResources(req, userObj);
 	res.status(200).send(resources);
 });
 
@@ -33,14 +39,19 @@ router.get("/config/:key", async (req, res) => {
 	const params = {
 		key: req.params.key
 	};
+
+	const userRealm = req.cookies.username.split("@").at(-1);
+	const userID = req.cookies.username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
-	const allowKeys = ["resources", "cluster", "nodes"];
+	const allowKeys = ["resources", "cluster"];
 	if (allowKeys.includes(params.key)) {
-		const config = global.db.getUser(req.cookies.username);
+		const config = global.db.getUser(userObj);
 		res.status(200).send(config[params.key]);
 	}
 	else {
@@ -54,19 +65,44 @@ router.get("/config/:key", async (req, res) => {
  * - 200: Array.<Object>
  * - 401: {auth: false}
  */
-router.get("/iso", async (req, res) => {
+router.get("/vm-isos", async (req, res) => {
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
 	// get user iso config
-	const userIsoConfig = global.config.useriso;
+	const userIsoConfig = config.useriso;
 	// get all isos
 	const isos = (await global.pve.requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", { token: true })).data.data;
 	const userIsos = [];
 	isos.forEach((iso) => {
 		iso.name = iso.volid.replace(`${userIsoConfig.storage}:iso/`, "");
+		userIsos.push(iso);
+	});
+	userIsos.sort();
+	res.status(200).send(userIsos);
+});
+
+/**
+ * GET - get user accessible container template files
+ * response:
+ * - 200: Array.<Object>
+ * - 401: {auth: false}
+ */
+router.get("/ct-templates", async (req, res) => {
+	// check auth
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+	// get user iso config
+	const userIsoConfig = config.useriso;
+	// get all isos
+	const isos = (await global.pve.requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=vztmpl`, "GET", { token: true })).data.data;
+	const userIsos = [];
+	isos.forEach((iso) => {
+		iso.name = iso.volid.replace(`${userIsoConfig.storage}:vztmpl/`, "");
 		userIsos.push(iso);
 	});
 	userIsos.sort();

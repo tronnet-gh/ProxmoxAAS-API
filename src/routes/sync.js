@@ -167,7 +167,10 @@ if (schemes.interrupt.enabled) {
 		else {
 			wsServer.handleUpgrade(req, socket, head, (socket) => {
 				// get the user pools
-				const pools = global.db.getUser(cookies.username).cluster.pools;
+				const userRealm = cookies.username.split("@").at(-1);
+				const userID = cookies.username.replace(`@${userRealm}`, "");
+				const userObj = { id: userID, realm: userRealm };
+				const pools = Object.keys(global.db.getUser(userObj).cluster.pools);
 				// emit the connection to initialize socket
 				wsServer.emit("connection", socket, cookies.username, pools);
 			});
