@@ -30,10 +30,14 @@
 		}
 	},
 	"handlers": {
-		"pve": "pve",
-		"db": "localdb",
-		"auth": {
+		"instance": {
 			"pve": "pve"
+		},
+		"users": {
+			"pve": [
+				"localdb",
+				"pve"
+			]
 		}
 	},
 	"application": {

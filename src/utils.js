@@ -15,11 +15,9 @@ import { exit } from "process";
 export async function checkAuth (cookies, res, vmpath = null) {
 	let auth = false;
 
-	const userRealm = cookies.username.split("@").at(-1);
-	const userID = cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = getUserObjFromUsername(cookies.username);
 
-	if (global.db.getUser(userObj) === null) {
+	if ((await global.userManager.getUser(userObj)) === null) {
 		auth = false;
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in localdb.` });
 		res.end();
@@ -113,7 +111,7 @@ async function getAllInstanceConfigs (req, diskprefixes) {
  */
 export async function getUserResources (req, user) {
 	const dbResources = global.config.resources;
-	const userResources = global.db.getUser(user).resources;
+	const userResources = (await global.userManager.getUser(user)).resources;
 
 	// setup disk prefixes object
 	const diskprefixes = [];
@@ -362,3 +360,10 @@ export function readJSONFile (path) {
 		exit(1);
 	}
 };
+
+export function getUserObjFromUsername (username) {
+	const userRealm = username.split("@").at(-1);
+	const userID = username.replace(`@${userRealm}`, "");
+	const userObj = { id: userID, realm: userRealm };
+	return userObj;
+}

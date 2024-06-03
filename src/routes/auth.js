@@ -23,10 +23,10 @@ router.get("/", async (req, res) => {
 class CookieFetcher {
 	#fetchedBackends = [];
 	#cookies = [];
-	async fetchBackends (backends, credentials) {
+	async fetchBackends (backends, user, password) {
 		for (const backend of backends) {
 			if (this.#fetchedBackends.indexOf(backend) === -1) {
-				const response = await backend.openSession(credentials);
+				const response = await global.backends[backend].openSession(user, password);
 				if (!response.ok) {
 					return false;
 				}
@@ -60,13 +60,16 @@ router.post("/ticket", async (req, res) => {
 		password: req.body.password
 	};
 	const domain = global.config.application.domain;
-	const userRealm = params.username.split("@").at(-1);
-	const backends = [global.pve, global.db];
-	if (userRealm in global.auth) {
-		backends.push(global.auth[userRealm]);
-	}
+	// const userRealm = params.username.split("@").at(-1);
+	const userObj = global.utils.getUserObjFromUsername(params.username);
+	let backends = global.userManager.getBackendsByUser(userObj);
+	backends = backends.concat(["pve"]);
+	// const backends = [global.pve, global.db];
+	// if (userRealm in global.auth) {
+	//	backends.push(global.auth[userRealm]);
+	// }
 	const cm = new CookieFetcher();
-	const success = await cm.fetchBackends(backends, params);
+	const success = await cm.fetchBackends(backends, userObj, params.password);
 	if (!success) {
 		res.status(401).send({ auth: false });
 		return;
@@ -97,7 +100,7 @@ router.delete("/ticket", async (req, res) => {
 		res.cookie(cookie, "", { domain, path: "/", expires: expire });
 	}
 	await global.pve.closeSession(req.cookies);
-	await global.db.closeSession(req.cookies);
+	await global.userManager.closeSession(req.cookies);
 	res.status(200).send({ auth: false });
 });
 
@@ -114,24 +117,10 @@ router.post("/password", async (req, res) => {
 		password: req.body.password
 	};
 
-	const userRealm = params.username.split("@").at(-1);
-	const authHandlers = global.config.handlers.auth;
-	const userID = params.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
-	if (userRealm in authHandlers) {
-		const handler = authHandlers[userRealm];
-		const newAttributes = {
-			userpassword: params.password
-		};
-		const response = await handler.setUser(userObj, newAttributes, req.cookies);
-		if (response.ok) {
-			res.status(response.status).send(response.data);
-		}
-		else {
-			res.status(response.status).send({ error: response.data.error });
-		}
-	}
-	else {
-		res.status(501).send({ error: `Auth type ${userRealm} not implemented yet.` });
-	}
+	const userObj = global.utils.getUserObjFromUsername(params.username);
+	const newAttributes = {
+		userpassword: params.password
+	};
+	const response = await global.userManager.setUser(userObj, newAttributes, req.cookies);
+	res.status(response.status).send(response);
 });

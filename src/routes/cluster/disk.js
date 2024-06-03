@@ -130,9 +130,7 @@ router.post("/:disk/resize", async (req, res) => {
 		size: req.body.size
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
@@ -192,9 +190,7 @@ router.post("/:disk/move", async (req, res) => {
 		delete: req.body.delete
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
@@ -315,9 +311,7 @@ router.post("/:disk/create", async (req, res) => {
 		iso: req.body.iso
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;

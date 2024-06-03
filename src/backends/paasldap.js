@@ -48,10 +48,9 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async openSession (credentials) {
-		const userRealm = credentials.username.split("@").at(-1);
-		const uid = credentials.username.replace(`@${userRealm}`, "");
-		const content = { uid, password: credentials.password };
+	async openSession (user, password) {
+		const uid = user.id;
+		const content = { uid, password };
 		const result = await this.#request("/ticket", "POST", null, content);
 		if (result.ok) {
 			const cookies = setCookie.parse(result.headers["set-cookie"]);
@@ -74,7 +73,13 @@ export default class PAASLDAP extends AUTH_BACKEND {
 	}
 
 	async getUser (user, params = null) {
-		return await this.#request(`/users/${user.id}`, "GET", params);
+		const res = await this.#request(`/users/${user.id}`, "GET", params);
+		if (res.ok) {
+			return res.data;
+		}
+		else {
+			return false;
+		}
 	}
 
 	async setUser (user, attributes, params = null) {

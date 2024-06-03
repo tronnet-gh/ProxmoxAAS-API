@@ -165,12 +165,10 @@ if (schemes.interrupt.enabled) {
 			socket.destroy();
 		}
 		else {
-			wsServer.handleUpgrade(req, socket, head, (socket) => {
+			wsServer.handleUpgrade(req, socket, head, async (socket) => {
 				// get the user pools
-				const userRealm = cookies.username.split("@").at(-1);
-				const userID = cookies.username.replace(`@${userRealm}`, "");
-				const userObj = { id: userID, realm: userRealm };
-				const pools = Object.keys(global.db.getUser(userObj).cluster.pools);
+				const userObj = global.utils.getUserObjFromUsername(cookies.username);
+				const pools = Object.keys((await global.userManager.getUser(userObj)).cluster.pools);
 				// emit the connection to initialize socket
 				wsServer.emit("connection", socket, cookies.username, pools);
 			});

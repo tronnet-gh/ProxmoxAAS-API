@@ -53,14 +53,19 @@ export default class LocalDB extends DB_BACKEND {
 	}
 
 	setUser (user, attributes, params = null) {
-		const username = `${user.id}@${user.realm}`;
-		if (this.#data.users[username]) {
-			this.#data.users[username] = attributes;
-			this.#save();
-			return true;
+		if (attributes.resources && attributes.cluster && attributes.templates) { // localdb should only deal with these attributes
+			const username = `${user.id}@${user.realm}`;
+			if (this.#data.users[username]) {
+				this.#data.users[username] = attributes;
+				this.#save();
+				return true;
+			}
+			else {
+				return false;
+			}
 		}
-		else {
-			return false;
+		else { // if request is not setting these attributes, then assume its fine but do nothing
+			return true;
 		}
 	}
 
