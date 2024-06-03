@@ -1,7 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
-const db = global.db;
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;
 
@@ -32,9 +31,7 @@ router.post("/:netid/create", async (req, res) => {
 		name: req.body.name
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
@@ -65,7 +62,7 @@ router.post("/:netid/create", async (req, res) => {
 		return;
 	}
 	// setup action
-	const nc = db.getUser(userObj).templates.network[params.type];
+	const nc = (await global.userManager.getUser(userObj)).templates.network[params.type];
 	const action = {};
 	if (params.type === "lxc") {
 		action[`net${params.netid}`] = `name=${params.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${params.rate}`;
@@ -104,9 +101,7 @@ router.post("/:netid/modify", async (req, res) => {
 		rate: req.body.rate
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;

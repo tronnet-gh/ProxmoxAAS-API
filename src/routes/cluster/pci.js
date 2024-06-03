@@ -75,9 +75,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 		pcie: req.body.pcie
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check if type is qemu
 	if (params.type !== "qemu") {
@@ -162,9 +160,7 @@ router.post("/create", async (req, res) => {
 		pcie: req.body.pcie
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check if type is qemu
 	if (params.type !== "qemu") {

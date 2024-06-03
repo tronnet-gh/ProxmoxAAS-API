@@ -2,7 +2,7 @@ import path from "path";
 import url from "url";
 
 export default async () => {
-	const backends = {};
+	global.backends = {};
 	for (const name in global.config.backends) {
 		// get files and config
 		const target = global.config.backends[name].import;
@@ -14,17 +14,11 @@ export default async () => {
 		const importPath = `./${path.relative(thisPath, targetPath)}`;
 		// import and add to list of imported handlers
 		const Backend = (await import(importPath)).default;
-		backends[name] = new Backend(config);
+		global.backends[name] = new Backend(config);
 		console.log(`backends: initialized backend ${name} from ${importPath}`);
 	}
-	// assign backends to handlers by type
-	const handlers = global.config.handlers;
-	global.pve = backends[handlers.pve];
-	global.db = backends[handlers.db];
-	global.auth = handlers.auth;
-	Object.keys(global.auth).forEach((e) => {
-		global.auth[e] = backends[global.auth[e]];
-	});
+	global.pve = global.backends[global.config.handlers.instance.pve];
+	global.userManager = new USER_BACKEND_MANAGER(global.config.handlers.users);
 };
 
 /**
@@ -34,10 +28,11 @@ export default async () => {
 class BACKEND {
 	/**
 	 * Opens a session with the backend and creates session tokens if needed
-	 * @param {{username: string, password: string}} credentials object containing username and password fields
+	 * @param {{id: string, realm: string}} user object containing username and password fields
+	 * @param {string} password
 	 * @returns {{ok: boolean, status: number, cookies: {name: string, value: string}[]}} response like object with list of session token objects with token name and value
 	 */
-	openSession (credentials) {
+	openSession (user, password) {
 		return {
 			ok: true,
 			status: 200,
@@ -70,12 +65,14 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	addUser (user, attributes, params = null) {}
+
 	/**
 	 * Get user from backend
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	getUser (user, params = null) {}
+
 	/**
 	 * Modify user in backend
 	 * @param {{id: string, realm: string}} user
@@ -83,6 +80,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	setUser (user, attributes, params = null) {}
+
 	/**
 	 * Delete user from backend
 	 * @param {{id: string, realm: string}} user
@@ -97,12 +95,14 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	addGroup (group, attributes, params = null) {}
+
 	/**
 	 * Get group from backend
 	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	getGroup (group, params = null) {}
+
 	/**
 	 * Modify group in backend
 	 * @param {{id: string}} group
@@ -110,6 +110,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	setGroup (group, attributes, params = null) {}
+
 	/**
 	 * Delete group from backend
 	 * @param {{id: string}} group
@@ -124,6 +125,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 */
 	addUserToGroup (user, group, params = null) {}
+
 	/**
 	 * Remove user from group
 	 * @param {{id: string, realm: string}} user
@@ -147,3 +149,122 @@ export class DB_BACKEND extends USER_BACKEND {}
  * Interface for user auth backends.
  */
 export class AUTH_BACKEND extends USER_BACKEND {}
+
+/**
+ * Interface combining all user backends into a single interface
+ * Calling methods will also call sub handler methods
+ * Also handles refreshing proxmox handler
+ */
+class USER_BACKEND_MANAGER extends USER_BACKEND {
+	#config = null;
+
+	constructor (config) {
+		super();
+		this.#config = config;
+	}
+
+	getBackendsByUser (user) {
+		return this.#config[user.realm];
+	}
+
+	/**
+	 * Add user to backend
+	 * @param {{id: string, realm: string}} user
+	 * @param {Object} attributes user attributes
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	addUser (user, attributes, params = null) {}
+
+	/**
+	 * Get user from backend
+	 * @param {{id: string, realm: string}} user
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	async getUser (user, params = null) {
+		let userData = {};
+		for (const backend of this.#config[user.realm]) {
+			let backendData = await global.backends[backend].getUser(user, params)
+			if (backendData) {
+				userData = { ...backendData, ...userData };
+			}
+		}
+		return userData;
+	}
+
+	/**
+	 * Modify user in backend
+	 * @param {{id: string, realm: string}} user
+	 * @param {Object} attributes new user attributes to modify
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	async setUser (user, attributes, params = null) {
+		const results = {
+			ok: true,
+			status: 200,
+			log: []
+		};
+		for (const backend of this.#config[user.realm]) {
+			const r = await global.backends[backend].setUser(user, attributes, params);
+			results.log.push(backend)
+			if (!r) {
+				results.ok = false;
+				results.status = 500;
+				return results;
+			}
+		}
+		return results;
+	}
+
+	/**
+	 * Delete user from backend
+	 * @param {{id: string, realm: string}} user
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	deluser (user, params = null) {}
+
+	/**
+	 * Add group to backend
+	 * @param {{id: string}} group
+	 * @param {Object} attributes group attributes
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	addGroup (group, attributes, params = null) {}
+
+	/**
+	 * Get group from backend
+	 * @param {{id: string}} group
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	getGroup (group, params = null) {}
+
+	/**
+	 * Modify group in backend
+	 * @param {{id: string}} group
+	 * @param {Object} attributes new group attributes to modify
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	setGroup (group, attributes, params = null) {}
+
+	/**
+	 * Delete group from backend
+	 * @param {{id: string}} group
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	delGroup (group, params = null) {}
+
+	/**
+	 * Add user to group
+	 * @param {{id: string, realm: string}} user
+	 * @param {{id: string}} group
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	addUserToGroup (user, group, params = null) {}
+
+	/**
+	 * Remove user from group
+	 * @param {{id: string, realm: string}} user
+	 * @param {{id: string}} group
+	 * @param {Object} params authentication params, usually req.cookies
+	 */
+	delUserFromGroup (user, group, params = null) {}
+}

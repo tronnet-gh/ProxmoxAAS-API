@@ -13,7 +13,8 @@ export default class PVE extends PVE_BACKEND {
 		this.#pveRoot = config.root;
 	}
 
-	async openSession (credentials) {
+	async openSession (user, password) {
+		const credentials = { username: `${user.id}@${user.realm}`, password };
 		const response = await global.pve.requestPVE("/access/ticket", "POST", null, credentials);
 		if (!(response.status === 200)) {
 			return response;

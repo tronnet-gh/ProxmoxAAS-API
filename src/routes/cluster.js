@@ -1,7 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
-const db = global.db;
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;
 const getUserResources = global.utils.getUserResources;
@@ -29,16 +28,14 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 		node: req.params.node
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
-	const userNodes = db.getUser(userObj).cluster.nodes;
+	const userNodes = (await global.userManager.getUser(userObj)).cluster.nodes;
 	if (userNodes[params.node] !== true) {
 		res.status(401).send({ auth: false, path: params.node });
 		res.end();
@@ -83,9 +80,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		boot: req.body.boot
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
@@ -165,9 +160,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		rootfssize: req.body.rootfssize
 	};
 
-	const userRealm = req.cookies.username.split("@").at(-1);
-	const userID = req.cookies.username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
@@ -175,7 +168,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		return;
 	}
 	// get user db config
-	const user = await db.getUser(userObj);
+	const user = await global.userManager.getUser(userObj);
 	const vmid = Number.parseInt(params.vmid);
 	const vmidMin = user.cluster.vmid.min;
 	const vmidMax = user.cluster.vmid.max;
