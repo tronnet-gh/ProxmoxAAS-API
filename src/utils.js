@@ -37,6 +37,7 @@ export async function checkAuth (cookies, res, vmpath = null) {
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: "User token did not pass authentication check." });
 		res.end();
 	}
+
 	return auth;
 }
 
