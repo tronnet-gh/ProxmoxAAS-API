@@ -30,12 +30,13 @@ class BACKEND {
 	 * Opens a session with the backend and creates session tokens if needed
 	 * @param {{id: string, realm: string}} user object containing username and password fields
 	 * @param {string} password
-	 * @returns {{ok: boolean, status: number, cookies: {name: string, value: string}[]}} response like object with list of session token objects with token name and value
+	 * @returns {{ok: boolean, status: number, message: string, cookies: {name: string, value: string}[]}} response like object with list of session token objects with token name and value
 	 */
 	openSession (user, password) {
 		return {
 			ok: true,
 			status: 200,
+			message: "",
 			cookies: []
 		};
 	}
@@ -63,6 +64,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} attributes user attributes
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
 	addUser (user, attributes, params = null) {}
 
@@ -70,6 +72,7 @@ class USER_BACKEND extends BACKEND {
 	 * Get user from backend
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {Object} containing user data from this backend, null if user does not exist
 	 */
 	getUser (user, params = null) {}
 
@@ -78,6 +81,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} attributes new user attributes to modify
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
 	setUser (user, attributes, params = null) {}
 
@@ -85,6 +89,7 @@ class USER_BACKEND extends BACKEND {
 	 * Delete user from backend
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
 	deluser (user, params = null) {}
 
@@ -93,6 +98,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {{id: string}} group
 	 * @param {Object} attributes group attributes
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
 	addGroup (group, attributes, params = null) {}
 
@@ -100,6 +106,7 @@ class USER_BACKEND extends BACKEND {
 	 * Get group from backend
 	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {Object} containing group data from this backend, null if user does not exist
 	 */
 	getGroup (group, params = null) {}
 
@@ -108,6 +115,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {{id: string}} group
 	 * @param {Object} attributes new group attributes to modify
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
 	setGroup (group, attributes, params = null) {}
 
@@ -115,6 +123,7 @@ class USER_BACKEND extends BACKEND {
 	 * Delete group from backend
 	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
 	delGroup (group, params = null) {}
 
@@ -123,6 +132,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {{id: string, realm: string}} user
 	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
 	addUserToGroup (user, group, params = null) {}
 
@@ -131,6 +141,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {{id: string, realm: string}} user
 	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
 	delUserFromGroup (user, group, params = null) {}
 }
@@ -153,7 +164,6 @@ export class AUTH_BACKEND extends USER_BACKEND {}
 /**
  * Interface combining all user backends into a single interface
  * Calling methods will also call sub handler methods
- * Also handles refreshing proxmox handler
  */
 class USER_BACKEND_MANAGER extends USER_BACKEND {
 	#config = null;
@@ -167,23 +177,12 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return this.#config[user.realm];
 	}
 
-	/**
-	 * Add user to backend
-	 * @param {{id: string, realm: string}} user
-	 * @param {Object} attributes user attributes
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	addUser (user, attributes, params = null) {}
 
-	/**
-	 * Get user from backend
-	 * @param {{id: string, realm: string}} user
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	async getUser (user, params = null) {
 		let userData = {};
 		for (const backend of this.#config[user.realm]) {
-			let backendData = await global.backends[backend].getUser(user, params)
+			const backendData = await global.backends[backend].getUser(user, params);
 			if (backendData) {
 				userData = { ...backendData, ...userData };
 			}
@@ -191,21 +190,14 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return userData;
 	}
 
-	/**
-	 * Modify user in backend
-	 * @param {{id: string, realm: string}} user
-	 * @param {Object} attributes new user attributes to modify
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	async setUser (user, attributes, params = null) {
 		const results = {
 			ok: true,
 			status: 200,
-			log: []
+			message: ""
 		};
 		for (const backend of this.#config[user.realm]) {
 			const r = await global.backends[backend].setUser(user, attributes, params);
-			results.log.push(backend)
 			if (!r) {
 				results.ok = false;
 				results.status = 500;
@@ -215,56 +207,17 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return results;
 	}
 
-	/**
-	 * Delete user from backend
-	 * @param {{id: string, realm: string}} user
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	deluser (user, params = null) {}
 
-	/**
-	 * Add group to backend
-	 * @param {{id: string}} group
-	 * @param {Object} attributes group attributes
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	addGroup (group, attributes, params = null) {}
 
-	/**
-	 * Get group from backend
-	 * @param {{id: string}} group
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	getGroup (group, params = null) {}
 
-	/**
-	 * Modify group in backend
-	 * @param {{id: string}} group
-	 * @param {Object} attributes new group attributes to modify
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	setGroup (group, attributes, params = null) {}
 
-	/**
-	 * Delete group from backend
-	 * @param {{id: string}} group
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	delGroup (group, params = null) {}
 
-	/**
-	 * Add user to group
-	 * @param {{id: string, realm: string}} user
-	 * @param {{id: string}} group
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	addUserToGroup (user, group, params = null) {}
 
-	/**
-	 * Remove user from group
-	 * @param {{id: string, realm: string}} user
-	 * @param {{id: string}} group
-	 * @param {Object} params authentication params, usually req.cookies
-	 */
 	delUserFromGroup (user, group, params = null) {}
 }

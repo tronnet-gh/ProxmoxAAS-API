@@ -17,7 +17,12 @@ export default class PVE extends PVE_BACKEND {
 		const credentials = { username: `${user.id}@${user.realm}`, password };
 		const response = await global.pve.requestPVE("/access/ticket", "POST", null, credentials);
 		if (!(response.status === 200)) {
-			return response;
+			return {
+				ok: false,
+				status: response.status,
+				message: "Authorization failed",
+				cookies: []
+			};
 		}
 		const ticket = response.data.data.ticket;
 		const csrftoken = response.data.data.CSRFPreventionToken;

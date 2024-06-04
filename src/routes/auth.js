@@ -64,10 +64,6 @@ router.post("/ticket", async (req, res) => {
 	const userObj = global.utils.getUserObjFromUsername(params.username);
 	let backends = global.userManager.getBackendsByUser(userObj);
 	backends = backends.concat(["pve"]);
-	// const backends = [global.pve, global.db];
-	// if (userRealm in global.auth) {
-	//	backends.push(global.auth[userRealm]);
-	// }
 	const cm = new CookieFetcher();
 	const success = await cm.fetchBackends(backends, userObj, params.password);
 	if (!success) {

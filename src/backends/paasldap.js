@@ -15,7 +15,7 @@ export default class PAASLDAP extends AUTH_BACKEND {
 	 * @param {*} path  HTTP path, prepended with the paas-LDAP API base url
 	 * @param {*} method HTTP method
 	 * @param {*} body body parameters and data to be sent. Optional.
-	 * @returns {Object} HTTP response object or HTTP error object.
+	 * @returns {Object} HTTP response object
 	 */
 	async #request (path, method, auth = null, body = null) {
 		const url = `${this.#url}${path}`;
@@ -39,12 +39,9 @@ export default class PAASLDAP extends AUTH_BACKEND {
 			return result;
 		}
 		catch (error) {
-			error.ok = false;
-			error.status = 500;
-			error.data = {
-				error: error.code
-			};
-			return error;
+			const result = error.response;
+			result.ok = result.status === 200;
+			return result;
 		}
 	}
 
@@ -60,25 +57,44 @@ export default class PAASLDAP extends AUTH_BACKEND {
 			return {
 				ok: true,
 				status: result.status,
+				message: "",
 				cookies
 			};
 		}
 		else {
-			return result;
+			return {
+				ok: false,
+				status: result.status,
+				message: result.data.error.message,
+				cookies: []
+			};
 		}
 	}
 
 	async addUser (user, attributes, params = null) {
-		return await this.#request(`/users/${user.id}`, "POST", params, attributes);
+		const res = await this.#request(`/users/${user.id}`, "POST", params, attributes);
+		if (res.ok) { // if ok, return null
+			return null;
+		}
+		else { // if not ok, return error obj
+			return {
+				ok: res.ok,
+				status: res.status,
+				message: res.ok ? "" : res.data.error.message
+			};
+		}
 	}
 
 	async getUser (user, params = null) {
-		const res = await this.#request(`/users/${user.id}`, "GET", params);
-		if (res.ok) {
-			return res.data;
+		if (!params) { // params required, do nothing if params are missing
+			return null;
 		}
-		else {
-			return false;
+		const res = await this.#request(`/users/${user.id}`, "GET", params);
+		if (res.ok) { // if ok, return user data
+			return res.data.user;
+		}
+		else { // else return null
+			return null;
 		}
 	}
 

@@ -37,9 +37,19 @@ export default class LocalDB extends DB_BACKEND {
 
 	addUser (user, attributes, params = null) {
 		const username = `${user.id}@${user.realm}`;
-		attributes = attributes || this.#defaultuser;
-		this.#data.users[username] = attributes;
-		this.#save();
+		if (this.#data.users[username]) { // user already exists
+			return {
+				ok: false,
+				status: 1,
+				message: "User already exists"
+			};
+		}
+		else {
+			attributes = attributes || this.#defaultuser;
+			this.#data.users[username] = attributes;
+			this.#save();
+			return null;
+		}
 	}
 
 	getUser (user, params = null) {
