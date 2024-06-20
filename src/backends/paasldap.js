@@ -46,8 +46,8 @@ export default class PAASLDAP extends AUTH_BACKEND {
 	}
 
 	async openSession (user, password) {
-		const uid = user.id;
-		const content = { uid, password };
+		const username = user.id;
+		const content = { username, password };
 		const result = await this.#request("/ticket", "POST", null, content);
 		if (result.ok) {
 			const cookies = setCookie.parse(result.headers["set-cookie"]);
