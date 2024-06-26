@@ -75,25 +75,61 @@ Backend handlers are used to interface with any number and type of backend data 
 
 Each backend must implement the following methods:
 
-|||
-|-|-|
-|openSession|opens a session to the backend by creating a session token|
-|closeSession|closes a session to the backend|
+<table>
+	<tr>
+		<td>openSession</td>
+		<td>opens a session to the backend by creating a session token</td>
+	</tr>
+	<tr>
+		<td>closeSession</td>
+		<td>closes a session to the backend</td>
+	</tr>
+</table>
 
 Additionally, backends dealing with user data may also need to implement:
 
-|||
-|-|-|
-|addUser|create a user|
-|getUser|retrieve user data including membership|
-|setUser|modify a user|
-|delUser|delete a user|
-|addGroup|create a group|
-|getGroup|retrieve group data including members|
-|setGroup|modify group data except membership|
-|delGroup|delete group|
-|addUserToGroup|add user to group as member|
-|deluserFromGroup|remove user from group|
+<table>
+	<tr>
+		<td>addUser</td>
+		<td>create a user</td>
+	</tr>
+	<tr>
+		<td>getUser</td>
+		<td>retrieve user data including membership</td>
+	</tr>
+	<tr>
+		<td>setUser</td>
+		<td>modify a user</td>
+	</tr>
+	<tr>
+		<td>delUser</td>
+		<td>delete a user</td>
+	</tr>
+	<tr>
+		<td>addGroup</td>
+		<td>create a group</td>
+	</tr>
+	<tr>
+		<td>getGroup</td>
+		<td>retrieve group data including members</td>
+	</tr>
+	<tr>
+		<td>setGroup</td>
+		<td>modify group data except membership</td>
+	</tr>
+	<tr>
+		<td>delGroup</td>
+		<td>delete group</td>
+	</tr>
+	<tr>
+		<td>addUserToGroup</td>
+		<td>add user to group as member</td>
+	</tr>
+	<tr>
+		<td>deluserFromGroup</td>
+		<td>remove user from group</td>
+	</tr>
+</table>
 
 Not all user backends will necessarily implement all the methods fully. For example, backends which do not store group data may not need to implement the group related methods.
 
