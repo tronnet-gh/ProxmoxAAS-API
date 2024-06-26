@@ -28,7 +28,7 @@ export default async () => {
 class BACKEND {
 	/**
 	 * Opens a session with the backend and creates session tokens if needed
-	 * @param {{id: string, realm: string}} user object containing username and password fields
+	 * @param {{id: string, realm: string}} user object containing id and realm
 	 * @param {string} password
 	 * @returns {{ok: boolean, status: number, message: string, cookies: {name: string, value: string}[]}} response like object with list of session token objects with token name and value
 	 */
