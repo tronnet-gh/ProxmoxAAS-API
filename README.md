@@ -68,3 +68,37 @@ server {
 After these steps, the ProxmoxAAS Dashboard should be available and fully functional at `paas.<FQDN>` or `paas.<FQDN>/dashboard/`.
 
 # Backends
+
+Backend handlers are used to interface with any number and type of backend data source used to store ProxmoxAAS data. Most data involves users, groups, and membership relationships. The default backends are sufficient to run a small cluster, but additional backend handlers can be created. 
+
+## Interface
+
+Each backend must implement the following methods:
+
+|||
+|-|-|
+|openSession|opens a session to the backend by creating a session token|
+|closeSession|closes a session to the backend|
+
+Additionally, backends dealing with user data may also need to implement:
+
+|||
+|-|-|
+|addUser|create a user|
+|getUser|retrieve user data including membership|
+|setUser|modify a user|
+|delUser|delete a user|
+|addGroup|create a group|
+|getGroup|retrieve group data including members|
+|setGroup|modify group data except membership|
+|delGroup|delete group|
+|addUserToGroup|add user to group as member|
+|deluserFromGroup|remove user from group|
+
+Not all user backends will necessarily implement all the methods fully. For example, backends which do not store group data may not need to implement the group related methods.
+
+Specific documentation can be found in `src/backends/backends.js`.
+
+## Multiple Interfaces
+
+Multiple backends can be specified using the config. During a backend operation involving users, each backend method will be called in the order specified in the config. If the operation is to retrieve user data, the responses will be merged favoring the last backend called. 
