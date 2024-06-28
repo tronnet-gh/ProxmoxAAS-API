@@ -16,9 +16,13 @@ export async function checkAuth (cookies, res, vmpath = null) {
 	let auth = false;
 
 	const userObj = getUserObjFromUsername(cookies.username);
+	if (!userObj) {
+		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: "Username was missing or invalid." });
+		res.end()
+		return false;
+	}
 
 	if ((await global.userManager.getUser(userObj)) === null) {
-		auth = false;
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in localdb.` });
 		res.end();
 		return false;
@@ -363,8 +367,13 @@ export function readJSONFile (path) {
 };
 
 export function getUserObjFromUsername (username) {
+	if (username) {
 	const userRealm = username.split("@").at(-1);
 	const userID = username.replace(`@${userRealm}`, "");
 	const userObj = { id: userID, realm: userRealm };
 	return userObj;
+	}
+	else {
+		return null
+	}
 }
