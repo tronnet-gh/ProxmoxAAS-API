@@ -18,7 +18,7 @@ export async function checkAuth (cookies, res, vmpath = null) {
 	const userObj = getUserObjFromUsername(cookies.username);
 	if (!userObj) {
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: "Username was missing or invalid." });
-		res.end()
+		res.end();
 		return false;
 	}
 
@@ -368,12 +368,12 @@ export function readJSONFile (path) {
 
 export function getUserObjFromUsername (username) {
 	if (username) {
-	const userRealm = username.split("@").at(-1);
-	const userID = username.replace(`@${userRealm}`, "");
-	const userObj = { id: userID, realm: userRealm };
-	return userObj;
+		const userRealm = username.split("@").at(-1);
+		const userID = username.replace(`@${userRealm}`, "");
+		const userObj = { id: userID, realm: userRealm };
+		return userObj;
 	}
 	else {
-		return null
+		return null;
 	}
 }
