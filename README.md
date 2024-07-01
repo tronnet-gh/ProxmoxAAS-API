@@ -19,6 +19,7 @@ In Proxmox VE, follow the following steps:
     - Datastore.Allocate, Datastore.AllocateSpace, Datastore.Audit
     - User.Modify
 	- Pool.Audit
+	- SDN.Use (if instances use SDN networks)
 4. Add a new API Token Permission with path: `/`, select the API token created previously, and role: `proxmoxaas-api`
 5. Add a new User Permission with  path: `/`, select the `proxmoxaas-api` user, and role: `proxmoxaas-api`
 
