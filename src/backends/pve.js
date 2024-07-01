@@ -91,7 +91,11 @@ export default class PVE extends PVE_BACKEND {
 	 */
 	async handleResponse (node, result, res) {
 		const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
-		if (result.data.data && typeof (result.data.data) === "string" && result.data.data.startsWith("UPID:")) {
+		if (result.status !== 200) {
+			res.status(result.status).send({error: result.statusText});
+			res.end();
+		}
+		else if (result.data.data && typeof (result.data.data) === "string" && result.data.data.startsWith("UPID:")) {
 			const upid = result.data.data;
 			let taskStatus = await this.requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: true });
 			while (taskStatus.data.data.status !== "stopped") {
