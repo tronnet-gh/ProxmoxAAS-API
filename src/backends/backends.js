@@ -77,6 +77,13 @@ class USER_BACKEND extends BACKEND {
 	getUser (user, params = null) {}
 
 	/**
+	 * Get all users from backend
+	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {Array} containing each user data from this backend
+	 */
+	getAllUsers (params = null) {}
+
+	/**
 	 * Modify user in backend
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} attributes new user attributes to modify
@@ -109,6 +116,13 @@ class USER_BACKEND extends BACKEND {
 	 * @returns {Object} containing group data from this backend, null if user does not exist
 	 */
 	getGroup (group, params = null) {}
+
+	/**
+	 * Get all users from backend
+	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {Array} containing each group data from this backend
+	 */
+	getAllGroups (params = null) {}
 
 	/**
 	 * Modify group in backend
@@ -190,6 +204,8 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return userData;
 	}
 
+	async getAllUsers (params = null) {}
+
 	async setUser (user, attributes, params = null) {
 		const results = {
 			ok: true,
@@ -212,6 +228,8 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 	addGroup (group, attributes, params = null) {}
 
 	getGroup (group, params = null) {}
+
+	getAllGroups (params = null) {}
 
 	setGroup (group, attributes, params = null) {}
 

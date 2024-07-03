@@ -3,6 +3,8 @@ export const router = Router({ mergeParams: true }); ;
 
 const checkAuth = global.utils.checkAuth;
 
+global.utils.recursiveImportRoutes(router, "/access", "access", import.meta.url);
+
 /**
  * GET - check authentication
  * responses:
