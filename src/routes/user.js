@@ -12,13 +12,17 @@ const getUserResources = global.utils.getUserResources;
  * - 401: {auth: false}
  */
 router.get("/dynamic/resources", async (req, res) => {
+	const params = {
+		username: req.cookies.username
+	};
+
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
 
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	const userObj = global.utils.getUserObjFromUsername(params.username);
 
 	const resources = await getUserResources(req, userObj);
 	res.status(200).send(resources);

@@ -15,20 +15,34 @@ import { exit } from "process";
 export async function checkAuth (cookies, res, vmpath = null) {
 	let auth = false;
 
-	const userObj = getUserObjFromUsername(cookies.username);
+	const userObj = getUserObjFromUsername(cookies.username); // check if username exists and is valid
 	if (!userObj) {
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: "Username was missing or invalid." });
 		res.end();
 		return false;
 	}
 
-	if ((await global.userManager.getUser(userObj)) === null) {
-		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in localdb.` });
+	if (!cookies.PVEAuthCookie) { // check if PVE token exists
+		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: "Token was missing or invalid." });
 		res.end();
 		return false;
 	}
 
-	if (vmpath) {
+	const pveTicket = cookies.PVEAuthCookie;
+	const result = await global.pve.requestPVE("/access/ticket", "POST", null, { username: cookies.username, password: pveTicket });
+	if (result.status !== 200) { // check if PVE token is valid by using /access/ticket to validate ticket with Proxmox
+		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: "Username did not match token." });
+		res.end();
+		return false;
+	}
+
+	if ((await global.userManager.getUser(userObj)) === null) { // check if user exists in database 
+		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in database.` });
+		res.end();
+		return false;
+	}
+
+	if (vmpath) { // if a path is specified, check the permissions on the path
 		const result = await global.pve.requestPVE(`/${vmpath}/config`, "GET", { cookies });
 		auth = result.status === 200;
 	}
