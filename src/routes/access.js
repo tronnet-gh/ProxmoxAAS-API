@@ -115,6 +115,12 @@ router.post("/password", async (req, res) => {
 		password: req.body.password
 	};
 
+	// check auth
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+
 	const userObj = global.utils.getUserObjFromUsername(params.username);
 	const newAttributes = {
 		userpassword: params.password
