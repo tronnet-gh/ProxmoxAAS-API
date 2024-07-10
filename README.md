@@ -127,7 +127,7 @@ Additionally, backends dealing with user data may also need to implement:
 		<td>add user to group as member</td>
 	</tr>
 	<tr>
-		<td>deluserFromGroup</td>
+		<td>delUserFromGroup</td>
 		<td>remove user from group</td>
 	</tr>
 </table>
