@@ -34,9 +34,18 @@
 			"pve": "pve"
 		},
 		"users": {
-			"pve": [
+			"realm": {
+				"pve": [
+					"localdb"
+				],
+				"ldap": [
+					"localdb",
+					"paasldap"
+				]
+			},
+			"any": [
 				"localdb",
-				"pve"
+				"paasldap"
 			]
 		}
 	},
