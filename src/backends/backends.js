@@ -98,7 +98,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	deluser (user, params = null) {}
+	delUser (user, params = null) {}
 
 	/**
 	 * Add group to backend
@@ -188,14 +188,14 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 	}
 
 	getBackendsByUser (user) {
-		return this.#config[user.realm];
+		return this.#config.realm[user.realm];
 	}
 
 	addUser (user, attributes, params = null) {}
 
 	async getUser (user, params = null) {
 		let userData = {};
-		for (const backend of this.#config[user.realm]) {
+		for (const backend of this.#config.realm[user.realm]) {
 			const backendData = await global.backends[backend].getUser(user, params);
 			if (backendData) {
 				userData = { ...backendData, ...userData };
@@ -204,7 +204,18 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return userData;
 	}
 
-	async getAllUsers (params = null) {}
+	async getAllUsers (params = null) {
+		const userData = {};
+		for (const backend of this.#config.any) {
+			const backendData = await global.backends[backend].getAllUsers(params);
+			if (backendData) {
+				for (const user of Object.keys(backendData)) {
+					userData[user] = { ...backendData[user], ...userData[user] };
+				}
+			}
+		}
+		return userData;
+	}
 
 	async setUser (user, attributes, params = null) {
 		const results = {
@@ -212,9 +223,9 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 			status: 200,
 			message: ""
 		};
-		for (const backend of this.#config[user.realm]) {
-			const r = await global.backends[backend].setUser(user, attributes, params);
-			if (!r) {
+		for (const backend of this.#config.realm[user.realm]) {
+			const result = await global.backends[backend].setUser(user, attributes, params);
+			if (!result) {
 				results.ok = false;
 				results.status = 500;
 				return results;
@@ -223,13 +234,24 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return results;
 	}
 
-	deluser (user, params = null) {}
+	delUser (user, params = null) {}
 
 	addGroup (group, attributes, params = null) {}
 
 	getGroup (group, params = null) {}
 
-	getAllGroups (params = null) {}
+	async getAllGroups (params = null) {
+		const groupData = {};
+		for (const backend of this.#config.any) {
+			const backendData = await global.backends[backend].getAllGroups(params);
+			if (backendData) {
+				for (const group of Object.keys(backendData)) {
+					groupData[group] = { ...backendData[group], ...groupData[group] };
+				}
+			}
+		}
+		return groupData;
+	}
 
 	setGroup (group, attributes, params = null) {}
 
