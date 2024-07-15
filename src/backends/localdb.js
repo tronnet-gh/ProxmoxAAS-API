@@ -62,6 +62,16 @@ export default class LocalDB extends DB_BACKEND {
 		}
 	}
 
+	async getAllUsers (params = null) {
+		const requestingUser = params.username; // assume checkAuth has been run, which already checks that username matches PVE token
+		if (this.#data.users[requestingUser].cluster.admin === true) {
+			return this.#data.users;
+		}
+		else {
+			return null;
+		}
+	}
+
 	setUser (user, attributes, params = null) {
 		if (attributes.resources && attributes.cluster && attributes.templates) { // localdb should only deal with these attributes
 			const username = `${user.id}@${user.realm}`;
@@ -94,6 +104,10 @@ export default class LocalDB extends DB_BACKEND {
 	// group methods not implemented because db backend does not store groups
 	addGroup (group, atrributes, params = null) {}
 	getGroup (group, params = null) {}
+	getAllGroups (params = null) {
+		return null;
+	}
+
 	setGroup (group, attributes, params = null) {}
 	delGroup (group, params = null) {}
 
