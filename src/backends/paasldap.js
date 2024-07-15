@@ -4,10 +4,12 @@ import * as setCookie from "set-cookie-parser";
 
 export default class PAASLDAP extends AUTH_BACKEND {
 	#url = null;
+	#realm = null;
 
 	constructor (config) {
 		super();
 		this.#url = config.url;
+		this.#realm = config.realm;
 	}
 
 	/**
@@ -45,6 +47,19 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
+	#handleGenericReturn (res) {
+		if (res.ok) { // if ok, return null
+			return null;
+		}
+		else { // if not ok, return error obj
+			return {
+				ok: res.ok,
+				status: res.status,
+				message: res.ok ? "" : res.data.error
+			};
+		}
+	}
+
 	async openSession (user, password) {
 		const username = user.id;
 		const content = { username, password };
@@ -65,7 +80,7 @@ export default class PAASLDAP extends AUTH_BACKEND {
 			return {
 				ok: false,
 				status: result.status,
-				message: result.data.error.message,
+				message: result.data.error,
 				cookies: []
 			};
 		}
@@ -73,16 +88,7 @@ export default class PAASLDAP extends AUTH_BACKEND {
 
 	async addUser (user, attributes, params = null) {
 		const res = await this.#request(`/users/${user.id}`, "POST", params, attributes);
-		if (res.ok) { // if ok, return null
-			return null;
-		}
-		else { // if not ok, return error obj
-			return {
-				ok: res.ok,
-				status: res.status,
-				message: res.ok ? "" : res.data.error.message
-			};
-		}
+		return this.#handleGenericReturn(res);
 	}
 
 	async getUser (user, params = null) {
@@ -98,35 +104,80 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
+	async getAllUsers (params = null) {
+		if (!params) {
+			return null;
+		}
+		const res = await this.#request("/users", "GET", params);
+		if (res.ok) { // if ok, return user data
+			const users = res.data.users;
+			const usersFormatted = {};
+			// label each user object by user@realm
+			for (const user of users) {
+				usersFormatted[`${user.attributes.uid}@${this.#realm}`] = user;
+			}
+			return usersFormatted;
+		}
+		else { // else return null
+			return null;
+		}
+	}
+
 	async setUser (user, attributes, params = null) {
-		return await this.#request(`/users/${user.id}`, "POST", params, attributes);
+		const res = await this.#request(`/users/${user.id}`, "POST", params, attributes);
+		return this.#handleGenericReturn(res);
 	}
 
 	async delUser (user, params = null) {
-		return await this.#request(`/users/${user.id}`, "DELETE", params);
+		const res = await this.#request(`/users/${user.id}`, "DELETE", params);
+		return this.#handleGenericReturn(res);
 	}
 
 	async addGroup (group, attributes, params = null) {
-		return await this.#request(`/groups/${group.id}`, "POST", params);
+		const res = await this.#request(`/groups/${group.id}`, "POST", params);
+		return this.#handleGenericReturn(res);
 	}
 
 	async getGroup (group, params = null) {
 		return await this.#request(`/groups/${group.id}`, "GET", params);
 	}
 
+	async getAllGroups (params = null) {
+		if (!params) {
+			return null;
+		}
+		const res = await this.#request("/groups", "GET", params);
+		if (res.ok) { // if ok, return user data
+			const groups = res.data.groups;
+			const groupsFormatted = {};
+			// label each user object by user@realm
+			for (const group of groups) {
+				groupsFormatted[`${group.attributes.cn}@${this.#realm}`] = group;
+			}
+			return groupsFormatted;
+		}
+		else { // else return null
+			return null;
+		}
+	}
+
 	async setGroup (group, attributes, params = null) {
 		// not implemented, LDAP groups do not have any attributes to change
+		return null;
 	}
 
 	async delGroup (group, params = null) {
-		return await this.#request(`/groups/${group.id}`, "DELETE", params);
+		const res = await this.#request(`/groups/${group.id}`, "DELETE", params);
+		return this.#handleGenericReturn(res);
 	}
 
 	async addUserToGroup (user, group, params = null) {
-		return await this.#request(`/groups/${group.id}/members/${user.id}`, "POST", params);
+		const res = await this.#request(`/groups/${group.id}/members/${user.id}`, "POST", params);
+		return this.#handleGenericReturn(res);
 	}
 
 	async delUserFromGroup (user, group, params = null) {
-		return await this.#request(`/groups/${group.id}/members/${user.id}`, "DELETE", params);
+		const res = await this.#request(`/groups/${group.id}/members/${user.id}`, "DELETE", params);
+		return this.#handleGenericReturn(res);
 	}
 }

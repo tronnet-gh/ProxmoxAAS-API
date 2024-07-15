@@ -25,7 +25,8 @@
 		"paasldap": {
 			"import": "paasldap.js",
 			"config": {
-				"url": "http://paasldap.mydomain.example"
+				"url": "http://paasldap.mydomain.example",
+				"realm": "ldap"
 			}
 		}
 	},

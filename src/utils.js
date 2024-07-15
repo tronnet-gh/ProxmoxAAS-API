@@ -36,7 +36,7 @@ export async function checkAuth (cookies, res, vmpath = null) {
 		return false;
 	}
 
-	if ((await global.userManager.getUser(userObj)) === null) { // check if user exists in database 
+	if ((await global.userManager.getUser(userObj)) === null) { // check if user exists in database
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in database.` });
 		res.end();
 		return false;
@@ -348,7 +348,7 @@ export function getTimeLeft (timeout) {
 /**
  * Recursively import routes from target folder.
  * @param {Object} router or app object.
- * @param {string} baseroute API route for each imported module.
+ * @param {string} baseroute base route of imported modules starting from the current path.
  * @param {string} target folder to import modules.
  * @param {string} from source folder of calling module, optional for imports from the same base directory.
  */
