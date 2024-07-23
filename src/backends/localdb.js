@@ -35,7 +35,7 @@ export default class LocalDB extends DB_BACKEND {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
-	addUser (user, attributes, params = null) {
+	addUser (user, attributes, params) {
 		const username = `${user.id}@${user.realm}`;
 		if (this.#data.users[username]) { // user already exists
 			return {
@@ -52,17 +52,20 @@ export default class LocalDB extends DB_BACKEND {
 		}
 	}
 
-	getUser (user, params = null) {
-		const username = `${user.id}@${user.realm}`;
-		if (this.#data.users[username]) {
-			return this.#data.users[username];
+	getUser (user, params) {
+		const requestedUser = `${user.id}@${user.realm}`;
+		const requestingUser = params.username; // assume checkAuth has been run, which already checks that username matches PVE token
+		// user can access a user's db data if they are an admin OR are requesting own data
+		const authorized = this.#data.users[requestingUser].cluster.admin || requestingUser === requestedUser;
+		if (authorized && this.#data.users[requestedUser]) {
+			return this.#data.users[requestedUser];
 		}
 		else {
 			return null;
 		}
 	}
 
-	async getAllUsers (params = null) {
+	async getAllUsers (params) {
 		const requestingUser = params.username; // assume checkAuth has been run, which already checks that username matches PVE token
 		if (this.#data.users[requestingUser].cluster.admin === true) {
 			return this.#data.users;
@@ -72,7 +75,7 @@ export default class LocalDB extends DB_BACKEND {
 		}
 	}
 
-	setUser (user, attributes, params = null) {
+	setUser (user, attributes, params) {
 		if (attributes.resources && attributes.cluster && attributes.templates) { // localdb should only deal with these attributes
 			const username = `${user.id}@${user.realm}`;
 			if (this.#data.users[username]) {
@@ -89,7 +92,7 @@ export default class LocalDB extends DB_BACKEND {
 		}
 	}
 
-	delUser (user, params = null) {
+	delUser (user, params) {
 		const username = `${user.id}@${user.realm}`;
 		if (this.#data.users[username]) {
 			delete this.#data.users[username];
@@ -102,17 +105,16 @@ export default class LocalDB extends DB_BACKEND {
 	}
 
 	// group methods not implemented because db backend does not store groups
-	addGroup (group, atrributes, params = null) {}
-	getGroup (group, params = null) {}
-	getAllGroups (params = null) {
+	addGroup (group, atrributes, params) {}
+	getGroup (group, params) {}
+	getAllGroups (params) {
 		return null;
 	}
-
-	setGroup (group, attributes, params = null) {}
-	delGroup (group, params = null) {}
+	setGroup (group, attributes, params) {}
+	delGroup (group, params) {}
 
 	// assume that adding to group also adds to group's pool
-	addUserToGroup (user, group, params = null) {
+	addUserToGroup (user, group, params) {
 		const username = `${user.id}@${user.realm}`;
 		if (this.#data.users[username]) {
 			this.#data.users[username].cluster.pools[group.id] = true;
@@ -124,7 +126,7 @@ export default class LocalDB extends DB_BACKEND {
 	}
 
 	// assume that adding to group also adds to group's pool
-	delUserFromGroup (user, group, params = null) {
+	delUserFromGroup (user, group, params) {
 		const username = `${user.id}@${user.realm}`;
 		if (this.#data.users[username] && this.#data.users[username].cluster.pools[group.id]) {
 			delete this.#data.users[username].cluster.pools[group.id];

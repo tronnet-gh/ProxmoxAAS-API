@@ -36,7 +36,7 @@ export async function checkAuth (cookies, res, vmpath = null) {
 		return false;
 	}
 
-	if ((await global.userManager.getUser(userObj)) === null) { // check if user exists in database
+	if ((await global.userManager.getUser(userObj, cookies)) === null) { // check if user exists in database
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in database.` });
 		res.end();
 		return false;
@@ -130,8 +130,7 @@ async function getAllInstanceConfigs (req, diskprefixes) {
  */
 export async function getUserResources (req, user) {
 	const dbResources = global.config.resources;
-	const userResources = (await global.userManager.getUser(user)).resources;
-
+	const userResources = (await global.userManager.getUser(user, req.cookies)).resources;
 	// setup disk prefixes object
 	const diskprefixes = [];
 	for (const resourceName of Object.keys(dbResources)) {

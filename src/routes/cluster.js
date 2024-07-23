@@ -35,7 +35,7 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	const userNodes = (await global.userManager.getUser(userObj)).cluster.nodes;
+	const userNodes = (await global.userManager.getUser(userObj, req.cookies)).cluster.nodes;
 	if (userNodes[params.node] !== true) {
 		res.status(401).send({ auth: false, path: params.node });
 		res.end();
@@ -168,7 +168,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		return;
 	}
 	// get user db config
-	const user = await global.userManager.getUser(userObj);
+	const user = await global.userManager.getUser(userObj, req.cookies);
 	const vmid = Number.parseInt(params.vmid);
 	const vmidMin = user.cluster.vmid.min;
 	const vmidMax = user.cluster.vmid.max;
