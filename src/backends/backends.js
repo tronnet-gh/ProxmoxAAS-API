@@ -66,7 +66,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	addUser (user, attributes, params = null) {}
+	addUser (user, attributes, params) {}
 
 	/**
 	 * Get user from backend
@@ -74,14 +74,14 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Object} containing user data from this backend, null if user does not exist
 	 */
-	getUser (user, params = null) {}
+	getUser (user, params) {}
 
 	/**
 	 * Get all users from backend
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Array} containing each user data from this backend
 	 */
-	getAllUsers (params = null) {}
+	getAllUsers (params) {}
 
 	/**
 	 * Modify user in backend
@@ -90,7 +90,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	setUser (user, attributes, params = null) {}
+	setUser (user, attributes, params) {}
 
 	/**
 	 * Delete user from backend
@@ -98,7 +98,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	delUser (user, params = null) {}
+	delUser (user, params) {}
 
 	/**
 	 * Add group to backend
@@ -107,7 +107,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	addGroup (group, attributes, params = null) {}
+	addGroup (group, attributes, params) {}
 
 	/**
 	 * Get group from backend
@@ -115,14 +115,14 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Object} containing group data from this backend, null if user does not exist
 	 */
-	getGroup (group, params = null) {}
+	getGroup (group, params) {}
 
 	/**
 	 * Get all users from backend
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Array} containing each group data from this backend
 	 */
-	getAllGroups (params = null) {}
+	getAllGroups (params) {}
 
 	/**
 	 * Modify group in backend
@@ -131,7 +131,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	setGroup (group, attributes, params = null) {}
+	setGroup (group, attributes, params) {}
 
 	/**
 	 * Delete group from backend
@@ -139,7 +139,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	delGroup (group, params = null) {}
+	delGroup (group, params) {}
 
 	/**
 	 * Add user to group
@@ -148,7 +148,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	addUserToGroup (user, group, params = null) {}
+	addUserToGroup (user, group, params) {}
 
 	/**
 	 * Remove user from group
@@ -157,7 +157,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {{ok: boolean, status: number, message: string}} error object or null
 	 */
-	delUserFromGroup (user, group, params = null) {}
+	delUserFromGroup (user, group, params) {}
 }
 
 /**
@@ -191,9 +191,9 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return this.#config.realm[user.realm];
 	}
 
-	addUser (user, attributes, params = null) {}
+	addUser (user, attributes, params) {}
 
-	async getUser (user, params = null) {
+	async getUser (user, params) {
 		let userData = {};
 		for (const backend of this.#config.realm[user.realm]) {
 			const backendData = await global.backends[backend].getUser(user, params);
@@ -204,7 +204,7 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return userData;
 	}
 
-	async getAllUsers (params = null) {
+	async getAllUsers (params) {
 		const userData = {};
 		for (const backend of this.#config.any) {
 			const backendData = await global.backends[backend].getAllUsers(params);
@@ -217,7 +217,7 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return userData;
 	}
 
-	async setUser (user, attributes, params = null) {
+	async setUser (user, attributes, params) {
 		const results = {
 			ok: true,
 			status: 200,
@@ -234,13 +234,13 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return results;
 	}
 
-	delUser (user, params = null) {}
+	delUser (user, params) {}
 
-	addGroup (group, attributes, params = null) {}
+	addGroup (group, attributes, params) {}
 
-	getGroup (group, params = null) {}
+	getGroup (group, params) {}
 
-	async getAllGroups (params = null) {
+	async getAllGroups (params) {
 		const groupData = {};
 		for (const backend of this.#config.any) {
 			const backendData = await global.backends[backend].getAllGroups(params);
@@ -253,11 +253,11 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		return groupData;
 	}
 
-	setGroup (group, attributes, params = null) {}
+	setGroup (group, attributes, params) {}
 
-	delGroup (group, params = null) {}
+	delGroup (group, params) {}
 
-	addUserToGroup (user, group, params = null) {}
+	addUserToGroup (user, group, params) {}
 
-	delUserFromGroup (user, group, params = null) {}
+	delUserFromGroup (user, group, params) {}
 }

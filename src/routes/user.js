@@ -51,7 +51,7 @@ router.get("/config/:key", async (req, res) => {
 	}
 	const allowKeys = ["resources", "cluster"];
 	if (allowKeys.includes(params.key)) {
-		const config = await global.userManager.getUser(userObj);
+		const config = await global.userManager.getUser(userObj, req.cookies);
 		res.status(200).send(config[params.key]);
 	}
 	else {

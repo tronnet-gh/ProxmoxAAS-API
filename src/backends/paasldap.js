@@ -86,12 +86,12 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async addUser (user, attributes, params = null) {
+	async addUser (user, attributes, params) {
 		const res = await this.#request(`/users/${user.id}`, "POST", params, attributes);
 		return this.#handleGenericReturn(res);
 	}
 
-	async getUser (user, params = null) {
+	async getUser (user, params) {
 		if (!params) { // params required, do nothing if params are missing
 			return null;
 		}
@@ -104,7 +104,7 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async getAllUsers (params = null) {
+	async getAllUsers (params) {
 		if (!params) {
 			return null;
 		}
@@ -123,26 +123,26 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async setUser (user, attributes, params = null) {
+	async setUser (user, attributes, params) {
 		const res = await this.#request(`/users/${user.id}`, "POST", params, attributes);
 		return this.#handleGenericReturn(res);
 	}
 
-	async delUser (user, params = null) {
+	async delUser (user, params) {
 		const res = await this.#request(`/users/${user.id}`, "DELETE", params);
 		return this.#handleGenericReturn(res);
 	}
 
-	async addGroup (group, attributes, params = null) {
+	async addGroup (group, attributes, params) {
 		const res = await this.#request(`/groups/${group.id}`, "POST", params);
 		return this.#handleGenericReturn(res);
 	}
 
-	async getGroup (group, params = null) {
+	async getGroup (group, params) {
 		return await this.#request(`/groups/${group.id}`, "GET", params);
 	}
 
-	async getAllGroups (params = null) {
+	async getAllGroups (params) {
 		if (!params) {
 			return null;
 		}
@@ -161,22 +161,22 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async setGroup (group, attributes, params = null) {
+	async setGroup (group, attributes, params) {
 		// not implemented, LDAP groups do not have any attributes to change
 		return null;
 	}
 
-	async delGroup (group, params = null) {
+	async delGroup (group, params) {
 		const res = await this.#request(`/groups/${group.id}`, "DELETE", params);
 		return this.#handleGenericReturn(res);
 	}
 
-	async addUserToGroup (user, group, params = null) {
+	async addUserToGroup (user, group, params) {
 		const res = await this.#request(`/groups/${group.id}/members/${user.id}`, "POST", params);
 		return this.#handleGenericReturn(res);
 	}
 
-	async delUserFromGroup (user, group, params = null) {
+	async delUserFromGroup (user, group, params) {
 		const res = await this.#request(`/groups/${group.id}/members/${user.id}`, "DELETE", params);
 		return this.#handleGenericReturn(res);
 	}
