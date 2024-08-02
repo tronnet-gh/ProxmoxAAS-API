@@ -110,6 +110,7 @@ export default class LocalDB extends DB_BACKEND {
 	getAllGroups (params) {
 		return null;
 	}
+
 	setGroup (group, attributes, params) {}
 	delGroup (group, params) {}
 

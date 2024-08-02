@@ -3,7 +3,7 @@ export const router = Router({ mergeParams: true }); ;
 
 const checkAuth = global.utils.checkAuth;
 
-global.utils.recursiveImportRoutes(router, "/access", "access", import.meta.url);
+global.utils.recursiveImportRoutes(router, "", "access", import.meta.url);
 
 /**
  * GET - check authentication
@@ -30,7 +30,7 @@ class CookieFetcher {
 			if (this.#fetchedBackends.indexOf(backend) === -1) {
 				const response = await global.backends[backend].openSession(user, password);
 				if (!response.ok) {
-					return false;
+					return response.message;
 				}
 				this.#cookies = this.#cookies.concat(response.cookies);
 				this.#fetchedBackends.push(backend);
@@ -39,7 +39,7 @@ class CookieFetcher {
 				continue;
 			}
 		}
-		return true;
+		return null;
 	}
 
 	exportCookies () {
@@ -67,9 +67,9 @@ router.post("/ticket", async (req, res) => {
 	let backends = global.userManager.getBackendsByUser(userObj);
 	backends = backends.concat(["pve"]);
 	const cm = new CookieFetcher();
-	const success = await cm.fetchBackends(backends, userObj, params.password);
-	if (!success) {
-		res.status(401).send({ auth: false });
+	const error = await cm.fetchBackends(backends, userObj, params.password);
+	if (error) {
+		res.status(401).send({ auth: false, error });
 		return;
 	}
 	const cookies = cm.exportCookies();
