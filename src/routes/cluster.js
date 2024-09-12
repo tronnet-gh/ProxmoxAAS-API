@@ -14,6 +14,61 @@ const basePath = `/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP}
 global.utils.recursiveImportRoutes(router, basePath, "cluster", import.meta.url);
 
 /**
+ * GET - get all available cluster pools
+ * returns only pool IDs
+ * responses:
+ * - 200: List of pools
+ * - PVE error
+ */
+router.get("/pools", async (req, res) => {
+	// check auth
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+
+	const allPools = await global.pve.requestPVE("/pools", "GET", { token: true });
+
+	if (allPools.status === 200) {
+		const allPoolsIDs = Array.from(allPools.data.data, (x) => x.poolid);
+		res.status(allPools.status).send({ pools: allPoolsIDs });
+		res.end();
+	}
+	else {
+		res.status(allPools.status).send({ error: allPools.statusMessage });
+		res.end();
+	}
+});
+
+/**
+ * GET - get all available cluster nodes
+ * uses existing user permissions without elevation
+ * returns only node IDs
+ * responses:
+ * - 200: List of nodes
+ * - PVE error
+ */
+router.get("/nodes", async (req, res) => {
+	// check auth
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+
+	const allNodes = await global.pve.requestPVE("/nodes", "GET", { cookies: req.cookies });
+
+	if (allNodes.status === 200) {
+		const allNodesIDs = Array.from(allNodes.data.data, (x) => x.node);
+		res.status(allNodes.status).send({ nodes: allNodesIDs });
+		res.end();
+	}
+	else {
+		res.status(allNodes.status).send({ error: allNodes.statusMessage });
+		res.end();
+	}
+});
+
+/**
  * GET - get available pcie devices given node and user
  * request:
  * - node: string - vm host node id
