@@ -20,7 +20,9 @@ router.get("/config/:key", async (req, res) => {
 	const allowKeys = ["resources"];
 	if (allowKeys.includes(params.key)) {
 		const config = global.config;
-		res.status(200).send(config[params.key]);
+		const result = {}
+		result[params.key] = config[params.key]
+		res.status(200).send(result);
 	}
 	else {
 		res.status(401).send({ auth: false, error: `User is not authorized to access /global/config/${params.key}.` });
