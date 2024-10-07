@@ -20,8 +20,8 @@ router.get("/config/:key", async (req, res) => {
 	const allowKeys = ["resources"];
 	if (allowKeys.includes(params.key)) {
 		const config = global.config;
-		const result = {}
-		result[params.key] = config[params.key]
+		const result = {};
+		result[params.key] = config[params.key];
 		res.status(200).send(result);
 	}
 	else {
