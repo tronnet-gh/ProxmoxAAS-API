@@ -1,5 +1,5 @@
 import axios from "axios";
-import { AUTH_BACKEND } from "./backends.js";
+import { AtomicChange, AUTH_BACKEND, doNothingCallback } from "./backends.js";
 import * as setCookie from "set-cookie-parser";
 
 export default class PAASLDAP extends AUTH_BACKEND {
@@ -48,16 +48,11 @@ export default class PAASLDAP extends AUTH_BACKEND {
 	}
 
 	#handleGenericReturn (res) {
-		if (res.ok) { // if ok, return null
-			return null;
-		}
-		else { // if not ok, return error obj
-			return {
-				ok: res.ok,
-				status: res.status,
-				message: res.ok ? "" : res.data.error
-			};
-		}
+		return {
+			ok: res.ok,
+			status: res.status,
+			message: res.ok ? "" : res.data.error
+		};
 	}
 
 	async openSession (user, password) {
@@ -86,10 +81,7 @@ export default class PAASLDAP extends AUTH_BACKEND {
 		}
 	}
 
-	async addUser (user, attributes, params) {
-		const res = await this.#request(`/users/${user.id}`, "POST", params, attributes);
-		return this.#handleGenericReturn(res);
-	}
+	async addUser (user, attributes, params) {}
 
 	async getUser (user, params) {
 		if (!params) { // params required, do nothing if params are missing
@@ -124,19 +116,37 @@ export default class PAASLDAP extends AUTH_BACKEND {
 	}
 
 	async setUser (user, attributes, params) {
-		const res = await this.#request(`/users/${user.id}`, "POST", params, attributes);
-		return this.#handleGenericReturn(res);
+		if (!attributes.userpassword && !attributes.cn && attributes.sn) {
+			return new AtomicChange(true, {}, doNothingCallback, null); // change has no ldap attributes
+		}
+		const ldapAttributes = {};
+		if (attributes.userpassword) {
+			ldapAttributes.userpassword = attributes.userpassword;
+		}
+		if (attributes.cn) {
+			ldapAttributes.cn = attributes.cn;
+		}
+		if (attributes.sn) {
+			ldapAttributes.sn = attributes.sn;
+		}
+		return new AtomicChange(
+			true,
+			{
+				user,
+				ldapAttributes,
+				params
+			},
+			async (delta) => {
+				const res = await this.#request(`/users/${delta.user.id}`, "POST", delta.params, delta.ldapAttributes);
+				return this.#handleGenericReturn(res);
+			},
+			{ ok: true, status: 200, message: "" }
+		);
 	}
 
-	async delUser (user, params) {
-		const res = await this.#request(`/users/${user.id}`, "DELETE", params);
-		return this.#handleGenericReturn(res);
-	}
+	async delUser (user, params) {}
 
-	async addGroup (group, attributes, params) {
-		const res = await this.#request(`/groups/${group.id}`, "POST", params);
-		return this.#handleGenericReturn(res);
-	}
+	async addGroup (group, attributes, params) {}
 
 	async getGroup (group, params) {
 		return await this.#request(`/groups/${group.id}`, "GET", params);
@@ -163,21 +173,12 @@ export default class PAASLDAP extends AUTH_BACKEND {
 
 	async setGroup (group, attributes, params) {
 		// not implemented, LDAP groups do not have any attributes to change
-		return null;
+		return new AtomicChange(true, {}, doNothingCallback, null); ;
 	}
 
-	async delGroup (group, params) {
-		const res = await this.#request(`/groups/${group.id}`, "DELETE", params);
-		return this.#handleGenericReturn(res);
-	}
+	async delGroup (group, params) {}
 
-	async addUserToGroup (user, group, params) {
-		const res = await this.#request(`/groups/${group.id}/members/${user.id}`, "POST", params);
-		return this.#handleGenericReturn(res);
-	}
+	async addUserToGroup (user, group, params) {}
 
-	async delUserFromGroup (user, group, params) {
-		const res = await this.#request(`/groups/${group.id}/members/${user.id}`, "DELETE", params);
-		return this.#handleGenericReturn(res);
-	}
+	async delUserFromGroup (user, group, params) {}
 }

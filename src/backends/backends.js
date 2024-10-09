@@ -54,17 +54,39 @@ class BACKEND {
 	}
 }
 
+export class AtomicChange {
+	constructor (valid, delta, callback, status = { ok: true, status: 200, message: "" }) {
+		this.valid = valid;
+		this.delta = delta;
+		this.callback = callback;
+		this.status = status;
+	}
+
+	/**
+	 * Execute the change using the saved delta using the callback function
+	 */
+	async commit () {
+		const res = await this.callback(this.delta);
+		return res;
+	}
+}
+
+export function doNothingCallback (delta) {
+	return { ok: true, status: 200, message: "" };
+}
+
 /**
  * Interface for backend types that store/interact with user & group data.
  * Not all backends need to implement all interface methods.
  */
 class USER_BACKEND extends BACKEND {
 	/**
-	 * Add user to backend
+	 * Validate an add user operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} attributes user attributes
 	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {{ok: boolean, status: number, message: string}} error object or null
+	 * @returns {AtomicChange} atomic change object
 	 */
 	addUser (user, attributes, params) {}
 
@@ -84,28 +106,31 @@ class USER_BACKEND extends BACKEND {
 	getAllUsers (params) {}
 
 	/**
-	 * Modify user in backend
+	 * Validate a set user operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} attributes new user attributes to modify
 	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {{ok: boolean, status: number, message: string}} error object or null
+	 * @returns {AtomicChange} atomic change object
 	 */
 	setUser (user, attributes, params) {}
 
 	/**
-	 * Delete user from backend
+	 * Validate a delete user operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
 	 * @param {{id: string, realm: string}} user
 	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {{ok: boolean, status: number, message: string}} error object or null
+	 * @returns {AtomicChange} atomic change object
 	 */
 	delUser (user, params) {}
 
 	/**
-	 * Add group to backend
-	 * @param {{id: string}} group
+	 * Validate an add group operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
+	 * @param {{id: string, realm: string}} group
 	 * @param {Object} attributes group attributes
 	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {{ok: boolean, status: number, message: string}} error object or null
+	 * @returns {AtomicChange} atomic change object
 	 */
 	addGroup (group, attributes, params) {}
 
@@ -125,37 +150,40 @@ class USER_BACKEND extends BACKEND {
 	getAllGroups (params) {}
 
 	/**
-	 * Modify group in backend
-	 * @param {{id: string}} group
-	 * @param {Object} attributes new group attributes to modify
+	 * Validate a set group operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
+	 * @param {{id: string, realm: string}} group
+	 * @param {Object} attributes group attributes
 	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {{ok: boolean, status: number, message: string}} error object or null
+	 * @returns {AtomicChange} atomic change object
 	 */
 	setGroup (group, attributes, params) {}
-
 	/**
-	 * Delete group from backend
-	 * @param {{id: string}} group
+	 * Validate a del group operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
+	 * @param {{id: string, realm: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {{ok: boolean, status: number, message: string}} error object or null
+	* @returns {AtomicChange} atomic change object
 	 */
-	delGroup (group, params) {}
+	delGroup (group, attributes, params) {}
 
 	/**
-	 * Add user to group
+	 * Validate an add user to group operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
 	 * @param {{id: string, realm: string}} user
 	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {{ok: boolean, status: number, message: string}} error object or null
+	 * @returns {AtomicChange} atomic change object
 	 */
 	addUserToGroup (user, group, params) {}
 
 	/**
-	 * Remove user from group
+	 * Validate a remove user from group operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
 	 * @param {{id: string, realm: string}} user
 	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {{ok: boolean, status: number, message: string}} error object or null
+	* @returns {AtomicChange} atomic change object
 	 */
 	delUserFromGroup (user, group, params) {}
 }
@@ -218,20 +246,30 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 	}
 
 	async setUser (user, attributes, params) {
-		const results = {
+		const atomicChanges = [];
+		for (const backend of this.#config.realm[user.realm]) {
+			const atomicChange = await global.backends[backend].setUser(user, attributes, params);
+			if (atomicChange.valid === false) { // if any fails, preemptively exit
+				return atomicChange.stauts;
+			}
+			atomicChanges.push(atomicChange); // queue callback into array
+		}
+		const response = {
 			ok: true,
 			status: 200,
-			message: ""
+			message: "",
+			allResponses: []
 		};
-		for (const backend of this.#config.realm[user.realm]) {
-			const result = await global.backends[backend].setUser(user, attributes, params);
-			if (!result) {
-				results.ok = false;
-				results.status = 500;
-				return results;
+		for (const atomicChange of atomicChanges) {
+			const atomicResponse = await atomicChange.commit();
+			if (atomicResponse.ok === false) {
+				response.ok = false;
+				response.status = atomicResponse.status;
+				response.message = atomicResponse.message;
 			}
+			response.allResponses.push(); // execute callback
 		}
-		return results;
+		return response;
 	}
 
 	delUser (user, params) {}

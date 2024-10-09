@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "fs";
 import { exit } from "process";
-import { DB_BACKEND } from "./backends.js";
+import { AtomicChange, DB_BACKEND, doNothingCallback } from "./backends.js";
 
 export default class LocalDB extends DB_BACKEND {
 	#path = null;
@@ -35,22 +35,7 @@ export default class LocalDB extends DB_BACKEND {
 		writeFileSync(this.#path, JSON.stringify(this.#data));
 	}
 
-	addUser (user, attributes, params) {
-		const username = `${user.id}@${user.realm}`;
-		if (this.#data.users[username]) { // user already exists
-			return {
-				ok: false,
-				status: 1,
-				message: "User already exists"
-			};
-		}
-		else {
-			attributes = attributes || this.#defaultuser;
-			this.#data.users[username] = attributes;
-			this.#save();
-			return null;
-		}
-	}
+	addUser (user, attributes, params) {}
 
 	getUser (user, params) {
 		const requestedUser = `${user.id}@${user.realm}`;
@@ -76,33 +61,42 @@ export default class LocalDB extends DB_BACKEND {
 	}
 
 	setUser (user, attributes, params) {
-		if (attributes.resources && attributes.cluster && attributes.templates) { // localdb should only deal with these attributes
+		if (attributes.resources && attributes.cluster && attributes.templates) {
 			const username = `${user.id}@${user.realm}`;
 			if (this.#data.users[username]) {
-				this.#data.users[username] = attributes;
-				this.#save();
-				return true;
+				if (this.#data.users[params.username] && this.#data.users[params.username].cluster.admin) {
+					return new AtomicChange(false,
+						{
+							username,
+							attributes: {
+								resources: attributes.resources,
+								cluster: attributes.cluster,
+								templates: attributes.templates
+							}
+						},
+						(delta) => {
+							this.#data.users[delta.username] = delta.attributes;
+							this.#save();
+							return { ok: true, status: 200, message: "" };
+						},
+						{ ok: true, status: 200, message: "" }
+					);
+				}
+				else {
+					return new AtomicChange(false, {}, doNothingCallback, { ok: false, status: 401, message: `${params.username} is not an admin user in localdb` });
+				}
 			}
 			else {
-				return false;
+				// return false;
+				return new AtomicChange(false, {}, doNothingCallback, { ok: false, status: 400, message: `${username} was not found in localdb` });
 			}
 		}
-		else { // if request is not setting these attributes, then assume its fine but do nothing
-			return true;
+		else {
+			return new AtomicChange(true, {}, doNothingCallback, null);
 		}
 	}
 
-	delUser (user, params) {
-		const username = `${user.id}@${user.realm}`;
-		if (this.#data.users[username]) {
-			delete this.#data.users[username];
-			this.#save();
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
+	delUser (user, params) {}
 
 	// group methods not implemented because db backend does not store groups
 	addGroup (group, atrributes, params) {}
@@ -115,26 +109,8 @@ export default class LocalDB extends DB_BACKEND {
 	delGroup (group, params) {}
 
 	// assume that adding to group also adds to group's pool
-	addUserToGroup (user, group, params) {
-		const username = `${user.id}@${user.realm}`;
-		if (this.#data.users[username]) {
-			this.#data.users[username].cluster.pools[group.id] = true;
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
+	addUserToGroup (user, group, params) {}
 
 	// assume that adding to group also adds to group's pool
-	delUserFromGroup (user, group, params) {
-		const username = `${user.id}@${user.realm}`;
-		if (this.#data.users[username] && this.#data.users[username].cluster.pools[group.id]) {
-			delete this.#data.users[username].cluster.pools[group.id];
-			return true;
-		}
-		else {
-			return false;
-		}
-	}
+	delUserFromGroup (user, group, params) {}
 }
