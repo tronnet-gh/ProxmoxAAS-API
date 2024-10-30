@@ -250,7 +250,7 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 		for (const backend of this.#config.realm[user.realm]) {
 			const atomicChange = await global.backends[backend].setUser(user, attributes, params);
 			if (atomicChange.valid === false) { // if any fails, preemptively exit
-				return atomicChange.stauts;
+				return atomicChange.status;
 			}
 			atomicChanges.push(atomicChange); // queue callback into array
 		}

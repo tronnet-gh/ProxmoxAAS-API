@@ -73,12 +73,17 @@ router.post("/ticket", async (req, res) => {
 		return;
 	}
 	const cookies = cm.exportCookies();
+	let minimumExpires = Infinity;
 	for (const cookie of cookies) {
 		const expiresDate = new Date(Date.now() + cookie.expiresMSFromNow);
-		res.cookie(cookie.name, cookie.value, { domain, path: "/", httpOnly: true, secure: true, expires: expiresDate });
+		res.cookie(cookie.name, cookie.value, { domain, path: "/", httpOnly: true, secure: true, expires: expiresDate, sameSite: "none" });
+		if (cookie.expiresMSFromNow < minimumExpires) {
+			minimumExpires = cookie.expiresMSFromNow;
+		}
 	}
-	res.cookie("username", params.username, { domain, path: "/", secure: true });
-	res.cookie("auth", 1, { domain, path: "/", secure: true });
+	const expiresDate = new Date(Date.now() + minimumExpires);
+	res.cookie("username", params.username, { domain, path: "/", secure: true, expires: expiresDate, sameSite: "none" });
+	res.cookie("auth", 1, { domain, path: "/", secure: true, expires: expiresDate, sameSite: "none" });
 	res.status(200).send({ auth: true });
 });
 
@@ -95,7 +100,7 @@ router.delete("/ticket", async (req, res) => {
 	const domain = global.config.application.domain;
 	const expire = new Date(0);
 	for (const cookie in req.cookies) {
-		res.cookie(cookie, "", { domain, path: "/", expires: expire });
+		res.cookie(cookie, "", { domain, path: "/", expires: expire, secure: true, sameSite: "none" });
 	}
 	await global.pve.closeSession(req.cookies);
 	await global.userManager.closeSession(req.cookies);

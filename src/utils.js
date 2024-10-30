@@ -379,6 +379,11 @@ export function readJSONFile (path) {
 	}
 };
 
+/**
+ *
+ * @param {*} username
+ * @returns {Object | null} user object containing username and realm or null if user does not exist
+ */
 export function getUserObjFromUsername (username) {
 	if (username) {
 		const userRealm = username.split("@").at(-1);
