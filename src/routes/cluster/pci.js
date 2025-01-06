@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { token } from "morgan";
 export const router = Router({ mergeParams: true }); ;
 
 const checkAuth = global.utils.checkAuth;
@@ -177,7 +178,7 @@ router.post("/create", async (req, res) => {
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// get instance config to find next available hostpci slot
-	const config = global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { cookies: params.cookies });
+	const config = (await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true })).data.data;
 	let hostpci = 0;
 	while (config[`hostpci${hostpci}`]) {
 		hostpci++;

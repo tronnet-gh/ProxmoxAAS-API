@@ -258,11 +258,13 @@ export async function getUserResources (req, user) {
 						userResources.pci.nodes[nodeName][index].used++;
 						userResources.pci.nodes[nodeName][index].avail--;
 					}
-					// otherwise add the resource to the global pool
+					// otherwise try to add the resource to the global pool
 					else {
 						const index = userResources.pci.global.findIndex((availEelement) => deviceName.includes(availEelement.match));
-						userResources.pci.global[index].used++;
-						userResources.pci.global[index].avail--;
+						if (index >= 0) { // device resource is in the user's global list then increment it by 1
+							userResources.pci.global[index].used++;
+							userResources.pci.global[index].avail--;
+						}
 					}
 					const index = userResources.pci.total.findIndex((availEelement) => deviceName.includes(availEelement.match));
 					userResources.pci.total[index].used++;

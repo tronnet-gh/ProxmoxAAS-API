@@ -98,13 +98,19 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	}
 	// get remaining user resources
 	const userAvailPci = (await getUserResources(req, userObj)).pci.nodes[params.node];
-	// get node avail devices
-	let nodeAvailPci = await global.pve.getNodeAvailDevices(params.node, req.cookies);
-	nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => {
-		return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
-	}));
-	res.status(200).send(nodeAvailPci);
-	res.end();
+	if (userAvailPci == undefined) { // user has no avaliable devices on this node, so send an empty list
+		res.status(200).send([]);
+		res.end();
+	}
+	else {
+		// get node avail devices
+		let nodeAvailPci = await global.pve.getNodeAvailDevices(params.node, req.cookies);
+		nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => {
+			return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
+		}));
+		res.status(200).send(nodeAvailPci);
+		res.end();
+	}
 });
 
 /**
