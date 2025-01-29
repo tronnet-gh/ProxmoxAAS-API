@@ -61,10 +61,15 @@ router.post("/ticket", async (req, res) => {
 		username: req.body.username,
 		password: req.body.password
 	};
+
 	const domain = global.config.application.domain;
 	// const userRealm = params.username.split("@").at(-1);
 	const userObj = global.utils.getUserObjFromUsername(params.username);
 	let backends = global.userManager.getBackendsByUser(userObj);
+	if (backends == null) {
+		res.status(401).send({ auth: false, error: `${params.username} not found in any ProxmoxAAS backends` });
+		return;
+	}
 	backends = backends.concat(["pve"]);
 	const cm = new CookieFetcher();
 	const error = await cm.fetchBackends(backends, userObj, params.password);
