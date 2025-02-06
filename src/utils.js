@@ -189,8 +189,9 @@ export async function getUserResources (req, user) {
 		for (const deviceid in config.devices) {
 			const device = config.devices[deviceid];
 			let name = "";
-			for (const subsystems of device) {
-				name += `${subsystems.device_name}:${subsystems.subsystem_device_name},`;
+			for (const subsystemid in device) {
+				const subsystem = device[subsystemid];
+				name += `${subsystem.device_name}:${subsystem.subsystem_device_name},`;
 			}
 
 			if (nodeName in userResources.pci.nodes) {
