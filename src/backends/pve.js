@@ -5,12 +5,14 @@ export default class PVE extends PVE_BACKEND {
 	#pveAPIURL = null;
 	#pveAPIToken = null;
 	#pveRoot = null;
+	#paasFabric = null;
 
 	constructor (config) {
 		super();
 		this.#pveAPIURL = config.url;
 		this.#pveAPIToken = config.token;
 		this.#pveRoot = config.root;
+		this.#paasFabric = config.fabric;
 	}
 
 	async openSession (user, password) {
@@ -99,7 +101,7 @@ export default class PVE extends PVE_BACKEND {
 			const upid = result.data.data;
 			let taskStatus = await this.requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: true });
 			while (taskStatus.data.data.status !== "stopped") {
-				await waitFor(1000);
+				await waitFor(100);
 				taskStatus = await this.requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: true });
 			}
 			if (taskStatus.data.data.exitstatus === "OK") {
@@ -120,26 +122,6 @@ export default class PVE extends PVE_BACKEND {
 		else {
 			res.status(result.status).send(result.data);
 			res.end();
-		}
-	}
-
-	/**
-	 * Get meta data for a specific disk. Adds info that is not normally available in a instance's config.
-	 * @param {string} node containing the query disk.
-	 * @param {string} config of instance with query disk.
-	 * @param {string} disk name of the query disk, ie. sata0.
-	 * @returns {Objetc} k-v pairs of specific disk data, including storage and size of unused disks.
-	 */
-	async getDiskInfo (node, config, disk) {
-		try {
-			const storageID = config[disk].split(":")[0];
-			const volID = config[disk].split(",")[0];
-			const volInfo = await this.requestPVE(`/nodes/${node}/storage/${storageID}/content/${volID}`, "GET", { token: true });
-			volInfo.data.data.storage = storageID;
-			return volInfo.data.data;
-		}
-		catch {
-			return null;
 		}
 	}
 
@@ -201,5 +183,101 @@ export default class PVE extends PVE_BACKEND {
 			});
 		}
 		return nodeAvailPci;
+	}
+
+	/**
+	 * Send HTTP request to PAAS Fabric
+	 * @param {string} path HTTP path, prepended with the proxmox API base url.
+	 * @param {string} method HTTP method.
+	 * @param {Object} auth authentication method. Set auth.cookies with user cookies or auth.token with PVE API Token. Optional.
+	 * @param {string} body body parameters and data to be sent. Optional.
+	 * @returns {Object} HTTP response object or HTTP error object.
+	 */
+	async requestFabric (path, method, body = null) {
+		const url = `${this.#paasFabric}${path}`;
+		const content = {
+			method,
+			mode: "cors",
+			credentials: "include",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded"
+			},
+			data: body
+		};
+
+		try {
+			return await axios.request(url, content);
+		}
+		catch (error) {
+			return error;
+		}
+	}
+
+	async getNode (node) {
+		const res = await this.requestFabric(`/nodes/${node}`, "GET");
+		if (res.status !== 200) {
+			console.error(res);
+			return null;
+		}
+
+		return res.data.instance;
+	}
+
+	async syncNode (node) {
+		this.requestFabric(`/nodes/${node}/sync`, "POST");
+	}
+
+	async getInstance (node, instance) {
+		const res = await this.requestFabric(`/nodes/${node}/instances/${instance}`, "GET");
+		if (res.status !== 200) {
+			console.error(res);
+			return null;
+		}
+
+		return res.data.instance;
+	}
+
+	async syncInstance (node, vmid) {
+		this.requestFabric(`/nodes/${node}/instances/${vmid}/sync`, "POST");
+	}
+
+	/**
+	 * Get meta data for a specific disk. Adds info that is not normally available in a instance's config.
+	 * @param {string} node containing the query disk.
+	 * @param {string} instance with query disk.
+	 * @param {string} disk name of the query disk, ie. sata0.
+	 * @returns {Objetc} k-v pairs of specific disk data, including storage and size of unused disks.
+	 */
+	async getDisk (node, instance, disk) {
+		const config = await this.getInstance(node, instance);
+		if (config != null && config.volumes[disk] != null) {
+			return config.volumes[disk];
+		}
+		else {
+			return null;
+		}
+	}
+
+	async getUserResources (user, cookies) {
+		// get user resources with vm filter
+		const res = await this.requestPVE("/cluster/resources?type=vm", "GET", { cookies });
+		if (res.status !== 200) {
+			return null;
+		}
+
+		const userPVEResources = res.data.data;
+
+		const resources = {};
+
+		// for each resource, add to the object
+		for (const resource of userPVEResources) {
+			const instance = await this.getInstance(resource.node, resource.vmid);
+			if (instance) {
+				instance.node = resource.node;
+				resources[resource.vmid] = instance;
+			}
+		}
+
+		return resources;
 	}
 }

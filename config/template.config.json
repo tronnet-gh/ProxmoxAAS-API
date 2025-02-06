@@ -4,6 +4,7 @@
 			"import": "pve.js",
 			"config": {
 				"url": "https://pve.mydomain.example/api2/json",
+				"fabric": "http://localhost:8082",
 				"token": {
 					"user": "proxmoxaas-api",
 					"realm": "pam",
@@ -77,7 +78,7 @@
 		"memory": {
 			"name": "RAM",
 			"type": "numeric",
-			"multiplier": 1048576,
+			"multiplier": 1,
 			"base": 1024,
 			"compact": true,
 			"unit": "B",
@@ -86,7 +87,7 @@
 		"swap": {
 			"name": "SWAP",
 			"type": "numeric",
-			"multiplier": 1048576,
+			"multiplier": 1,
 			"base": 1024,
 			"compact": true,
 			"unit": "B",

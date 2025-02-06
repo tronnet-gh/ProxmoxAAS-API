@@ -60,69 +60,6 @@ export async function checkAuth (cookies, res, vmpath = null) {
 }
 
 /**
- * Get the full config of an instance, including searching disk information.
- * @param {Object} req ProxmoxAAS API request object.
- * @param {Object} instance to get config as object containing node, type, and id.
- * @param {Array} diskprefixes Array containing prefixes for disks.
- * @returns
- */
-async function getFullInstanceConfig (req, instance, diskprefixes) {
-	const config = (await global.pve.requestPVE(`/nodes/${instance.node}/${instance.type}/${instance.vmid}/config`, "GET", { cookies: req.cookies })).data.data;
-	// fetch all instance disk and device data concurrently
-	const promises = [];
-	const mappings = [];
-	for (const key in config) {
-		if (diskprefixes.some(prefix => key.startsWith(prefix))) {
-			promises.push(global.pve.getDiskInfo(instance.node, config, key));
-			mappings.push(key);
-		}
-		else if (key.startsWith("hostpci")) {
-			promises.push(global.pve.getDeviceInfo(instance.node, config[key].split(",")[0]));
-			mappings.push(key);
-		}
-	}
-	const results = await Promise.all(promises);
-	results.forEach((e, i) => {
-		const key = mappings[i];
-		config[key] = e;
-	});
-	config.node = instance.node;
-	return config;
-}
-
-/**
- * Get all configs for every instance owned by the user. Uses the expanded config data from getFullInstanceConfig.
- * @param {Object} req ProxmoxAAS API request object.
- * @param {Object} dbResources data about application resources, to indicate which resources are tracked.
- * @returns {Object} k-v pairs of resource name and used amounts
- */
-async function getAllInstanceConfigs (req, diskprefixes) {
-	// get the basic resources list
-	const resources = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
-
-	// filter resources by their type, we only want lxc and qemu
-	const instances = [];
-	for (const resource of resources) {
-		if (resource.type === "lxc" || resource.type === "qemu") {
-			instances.push(resource);
-		}
-	}
-
-	// get all instance configs, also include detailed disk and device info
-	const promises = [];
-	const mappings = [];
-	for (let i = 0; i < instances.length; i++) {
-		const instance = instances[i];
-		const config = getFullInstanceConfig(req, instance, diskprefixes);
-		promises.push(config);
-		mappings.push(i);
-	}
-	const configs = await Promise.all(promises);
-
-	return configs;
-}
-
-/**
  * Get user resource data including used, available, and maximum resources.
  * @param {Object} req ProxmoxAAS API request object.
  * @param {{id: string, realm: string}} user object of user to get resource data.
@@ -131,15 +68,6 @@ async function getAllInstanceConfigs (req, diskprefixes) {
 export async function getUserResources (req, user) {
 	const dbResources = global.config.resources;
 	const userResources = (await global.userManager.getUser(user, req.cookies)).resources;
-	// setup disk prefixes object
-	const diskprefixes = [];
-	for (const resourceName of Object.keys(dbResources)) {
-		if (dbResources[resourceName].type === "storage") {
-			for (const diskPrefix of dbResources[resourceName].disks) {
-				diskprefixes.push(diskPrefix);
-			}
-		}
-	}
 
 	// setup the user resource object with used and avail for each resource and each resource pool
 	// also add a total counter for each resource (only used for display, not used to check requests)
@@ -193,10 +121,12 @@ export async function getUserResources (req, user) {
 		}
 	}
 
-	const configs = await getAllInstanceConfigs(req, diskprefixes);
+	const configs = await global.pve.getUserResources(user, req.cookies);
 
-	for (const config of configs) {
+	for (const vmid in configs) {
+		const config = configs[vmid];
 		const nodeName = config.node;
+		// count basic numeric resources
 		for (const resourceName of Object.keys(config)) {
 			// numeric resource type
 			if (resourceName in dbResources && dbResources[resourceName].type === "numeric") {
@@ -214,62 +144,74 @@ export async function getUserResources (req, user) {
 				userResources[resourceName].total.used += val;
 				userResources[resourceName].total.avail -= val;
 			}
-			else if (diskprefixes.some(prefix => resourceName.startsWith(prefix))) {
-				const diskInfo = config[resourceName];
-				if (diskInfo) { // only count if disk exists
-					const val = Number(diskInfo.size);
-					const storage = diskInfo.storage;
-					// if the instance's node is restricted by this resource, add it to the instance's used value
-					if (nodeName in userResources[storage].nodes) {
-						userResources[storage].nodes[nodeName].used += val;
-						userResources[storage].nodes[nodeName].avail -= val;
-					}
-					// otherwise add the resource to the global pool
-					else {
-						userResources[storage].global.used += val;
-						userResources[storage].global.avail -= val;
-					}
-					userResources[storage].total.used += val;
-					userResources[storage].total.avail -= val;
-				}
-			}
-			else if (resourceName.startsWith("net") && config[resourceName].includes("rate=")) { // only count net instances with a rate limit
-				const val = Number(config[resourceName].split("rate=")[1].split(",")[0]);
+		}
+		// count disk resources in volumes
+		for (const diskid in config.volumes) {
+			const disk = config.volumes[diskid];
+			const storage = disk.storage;
+			const size = disk.size;
+			// only process disk if its storage is in the user resources to be counted
+			if (storage in userResources) {
 				// if the instance's node is restricted by this resource, add it to the instance's used value
-				if (nodeName in userResources.network.nodes) {
-					userResources.network.nodes[nodeName].used += val;
-					userResources.network.nodes[nodeName].avail -= val;
+				if (nodeName in userResources[storage].nodes) {
+					userResources[storage].nodes[nodeName].used += size;
+					userResources[storage].nodes[nodeName].avail -= size;
 				}
 				// otherwise add the resource to the global pool
 				else {
-					userResources.network.global.used += val;
-					userResources.network.global.avail -= val;
+					userResources[storage].global.used += size;
+					userResources[storage].global.avail -= size;
 				}
-				userResources.network.total.used += val;
-				userResources.network.total.avail -= val;
+				userResources[storage].total.used += size;
+				userResources[storage].total.avail -= size;
 			}
-			else if (resourceName.startsWith("hostpci")) {
-				const deviceInfo = config[resourceName];
-				if (deviceInfo) { // only count if device exists
-					const deviceName = deviceInfo.device_name;
-					// if the instance's node is restricted by this resource, add it to the instance's used value
-					if (nodeName in userResources.pci.nodes) {
-						const index = userResources.pci.nodes[nodeName].findIndex((availEelement) => deviceName.includes(availEelement.match));
-						userResources.pci.nodes[nodeName][index].used++;
-						userResources.pci.nodes[nodeName][index].avail--;
-					}
-					// otherwise try to add the resource to the global pool
-					else {
-						const index = userResources.pci.global.findIndex((availEelement) => deviceName.includes(availEelement.match));
-						if (index >= 0) { // device resource is in the user's global list then increment it by 1
-							userResources.pci.global[index].used++;
-							userResources.pci.global[index].avail--;
-						}
-					}
-					const index = userResources.pci.total.findIndex((availEelement) => deviceName.includes(availEelement.match));
-					userResources.pci.total[index].used++;
-					userResources.pci.total[index].avail--;
+		}
+		// count net resources in nets
+		for (const netid in config.nets) {
+			const net = config.nets[netid];
+			const rate = net.rate;
+			if (userResources.network) {
+				// if the instance's node is restricted by this resource, add it to the instance's used value
+				if (nodeName in userResources.network.nodes) {
+					userResources.network.nodes[nodeName].used += rate;
+					userResources.network.nodes[nodeName].avail -= rate;
 				}
+				// otherwise add the resource to the global pool
+				else {
+					userResources.network.global.used += rate;
+					userResources.network.global.avail -= rate;
+				}
+				userResources.network.total.used += rate;
+				userResources.network.total.avail -= rate;
+			}
+		}
+		// count pci device resources in devices
+		for (const deviceid in config.devices) {
+			const device = config.devices[deviceid];
+			let name = "";
+			for (const subsystems of device) {
+				name += `${subsystems.device_name}:${subsystems.subsystem_device_name},`;
+			}
+
+			if (nodeName in userResources.pci.nodes) {
+				const index = userResources.pci.nodes[nodeName].findIndex((availEelement) => name.includes(availEelement.match));
+				if (index >= 0) {
+					userResources.pci.nodes[nodeName][index].used++;
+					userResources.pci.nodes[nodeName][index].avail--;
+				}
+			}
+			// otherwise try to add the resource to the global pool
+			else {
+				const index = userResources.pci.global.findIndex((availEelement) => name.includes(availEelement.match));
+				if (index >= 0) { // device resource is in the user's global list then increment it by 1
+					userResources.pci.global[index].used++;
+					userResources.pci.global[index].avail--;
+				}
+			}
+			const index = userResources.pci.total.findIndex((availEelement) => name.includes(availEelement.match));
+			if (index >= 0) {
+				userResources.pci.total[index].used++;
+				userResources.pci.total[index].avail--;
 			}
 		}
 	}
