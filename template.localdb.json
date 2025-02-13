@@ -25,13 +25,13 @@
 				},
 				"memory": {
 					"global": {
-						"max": 131072
+						"max": 137438953472
 					},
 					"nodes": {}
 				},
 				"swap": {
 					"global": {
-						"max": 131072
+						"max": 137438953472
 					},
 					"nodes": {}
 				},
@@ -103,12 +103,20 @@
 							"value": "host",
 							"resource": null
 						},
+						"machine": {
+							"value": "q35",
+							"resource": null
+						},
 						"net0": {
 							"value": "virtio,bridge=vmbr0,tag=10,rate=1000",
 							"resource": {
 								"name": "network",
 								"amount": 1000
 							}
+						},
+						"scsihw": {
+							"value": "virtio-scsi-single",
+							"resource": null
 						}
 					}
 				},
