@@ -188,12 +188,8 @@ export async function getUserResources (req, user) {
 		// count pci device resources in devices
 		for (const deviceid in config.devices) {
 			const device = config.devices[deviceid];
-			let name = "";
-			for (const subsystemid in device) {
-				const subsystem = device[subsystemid];
-				name += `${subsystem.device_name}:${subsystem.subsystem_device_name},`;
-			}
-
+			const name = device.device_name;
+			// if the node has a node specific rule, add it there
 			if (nodeName in userResources.pci.nodes) {
 				const index = userResources.pci.nodes[nodeName].findIndex((availEelement) => name.includes(availEelement.match));
 				if (index >= 0) {
@@ -209,6 +205,7 @@ export async function getUserResources (req, user) {
 					userResources.pci.global[index].avail--;
 				}
 			}
+			// finally, add the device to the total map
 			const index = userResources.pci.total.findIndex((availEelement) => name.includes(availEelement.match));
 			if (index >= 0) {
 				userResources.pci.total[index].used++;

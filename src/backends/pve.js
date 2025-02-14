@@ -74,11 +74,22 @@ export default class PVE extends PVE_BACKEND {
 			const token = this.#pveAPIToken;
 			content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
 		}
+		else if (auth && auth.root) {
+			const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, this.#pveRoot);
+			if (!(rootauth.status === 200)) {
+				return rootauth.response;
+			}
+			const rootcookie = rootauth.data.data.ticket;
+			const rootcsrf = rootauth.data.data.CSRFPreventionToken;
+			content.headers.CSRFPreventionToken = rootcsrf;
+			content.headers.Cookie = `PVEAuthCookie=${rootcookie}; CSRFPreventionToken=${rootcsrf}`;
+		}
 
 		try {
 			return await axios.request(url, content);
 		}
 		catch (error) {
+			console.log(`backends: error ocuured in pve.requestPVE: ${error}`);
 			return error.response;
 		}
 	}
@@ -126,66 +137,6 @@ export default class PVE extends PVE_BACKEND {
 	}
 
 	/**
-	 * Get meta data for a specific pci device. Adds info that is not normally available in a instance's config.
-	 * @param {string} node containing the query device.
-	 * @param {string} qid pci bus id number of the query device, ie. 89ab:cd:ef.0.
-	 * @returns {Object} k-v pairs of specific device data, including device name and manufacturer.
-	 */
-	async getDeviceInfo (node, qid) {
-		try {
-			const result = (await this.requestPVE(`/nodes/${node}/hardware/pci`, "GET", { token: true })).data.data;
-			const deviceData = [];
-			result.forEach((element) => {
-				if (element.id.startsWith(qid)) {
-					deviceData.push(element);
-				}
-			});
-			deviceData.sort((a, b) => {
-				return a.id < b.id;
-			});
-			const device = deviceData[0];
-			device.subfn = structuredClone(deviceData.slice(1));
-			return device;
-		}
-		catch {
-			return null;
-		}
-	}
-
-	/**
-	 * Get available devices on specific node.
-	 * @param {string} node to get devices from.
-	 * @returns {Array.<Object>} array of k-v pairs of specific device data, including device name and manufacturer, which are available on the specified node.
-	 */
-	async getNodeAvailDevices (node) {
-		// get node pci devices
-		let nodeAvailPci = this.requestPVE(`/nodes/${node}/hardware/pci`, "GET", { token: true });
-		// for each node container, get its config and remove devices which are already used
-		const vms = (await this.requestPVE(`/nodes/${node}/qemu`, "GET", { token: true })).data.data;
-
-		const promises = [];
-		for (const vm of vms) {
-			promises.push(this.requestPVE(`/nodes/${node}/qemu/${vm.vmid}/config`, "GET", { token: true }));
-		}
-		const configs = await Promise.all(promises);
-		configs.forEach((e, i) => {
-			configs[i] = e.data.data;
-		});
-
-		nodeAvailPci = (await nodeAvailPci).data.data;
-
-		for (const config of configs) {
-			Object.keys(config).forEach((key) => {
-				if (key.startsWith("hostpci")) {
-					const deviceID = config[key].split(",")[0];
-					nodeAvailPci = nodeAvailPci.filter(element => !element.id.includes(deviceID));
-				}
-			});
-		}
-		return nodeAvailPci;
-	}
-
-	/**
 	 * Send HTTP request to PAAS Fabric
 	 * @param {string} path HTTP path, prepended with the proxmox API base url.
 	 * @param {string} method HTTP method.
@@ -220,7 +171,7 @@ export default class PVE extends PVE_BACKEND {
 			return null;
 		}
 
-		return res.data.instance;
+		return res.data.node;
 	}
 
 	async syncNode (node) {
@@ -241,17 +192,30 @@ export default class PVE extends PVE_BACKEND {
 		this.requestFabric(`/nodes/${node}/instances/${vmid}/sync`, "POST");
 	}
 
-	/**
-	 * Get meta data for a specific disk. Adds info that is not normally available in a instance's config.
-	 * @param {string} node containing the query disk.
-	 * @param {string} instance with query disk.
-	 * @param {string} disk name of the query disk, ie. sata0.
-	 * @returns {Objetc} k-v pairs of specific disk data, including storage and size of unused disks.
-	 */
 	async getDisk (node, instance, disk) {
 		const config = await this.getInstance(node, instance);
 		if (config != null && config.volumes[disk] != null) {
 			return config.volumes[disk];
+		}
+		else {
+			return null;
+		}
+	}
+
+	async getNet (node, instance, netid) {
+		const config = await this.getInstance(node, instance);
+		if (config != null && config.nets[netid] != null) {
+			return config.nets[netid];
+		}
+		else {
+			return null;
+		}
+	}
+
+	async getDevice (node, instance, deviceid) {
+		const config = await this.getInstance(node, instance);
+		if (config != null && config.devices[deviceid] != null) {
+			return config.devices[deviceid];
 		}
 		else {
 			return null;

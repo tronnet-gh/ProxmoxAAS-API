@@ -183,7 +183,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {{id: string, realm: string}} user
 	 * @param {{id: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
-	* @returns {AtomicChange} atomic change object
+	 * @returns {AtomicChange} atomic change object
 	 */
 	delUserFromGroup (user, group, params) {}
 }
@@ -191,7 +191,72 @@ class USER_BACKEND extends BACKEND {
 /**
  * Interface for proxmox api backends.
  */
-export class PVE_BACKEND extends BACKEND {}
+export class PVE_BACKEND extends BACKEND {
+	/**
+	 * Get and return node data.
+	 * Returns the node data or null if the node does not exist.
+	 * @param {string} node node id
+	 * @returns {}
+	 */
+	getNode (node) {}
+
+	/**
+	 * Send a signal to synchronize a node after some change has been made.
+	 * * @param {string} node node id
+	 */
+	syncNode (node) {}
+
+	/**
+	 * Get and return instance data.
+	 * Returns the instance data or null if the instance does not exist.
+	 * @param {string} node node id
+	 * @param {string} type instance type
+	 * @param {string} vmid instance id
+	 */
+	getInstance (node, type, instance) {}
+
+	/**
+	 * Send a signal to synchronize an instance after some change has been made.
+	 * @param {string} node node id
+	 * @param {string} instance instance id
+	 */
+	syncInstance (node, instance) {}
+
+	/**
+	 * Get meta data for a specific disk. Adds info that is not normally available in a instance's config.
+	 * @param {string} node containing the query disk.
+	 * @param {string} instance with query disk.
+	 * @param {string} disk name of the query disk, ie. sata0.
+	 * @returns {Objetc} k-v pairs of specific disk data, including storage and size of unused disks.
+	 */
+	async getDisk (node, instance, disk) {}
+
+	/**
+	 * Get meta data for a specific net. Adds info that is not normally available in a instance's config.
+	 * @param {string} node containing the query net.
+	 * @param {string} instance with query net.
+	 * @param {string} netid id number of the query net, ie. 0 -> net0.
+	 * @returns {Objetc} k-v pairs of specific net data, including rate and vlan.
+	 */
+	async getNet (node, instance, netid) {}
+
+	/**
+	 * Get meta data for a specific device. Adds info that is not normally available in a instance's config.
+	 * @param {string} node containing the query device.
+	 * @param {string} instance with query device.
+	 * @param {string} deviceid id number of the query device, ie. 0 -> pci0.
+	 * @returns {Objetc} k-v pairs of specific device data, including name and manfacturer.
+	 */
+	async getDevice (node, instance, deviceid) {}
+
+	/**
+	 * Get user resource data including used, available, and maximum resources.
+	 * @param {{id: string, realm: string}} user object of user to get resource data.
+	 * @param {Object} cookies object containing k-v store of cookies
+	 * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
+	 */
+	getUserResources (user, cookies) {}
+}
 
 /**
  * Interface for user database backends.
@@ -216,7 +281,12 @@ class USER_BACKEND_MANAGER extends USER_BACKEND {
 	}
 
 	getBackendsByUser (user) {
-		return this.#config.realm[user.realm];
+		if (user != null) {
+			return this.#config.realm[user.realm];
+		}
+		else {
+			return null;
+		}
 	}
 
 	addUser (user, attributes, params) {}
