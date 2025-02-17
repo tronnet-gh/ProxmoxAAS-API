@@ -51,7 +51,7 @@ if (schemes.hash.enabled) {
 		if (!auth) {
 			return;
 		}
-		// get current cluster resources
+		// get current cluster resources - do not use fabric here because fabric is not always updated to changes like up/down state changes
 		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
 		// filter out just state information of resources that are needed
 		const state = extractClusterState(status, resourceTypes);

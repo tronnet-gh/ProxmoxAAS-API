@@ -63,7 +63,6 @@ router.post("/ticket", async (req, res) => {
 	};
 
 	const domain = global.config.application.domain;
-	// const userRealm = params.username.split("@").at(-1);
 	const userObj = global.utils.getUserObjFromUsername(params.username);
 	let backends = global.userManager.getBackendsByUser(userObj);
 	if (backends == null) {
