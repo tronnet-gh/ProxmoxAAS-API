@@ -3,7 +3,6 @@ export const router = Router({ mergeParams: true }); ;
 
 const config = global.config;
 const checkAuth = global.utils.checkAuth;
-const getUserResources = global.utils.getUserResources;
 
 /**
  * GET - get db user resource information including allocated, free, and maximum resource values along with resource metadata
@@ -24,7 +23,7 @@ router.get("/dynamic/resources", async (req, res) => {
 
 	const userObj = global.utils.getUserObjFromUsername(params.username);
 
-	const resources = await getUserResources(req, userObj);
+	const resources = await global.utils.getUserResources(req, userObj);
 	res.status(200).send(resources);
 });
 
