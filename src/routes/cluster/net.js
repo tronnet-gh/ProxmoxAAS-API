@@ -26,12 +26,16 @@ router.post("/:netid/create", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		netid: req.params.netid.replace("net", ""),
+		netid: Number(req.params.netid.replace("net", "")),
 		rate: req.body.rate,
 		name: req.body.name
 	};
-
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	// check netid is a valid number
+	if (isNaN(params.netid)) {
+		res.status(500).send({ error: `Network interface id must be a number, got ${req.params.netid}.` });
+		res.end();
+		return;
+	}
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
@@ -39,10 +43,9 @@ router.post("/:netid/create", async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const currentConfig = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true });
 	// net interface must not exist
-	if (currentConfig.data.data[`net${params.netid}`]) {
+	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
+	if (net) {
 		res.status(500).send({ error: `Network interface net${params.netid} already exists.` });
 		res.end();
 		return;
@@ -56,6 +59,7 @@ router.post("/:netid/create", async (req, res) => {
 		network: Number(params.rate)
 	};
 	// check resource approval
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 	if (!await approveResources(req, userObj, request, params.node)) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
@@ -74,6 +78,7 @@ router.post("/:netid/create", async (req, res) => {
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });
 
 /**
@@ -97,32 +102,33 @@ router.post("/:netid/modify", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		netid: req.params.netid.replace("net", ""),
+		netid: Number(req.params.netid.replace("net", "")),
 		rate: req.body.rate
 	};
-
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-
+	// check netid is a valid number
+	if (isNaN(params.netid)) {
+		res.status(500).send({ error: `Network interface id must be a number, got ${req.params.netid}.` });
+		res.end();
+		return;
+	}
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const currentConfig = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true });
 	// net interface must already exist
-	if (!currentConfig.data.data[`net${params.netid}`]) {
+	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
+	if (!net) {
 		res.status(500).send({ error: `Network interface net${params.netid} does not exist.` });
 		res.end();
 		return;
 	}
-	const currentNetworkConfig = currentConfig.data.data[`net${params.netid}`];
-	const currentNetworkRate = currentNetworkConfig.split("rate=")[1].split(",")[0];
 	const request = {
-		network: Number(params.rate) - Number(currentNetworkRate)
+		network: Number(params.rate) - Number(net.rate)
 	};
 	// check resource approval
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 	if (!await approveResources(req, userObj, request, params.node)) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
@@ -130,11 +136,12 @@ router.post("/:netid/modify", async (req, res) => {
 	}
 	// setup action
 	const action = {};
-	action[`net${params.netid}`] = currentNetworkConfig.replace(`rate=${currentNetworkRate}`, `rate=${params.rate}`);
+	action[`net${params.netid}`] = net.value.replace(`rate=${net.rate}`, `rate=${params.rate}`);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });
 
 /**
@@ -156,18 +163,23 @@ router.delete("/:netid/delete", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		netid: req.params.netid.replace("net", "")
+		netid: Number(req.params.netid.replace("net", ""))
 	};
+	// check netid is a valid number
+	if (isNaN(params.netid)) {
+		res.status(500).send({ error: `Network interface id must be a number, got ${req.params.netid}.` });
+		res.end();
+		return;
+	}
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const currentConfig = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true });
 	// net interface must already exist
-	if (!currentConfig.data.data[`net${params.netid}`]) {
+	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
+	if (!net) {
 		res.status(500).send({ error: `Network interface net${params.netid} does not exist.` });
 		res.end();
 		return;
@@ -177,4 +189,5 @@ router.delete("/:netid/delete", async (req, res) => {
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, { delete: `net${params.netid}` });
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });

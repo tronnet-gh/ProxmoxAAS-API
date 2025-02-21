@@ -31,10 +31,9 @@ router.post("/:disk/detach", async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const config = (await global.pve.requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	// disk must exist
-	if (!config[params.disk]) {
+	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk);
+	if (!disk) {
 		res.status(500).send({ error: `Disk ${params.disk} does not exist.` });
 		res.end();
 		return;
@@ -49,6 +48,7 @@ router.post("/:disk/detach", async (req, res) => {
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });
 
 /**
@@ -80,29 +80,30 @@ router.post("/:disk/attach", async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const config = (await global.pve.requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
+
 	// disk must exist
-	if (!config[`unused${params.source}`]) {
-		res.status(403).send({ error: `Requested disk unused${params.source} does not exist.` });
+	const disk = await global.pve.getDisk(params.node, params.vmid, `unused${params.source}`);
+	if (!disk) {
+		res.status(500).send({ error: `Requested disk unused${params.source} does not exist.` });
 		res.end();
 		return;
 	}
 	// target disk must be allowed according to source disk's storage options
-	const diskConfig = await global.pve.getDiskInfo(params.node, config, `unused${params.source}`); // get target disk
 	const resourceConfig = global.config.resources;
-	if (!resourceConfig[diskConfig.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
-		res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[diskConfig.storage].disks}].` });
+	if (!resourceConfig[disk.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
+		res.status(500).send({ error: `Requested target ${params.disk} is not in allowed list [${resourceConfig[disk.storage].disks}].` });
 		res.end();
 		return;
 	}
 	// setup action using source disk info from vm config
 	const action = {};
-	action[params.disk] = config[`unused${params.source}`];
+	action[params.disk] = disk.volid;
 	const method = params.type === "qemu" ? "POST" : "PUT";
+
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });
 
 /**
@@ -138,17 +139,15 @@ router.post("/:disk/resize", async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const config = (await global.pve.requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	// check disk existence
-	const diskConfig = await global.pve.getDiskInfo(params.node, config, params.disk); // get target disk
-	if (!diskConfig) { // exit if disk does not exist
+	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk); // get target disk
+	if (!disk) { // exit if disk does not exist
 		res.status(500).send({ error: `requested disk ${params.disk} does not exist.` });
 		res.end();
 		return;
 	}
 	// setup request
-	const storage = diskConfig.storage; // get the storage
+	const storage = disk.storage; // get the storage
 	const request = {};
 	request[storage] = Number(params.size * 1024 ** 3); // setup request object
 	// check request approval
@@ -161,6 +160,7 @@ router.post("/:disk/resize", async (req, res) => {
 	const action = { disk: params.disk, size: `+${params.size}G` };
 	const result = await global.pve.requestPVE(`${vmpath}/resize`, "PUT", { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });
 
 /**
@@ -198,17 +198,15 @@ router.post("/:disk/move", async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const config = (await global.pve.requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	// check disk existence
-	const diskConfig = await global.pve.getDiskInfo(params.node, config, params.disk); // get target disk
-	if (!diskConfig) { // exit if disk does not exist
+	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk); // get target disk
+	if (!disk) { // exit if disk does not exist
 		res.status(500).send({ error: `requested disk ${params.disk} does not exist.` });
 		res.end();
 		return;
 	}
 	// setup request
-	const size = parseInt(diskConfig.size); // get source disk size
+	const size = parseInt(disk.size); // get source disk size
 	const dstStorage = params.storage; // get destination storage
 	const request = {};
 	if (!params.delete) { // if not delete, then request storage, otherwise it is net 0
@@ -232,6 +230,7 @@ router.post("/:disk/move", async (req, res) => {
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/${route}`, "POST", { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });
 
 /**
@@ -261,11 +260,10 @@ router.delete("/:disk/delete", async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const config = (await global.pve.requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	// disk must exist
-	if (!config[params.disk]) {
-		res.status(403).send({ error: `Requested disk unused${params.source} does not exist.` });
+	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk);
+	if (!disk) {
+		res.status(500).send({ error: `Disk ${params.disk} does not exist.` });
 		res.end();
 		return;
 	}
@@ -281,6 +279,7 @@ router.delete("/:disk/delete", async (req, res) => {
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });
 
 /**
@@ -310,20 +309,17 @@ router.post("/:disk/create", async (req, res) => {
 		size: req.body.size,
 		iso: req.body.iso
 	};
-
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
-	// get current config
-	const config = (await global.pve.requestPVE(`${vmpath}/config`, "GET", { cookies: req.cookies })).data.data;
 	// disk must not exist
-	if (config[params.disk]) {
-		res.status(403).send({ error: `Requested disk ${params.disk} already exists.` });
+	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk);
+	if (disk) {
+		res.status(500).send({ error: `Disk ${params.disk} does already exists.` });
 		res.end();
 		return;
 	}
@@ -361,4 +357,5 @@ router.post("/:disk/create", async (req, res) => {
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });

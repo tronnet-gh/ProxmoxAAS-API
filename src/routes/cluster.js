@@ -98,17 +98,26 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	}
 	// get remaining user resources
 	const userAvailPci = (await getUserResources(req, userObj)).pci.nodes[params.node];
-	if (userAvailPci == undefined) { // user has no avaliable devices on this node, so send an empty list
+	if (userAvailPci === undefined) { // user has no avaliable devices on this node, so send an empty list
 		res.status(200).send([]);
 		res.end();
 	}
 	else {
 		// get node avail devices
-		let nodeAvailPci = await global.pve.getNodeAvailDevices(params.node, req.cookies);
-		nodeAvailPci = nodeAvailPci.filter(nodeAvail => userAvailPci.some((userAvail) => {
+		const node = await global.pve.getNode(params.node);
+		let availableDevices = [];
+		// get each device and filter out only thise which are not reserved
+		for (const device of Object.values(node.devices)) {
+			if (device.reserved === false) {
+				availableDevices.push(device);
+			}
+		}
+		// further filter out only devices which the user has access to
+		availableDevices = availableDevices.filter(nodeAvail => userAvailPci.some((userAvail) => {
 			return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
 		}));
-		res.status(200).send(nodeAvailPci);
+
+		res.status(200).send(availableDevices);
 		res.end();
 	}
 });
@@ -150,13 +159,13 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		return;
 	}
 	// get current config
-	const currentConfig = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/${params.vmid}/config`, "GET", { token: true });
+	const instance = await global.pve.getInstance(params.node, params.vmid);
 	const request = {
-		cores: Number(params.cores) - Number(currentConfig.data.data.cores),
-		memory: Number(params.memory) - Number(currentConfig.data.data.memory)
+		cores: Number(params.cores) - Number(instance.cores),
+		memory: Number(params.memory) - Number(instance.memory)
 	};
 	if (params.type === "lxc") {
-		request.swap = Number(params.swap) - Number(currentConfig.data.data.swap);
+		request.swap = Number(params.swap) - Number(instance.swap);
 	}
 	else if (params.type === "qemu") {
 		request.cpu = params.proctype;
@@ -180,6 +189,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncInstance(params.node, params.vmid);
 });
 
 /**
@@ -301,6 +311,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 	// commit action
 	const result = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}`, "POST", { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncNode(params.node);
 });
 
 /**
@@ -329,4 +340,5 @@ router.delete(`${basePath}/delete`, async (req, res) => {
 	// commit action
 	const result = await global.pve.requestPVE(vmpath, "DELETE", { token: true });
 	await global.pve.handleResponse(params.node, result, res);
+	await global.pve.syncNode(params.node);
 });
