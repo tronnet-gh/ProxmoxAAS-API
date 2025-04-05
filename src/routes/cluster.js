@@ -123,6 +123,36 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 });
 
 /**
+ * GET - get basic resources for vm using the fabric format
+ * request:
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * response:
+ * - 200: Fabric instance config
+ * - 401: {auth: false}
+ */
+router.get(`${basePath}`, async (req, res) => {
+	const params = {
+		node: req.params.node,
+		type: req.params.type,
+		vmid: req.params.vmid,
+	};
+
+	// check auth for specific instance
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
+
+	// get current config
+	const instance = await global.pve.getInstance(params.node, params.vmid);
+
+	res.status(200).send(instance);
+})
+
+/**
  * POST - set basic resources for vm
  * request:
  * - node: string - vm host node id
