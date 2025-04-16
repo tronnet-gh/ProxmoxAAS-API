@@ -97,7 +97,7 @@ router.post("/:disk/attach", async (req, res) => {
 	}
 	// setup action using source disk info from vm config
 	const action = {};
-	action[params.disk] = disk.volid;
+	action[params.disk] = disk.file;
 	const method = params.type === "qemu" ? "POST" : "PUT";
 
 	// commit action
