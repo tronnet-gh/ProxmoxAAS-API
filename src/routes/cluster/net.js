@@ -26,17 +26,10 @@ router.post("/:netid/create", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		netid: Number(req.params.netid.replace("net", "")),
+		netid: req.params.netid,
 		rate: req.body.rate,
 		name: req.body.name
 	};
-	// check netid is a valid number
-	if (isNaN(params.netid)) {
-		res.status(500).send({ error: `Network interface id must be a number, got ${req.params.netid}.` });
-		res.end();
-		return;
-	}
-
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -46,7 +39,7 @@ router.post("/:netid/create", async (req, res) => {
 	// net interface must not exist
 	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
 	if (net) {
-		res.status(500).send({ error: `Network interface net${params.netid} already exists.` });
+		res.status(500).send({ error: `Network interface ${params.netid} already exists.` });
 		res.end();
 		return;
 	}
@@ -69,10 +62,10 @@ router.post("/:netid/create", async (req, res) => {
 	const nc = (await global.userManager.getUser(userObj, req.cookies)).templates.network[params.type];
 	const action = {};
 	if (params.type === "lxc") {
-		action[`net${params.netid}`] = `name=${params.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${params.rate}`;
+		action[`${params.netid}`] = `name=${params.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${params.rate}`;
 	}
 	else {
-		action[`net${params.netid}`] = `${nc.type},bridge=${nc.bridge},tag=${nc.vlan},rate=${params.rate}`;
+		action[`${params.netid}`] = `${nc.type},bridge=${nc.bridge},tag=${nc.vlan},rate=${params.rate}`;
 	}
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
@@ -102,15 +95,9 @@ router.post("/:netid/modify", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		netid: Number(req.params.netid.replace("net", "")),
+		netid: req.params.netid,
 		rate: req.body.rate
 	};
-	// check netid is a valid number
-	if (isNaN(params.netid)) {
-		res.status(500).send({ error: `Network interface id must be a number, got ${req.params.netid}.` });
-		res.end();
-		return;
-	}
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -136,7 +123,7 @@ router.post("/:netid/modify", async (req, res) => {
 	}
 	// setup action
 	const action = {};
-	action[`net${params.netid}`] = net.value.replace(`rate=${net.rate}`, `rate=${params.rate}`);
+	action[`${params.netid}`] = net.value.replace(`rate=${net.rate}`, `rate=${params.rate}`);
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
@@ -163,14 +150,8 @@ router.delete("/:netid/delete", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		netid: Number(req.params.netid.replace("net", ""))
+		netid: req.params.netid
 	};
-	// check netid is a valid number
-	if (isNaN(params.netid)) {
-		res.status(500).send({ error: `Network interface id must be a number, got ${req.params.netid}.` });
-		res.end();
-		return;
-	}
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -187,7 +168,7 @@ router.delete("/:netid/delete", async (req, res) => {
 	// setup action
 	const method = params.type === "qemu" ? "POST" : "PUT";
 	// commit action
-	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, { delete: `net${params.netid}` });
+	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, { delete: `${params.netid}` });
 	await global.pve.handleResponse(params.node, result, res);
 	await global.pve.syncInstance(params.node, params.vmid);
 });

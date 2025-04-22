@@ -136,7 +136,7 @@ router.get(`${basePath}`, async (req, res) => {
 	const params = {
 		node: req.params.node,
 		type: req.params.type,
-		vmid: req.params.vmid,
+		vmid: req.params.vmid
 	};
 
 	// check auth for specific instance
@@ -150,7 +150,7 @@ router.get(`${basePath}`, async (req, res) => {
 	const instance = await global.pve.getInstance(params.node, params.vmid);
 
 	res.status(200).send(instance);
-})
+});
 
 /**
  * POST - set basic resources for vm

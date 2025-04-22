@@ -22,14 +22,8 @@ router.get("/:hostpci", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		hostpci: Number(req.params.hostpci.replace("hostpci", ""))
+		hostpci: req.params.hostpci
 	};
-	// check hostpci is a valid number
-	if (isNaN(params.hostpci)) {
-		res.status(500).send({ error: `Hostpci id must be a number, got ${req.params.hostpci}.` });
-		res.end();
-		return;
-	}
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
 	const auth = await checkAuth(req.cookies, res, vmpath);
@@ -39,7 +33,7 @@ router.get("/:hostpci", async (req, res) => {
 	// get device
 	const device = await global.pve.getDevice(params.node, params.vmid, params.hostpci);
 	if (!device) {
-		res.status(500).send({ error: `Could not find hostpci${params.hostpci}=${device} in ${params.node}.` });
+		res.status(500).send({ error: `Could not find ${params.hostpci}=${device} in ${params.node}.` });
 		res.end();
 		return;
 	}
@@ -68,16 +62,10 @@ router.post("/:hostpci/modify", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		hostpci: Number(req.params.hostpci.replace("hostpci", "")),
+		hostpci: req.params.hostpci,
 		device: req.body.device,
 		pcie: req.body.pcie
 	};
-	// check hostpci is a valid number
-	if (isNaN(params.hostpci)) {
-		res.status(500).send({ error: `Hostpci id must be a number, got ${req.params.hostpci}.` });
-		res.end();
-		return;
-	}
 	// check if type is qemu
 	if (params.type !== "qemu") {
 		res.status(500).send({ error: "Type must be qemu (vm)." });
@@ -95,13 +83,13 @@ router.post("/:hostpci/modify", async (req, res) => {
 	// device must exist to be modified
 	const existingDevice = await global.pve.getDevice(params.node, params.vmid, params.hostpci);
 	if (!existingDevice) {
-		res.status(500).send({ error: `No device in hostpci${params.hostpci}.` });
+		res.status(500).send({ error: `No device in ${params.hostpci}.` });
 		res.end();
 		return;
 	}
 	// only check user and node availability if base id is different, we do the split in case of existing partial-function hostpci
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	if (existingDevice.device_id.split(".")[0] !== params.device) {
+	if (existingDevice.device_bus.split(".")[0] !== params.device) {
 		// setup request
 		const node = await global.pve.getNode(params.node);
 		const requestedDevice = node.devices[`${params.device}`];
@@ -118,7 +106,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 			return;
 		}
 		// check node availability
-		if (!Object.values(node.devices).some(element => element.device_id.split(".")[0] === params.device && element.reserved === false)) {
+		if (!Object.values(node.devices).some(element => element.device_bus.split(".")[0] === params.device && element.reserved === false)) {
 			res.status(500).send({ error: `Device ${params.device} is already in use on ${params.node}.` });
 			res.end();
 			return;
@@ -126,7 +114,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 	}
 	// setup action
 	const action = {};
-	action[`hostpci${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
+	action[`${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, "POST", { root: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -153,16 +141,10 @@ router.post("/:hostpci/create", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		hostpci: Number(req.params.hostpci.replace("hostpci", "")),
+		hostpci: req.params.hostpci,
 		device: req.body.device,
 		pcie: req.body.pcie
 	};
-	// check hostpci is a valid number
-	if (isNaN(params.hostpci)) {
-		res.status(500).send({ error: `Hostpci id must be a number, got ${req.params.hostpci}.` });
-		res.end();
-		return;
-	}
 	// check if type is qemu
 	if (params.type !== "qemu") {
 		res.status(500).send({ error: "Type must be qemu (vm)." });
@@ -180,7 +162,7 @@ router.post("/:hostpci/create", async (req, res) => {
 	// device must not exist to be added
 	const existingDevice = await global.pve.getDevice(params.node, params.vmid, params.hostpci);
 	if (existingDevice) {
-		res.status(500).send({ error: `Existing device in hostpci${params.hostpci}.` });
+		res.status(500).send({ error: `Existing device in ${params.hostpci}.` });
 		res.end();
 		return;
 	}
@@ -197,14 +179,14 @@ router.post("/:hostpci/create", async (req, res) => {
 	}
 	// check node availability
 	// const node = await global.pve.getNode(params.node);
-	if (!Object.values(node.devices).some(element => element.device_id.split(".")[0] === params.device && element.reserved === false)) {
+	if (!Object.values(node.devices).some(element => element.device_bus.split(".")[0] === params.device && element.reserved === false)) {
 		res.status(500).send({ error: `Device ${params.device} is already in use on ${params.node}.` });
 		res.end();
 		return;
 	}
 	// setup action
 	const action = {};
-	action[`hostpci${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
+	action[`${params.hostpci}`] = `${params.device},pcie=${params.pcie}`;
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, "POST", { root: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -230,14 +212,8 @@ router.delete("/:hostpci/delete", async (req, res) => {
 		node: req.params.node,
 		type: req.params.type,
 		vmid: req.params.vmid,
-		hostpci: Number(req.params.hostpci.replace("hostpci", ""))
+		hostpci: req.params.hostpci
 	};
-	// check hostpci is a valid number
-	if (isNaN(params.hostpci)) {
-		res.status(500).send({ error: `Hostpci id must be a number, got ${req.params.hostpci}.` });
-		res.end();
-		return;
-	}
 	// check if type is qemu
 	if (params.type !== "qemu") {
 		res.status(500).send({ error: "Type must be qemu (vm)." });
@@ -253,12 +229,12 @@ router.delete("/:hostpci/delete", async (req, res) => {
 	// check device is in instance config
 	const device = global.pve.getDevice(params.node, params.vmid, params.hostpci);
 	if (!device) {
-		res.status(500).send({ error: `Could not find hostpci${params.hostpci} in ${params.vmid}.` });
+		res.status(500).send({ error: `Could not find ${params.hostpci} in ${params.vmid}.` });
 		res.end();
 		return;
 	}
 	// setup action
-	const action = { delete: `hostpci${params.hostpci}` };
+	const action = { delete: `${params.hostpci}` };
 	// commit action, need to use root user here because proxmox api only allows root to modify hostpci for whatever reason
 	const result = await global.pve.requestPVE(`${vmpath}/config`, "POST", { root: true }, action);
 	await global.pve.handleResponse(params.node, result, res);

@@ -73,10 +73,10 @@ router.get("/vm-isos", async (req, res) => {
 	// get user iso config
 	const userIsoConfig = config.useriso;
 	// get all isos
-	const content = await global.pve.requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", { token: true })
+	const content = await global.pve.requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", { token: true });
 	if (content.status !== 200) {
-		res.status(content.status).send({error: content.statusText})
-		return 
+		res.status(content.status).send({ error: content.statusText });
+		return;
 	}
 	const isos = content.data.data;
 	const userIsos = [];
@@ -103,10 +103,10 @@ router.get("/ct-templates", async (req, res) => {
 	// get user iso config
 	const userIsoConfig = config.useriso;
 	// get all isos
-	const content = await global.pve.requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=iso`, "GET", { token: true })
+	const content = await global.pve.requestPVE(`/nodes/${userIsoConfig.node}/storage/${userIsoConfig.storage}/content?content=vztmpl`, "GET", { token: true });
 	if (content.status !== 200) {
-		res.status(content.status).send({error: content.statusText})
-		return 
+		res.status(content.status).send({ error: content.statusText });
+		return;
 	}
 	const isos = content.data.data;
 	const userIsos = [];
