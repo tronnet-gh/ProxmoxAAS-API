@@ -69,7 +69,7 @@ router.get("/nodes", async (req, res) => {
 });
 
 /**
- * GET - get available pcie devices given node and user
+ * GET - get available pcie devices for the given node and user
  * request:
  * - node: string - vm host node id
  * responses:
@@ -82,7 +82,6 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	const params = {
 		node: req.params.node
 	};
-
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
 
 	// check auth
@@ -91,13 +90,14 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 		return;
 	}
 	const userNodes = (await global.userManager.getUser(userObj, req.cookies)).cluster.nodes;
-	if (userNodes[params.node] !== true) {
+	if (userNodes[params.node] !== true) { // user does not have access to the node
 		res.status(401).send({ auth: false, path: params.node });
 		res.end();
 		return;
 	}
+
 	// get remaining user resources
-	const userAvailPci = (await getUserResources(req, userObj)).pci.nodes[params.node];
+	const userAvailPci = (await getUserResources(req, userObj)).pci.nodes[params.node]; // we assume that the node list is used. TODO support global lists
 	if (userAvailPci === undefined) { // user has no avaliable devices on this node, so send an empty list
 		res.status(200).send([]);
 		res.end();
@@ -328,6 +328,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		action[key] = user.templates.instances[params.type][key].value;
 	}
 	if (params.type === "lxc") {
+		action.swap = params.swap;
 		action.hostname = params.name;
 		action.unprivileged = 1;
 		action.features = "nesting=1";
