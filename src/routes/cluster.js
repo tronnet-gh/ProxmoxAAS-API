@@ -35,7 +35,7 @@ router.get("/pools", async (req, res) => {
 		res.end();
 	}
 	else {
-		res.status(allPools.status).send({ error: allPools.statusMessage });
+		res.status(allPools.status).send({ error: allPools.statusText });
 		res.end();
 	}
 });
@@ -63,7 +63,7 @@ router.get("/nodes", async (req, res) => {
 		res.end();
 	}
 	else {
-		res.status(allNodes.status).send({ error: allNodes.statusMessage });
+		res.status(allNodes.status).send({ error: allNodes.statusText });
 		res.end();
 	}
 });
