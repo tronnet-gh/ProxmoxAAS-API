@@ -60,6 +60,9 @@
 		"node": "examplenode1",
 		"storage": "cephfs"
 	},
+	"backups": {
+		"storage": "cephfs"
+	},
 	"resources": {
 		"cpu": {
 			"type": "list",

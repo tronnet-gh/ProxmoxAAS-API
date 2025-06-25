@@ -85,6 +85,9 @@
 				"pools": {
 					"example-pool-1": true,
 					"example-pool-2": true
+				},
+				"backups": {
+					"max": 5
 				}
 			},
 			"templates": {
