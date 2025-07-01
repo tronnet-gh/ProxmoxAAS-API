@@ -98,6 +98,62 @@ router.post("/", async (req, res) => {
 });
 
 /**
+ * POST - edit the notes for an existing backup
+ * request:
+ * - node: string - vm host node id
+ * - type: string - vm type (lxc, qemu)
+ * - vmid: number - vm id number
+ * - notes: notes template string
+ * responses:
+ * - 200: PVE Task Object
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
+ * - 500: PVE Task Object
+ */
+router.post("/notes", async (req, res) => {
+	const params = {
+		node: req.params.node,
+		type: req.params.type,
+		vmid: req.params.vmid,
+		volid: req.body.volid,
+		notes: req.body.notes
+	};
+
+	// check auth for specific instance
+	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
+	const auth = await checkAuth(req.cookies, res, vmpath);
+	if (!auth) {
+		return;
+	}
+
+	// check if the specified volid is a backup for the instance
+	// for whatever reason, calling /nodes/node/storage/content/volid does not return the vmid number whereas /nodes/storage/content?... does
+	const storage = global.config.backups.storage;
+	const backups = await global.pve.requestPVE(`/nodes/${params.node}/storage/${storage}/content?content=backup&vmid=${params.vmid}`, "GET", { token: true });
+	if (backups.status !== 200) {
+		res.status(backups.status).send({ error: backups.statusText });
+		return;
+	}
+	let found = false;
+	for (const volume of backups.data.data) {
+		if (volume.subtype === params.type && String(volume.vmid) === params.vmid && volume.content === "backup" && volume.volid === params.volid) {
+			found = true;
+		}
+	}
+	if (!found) {
+		res.status(500).send({ error: `Did not find backup volume ${params.volid} for ${params.node}.${params.vmid}` });
+		return;
+	}
+
+	// create backup using vzdump path
+	const body = {
+		notes: params.notes
+	};
+	const result = await global.pve.requestPVE(`/nodes/${params.node}/storage/${storage}/content/${params.volid}`, "PUT", { token: true }, body);
+	res.status(result.status).send(result.data.data);
+});
+
+/**
  * DELETE - delete existing backup of instance
  * request:
  * - node: string - vm host node id
