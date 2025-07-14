@@ -348,7 +348,7 @@ router.post("/:disk/create", async (req, res) => {
 		action[params.disk] = `${params.iso},media=cdrom`;
 	}
 	else if (params.type === "qemu") { // type is qemu, use sata
-		action[params.disk] = `${params.storage}:${params.size}`;
+		action[params.disk] = `${params.storage}:${params.size},backup=1`;
 	}
 	else { // type is lxc, use mp and add mp and backup values
 		action[params.disk] = `${params.storage}:${params.size},mp=/${params.disk}/,backup=1`;
