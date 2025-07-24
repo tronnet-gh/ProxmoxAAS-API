@@ -72,7 +72,8 @@ router.post("/:disk/attach", async (req, res) => {
 		type: req.params.type,
 		vmid: req.params.vmid,
 		disk: req.params.disk,
-		source: req.body.source
+		source: req.body.source,
+		mp: req.body.mp
 	};
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
@@ -97,7 +98,12 @@ router.post("/:disk/attach", async (req, res) => {
 	}
 	// setup action using source disk info from vm config
 	const action = {};
-	action[params.disk] = disk.file;
+	if (params.type === "qemu") {
+		action[params.disk] = `${disk.file}`;
+	}
+	else if (params.type === "lxc") {
+		action[params.disk] = `${disk.file},mp=${params.mp},backup=1`;
+	}
 	const method = params.type === "qemu" ? "POST" : "PUT";
 
 	// commit action
