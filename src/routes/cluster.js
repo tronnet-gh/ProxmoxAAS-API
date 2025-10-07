@@ -294,11 +294,11 @@ router.post(`${basePath}/create`, async (req, res) => {
 	// setup request
 	const request = {
 		cores: Number(params.cores),
-		memory: Number(params.memory)
+		memory: Number(params.memory) * 1024 ** 2
 	};
 	if (params.type === "lxc") {
-		request.swap = params.swap;
-		request[params.rootfslocation] = params.rootfssize;
+		request.swap = Number(params.swap) * 1024 ** 2;
+		request[params.rootfslocation] = params.rootfssize * 1024 ** 3;
 	}
 	for (const key of Object.keys(user.templates.instances[params.type])) {
 		const item = user.templates.instances[params.type][key];

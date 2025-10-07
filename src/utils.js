@@ -248,8 +248,8 @@ export async function approveResources (req, user, request, node) {
 				return false;
 			}
 		}
-		// if either the requested or avail resource is NaN, block
-		else if (isNaN(resourceData.avail) || isNaN(request[key])) {
+		// if either the requested or avail resource is not strictly a number, block
+		else if (typeof (resourceData.avail) !== "number" || typeof (request[key]) !== "number") {
 			approved = false;
 			return false;
 		}
