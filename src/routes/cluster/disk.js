@@ -157,7 +157,8 @@ router.post("/:disk/resize", async (req, res) => {
 	const request = {};
 	request[storage] = Number(params.size * 1024 ** 3); // setup request object
 	// check request approval
-	if (!await approveResources(req, userObj, request, params.node)) {
+	const { approved } = await approveResources(req, userObj, request, params.node);
+	if (!approved) {
 		res.status(500).send({ request, error: `Storage ${storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
 		return;
@@ -219,7 +220,8 @@ router.post("/:disk/move", async (req, res) => {
 		request[dstStorage] = Number(size); // always decrease destination storage by size
 	}
 	// check request approval
-	if (!await approveResources(req, userObj, request, params.node)) {
+	const { approved } = await approveResources(req, userObj, request, params.node);
+	if (!approved) {
 		res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
 		return;
@@ -335,7 +337,8 @@ router.post("/:disk/create", async (req, res) => {
 		// setup request
 		request[params.storage] = Number(params.size * 1024 ** 3);
 		// check request approval
-		if (!await approveResources(req, userObj, request, params.node)) {
+		const { approved } = await approveResources(req, userObj, request, params.node);
+		if (!approved) {
 			res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 			res.end();
 			return;

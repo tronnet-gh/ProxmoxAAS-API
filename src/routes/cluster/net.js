@@ -53,7 +53,8 @@ router.post("/:netid/create", async (req, res) => {
 	};
 	// check resource approval
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	if (!await approveResources(req, userObj, request, params.node)) {
+	const { approved } = await approveResources(req, userObj, request, params.node);
+	if (!approved) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
@@ -116,7 +117,8 @@ router.post("/:netid/modify", async (req, res) => {
 	};
 	// check resource approval
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	if (!await approveResources(req, userObj, request, params.node)) {
+	const { approved } = await approveResources(req, userObj, request, params.node);
+	if (!approved) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;

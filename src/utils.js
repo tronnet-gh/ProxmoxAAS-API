@@ -222,19 +222,24 @@ export async function getUserResources (req, user) {
  * @param {Object} req ProxmoxAAS API request object.
  * @param {{id: string, realm: string}} user object of user requesting additional resources.
  * @param {Object} request k-v pairs of resources and requested amounts
- * @returns {boolean} true if the available resources can fullfill the requested resources, false otherwise.
+ * @returns {boolean, Object} true if the available resources can fullfill the requested resources, false otherwise.
  */
 export async function approveResources (req, user, request, node) {
 	const dbResources = global.config.resources;
 	const userResources = await getUserResources(req, user);
-	let approved = true;
-	Object.keys(request).every((key) => {
+	// let approved = true;
+	const reason = {};
+
+	for (const key in request) {
 		// if requested resource is not specified in user resources, assume it's not allowed
 		if (!(key in userResources)) {
-			approved = false;
-			return false;
+			// approved = false;
+			reason[key] = { approved: false, reason: `${key} not allowed` };
+			continue;
+			// return;
 		}
 
+		// use node specific quota if there is one available, otherwise use the global resource quota
 		const inNode = node in userResources[key].nodes;
 		const resourceData = inNode ? userResources[key].nodes[node] : userResources[key].global;
 
@@ -244,24 +249,34 @@ export async function approveResources (req, user, request, node) {
 			// if no matching resource when index == -1, then remaining is -1 otherwise use the remaining value
 			const avail = index === -1 ? false : resourceData[index].avail > 0;
 			if (avail !== dbResources[key].whitelist) {
-				approved = false;
-				return false;
+				// approved = false;
+				reason[key] = { approved: false, reason: `${key} ${dbResources[key].whitelist ? "not in whitelist" : "in blacklist"}` };
+				// return;
+				continue;
 			}
 		}
 		// if either the requested or avail resource is not strictly a number, block
 		else if (typeof (resourceData.avail) !== "number" || typeof (request[key]) !== "number") {
-			approved = false;
-			return false;
+			// approved = false;
+			reason[key] = { approved: false, reason: `expected ${key} to be a number but got ${request[key]}` };
+			continue;
+			// return;
 		}
 		// if the avail resources is less than the requested resources, block
 		else if (resourceData.avail - request[key] < 0) {
-			approved = false;
-			return false;
+			// approved = false;
+			reason[key] = { approved: false, reason: `${key} requested ${request[key]} which is more than ${resourceData.avail} available` };
+			continue;
+			// return;
 		}
 
-		return true;
+		reason[key] = { approved: true, reason: "ok" };
+	}
+
+	const approved = Object.values(reason).every((element) => {
+		return element.approved === true;
 	});
-	return approved; // if all requested resources pass, allow
+	return { approved, reason }; // if all requested resources pass, allow
 }
 
 /**

@@ -98,7 +98,7 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 
 	// get remaining user resources
 	const userAvailPci = (await getUserResources(req, userObj)).pci.nodes[params.node]; // we assume that the node list is used. TODO support global lists
-	if (userAvailPci === undefined) { // user has no avaliable devices on this node, so send an empty list
+	if (userAvailPci === undefined) { // user has no available devices on this node, so send an empty list
 		res.status(200).send([]);
 		res.end();
 	}
@@ -164,8 +164,8 @@ router.get(`${basePath}`, async (req, res) => {
  * - swap: number, optional - new amount of swap for instance
  * responses:
  * - 200: PVE Task Object
+ * - 400: {request; Object, error: string, reason: Object}
  * - 401: {auth: false, path: string}
- * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 router.post(`${basePath}/resources`, async (req, res) => {
@@ -201,8 +201,9 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		request.cpu = params.proctype;
 	}
 	// check resource approval
-	if (!await approveResources(req, userObj, request, params.node)) {
-		res.status(500).send({ request, error: "Could not fulfil request." });
+	const { approved, reason } = await approveResources(req, userObj, request, params.node);
+	if (!approved) {
+		res.status(400).send({ request, error: "Not enough resources to satisfy request.", reason });
 		res.end();
 		return;
 	}
@@ -239,9 +240,9 @@ router.post(`${basePath}/resources`, async (req, res) => {
  * - rootfssize: number, optional, - size of lxc instance rootfs
  * responses:
  * - 200: PVE Task Object
+ * - 400: {request: Object, error: string, reason: Object}
  * - 401: {auth: false, path: string}
  * - 500: {error: string}
- * - 500: {request: Object, error: string}
  * - 500: PVE Task Object
  */
 router.post(`${basePath}/create`, async (req, res) => {
@@ -312,8 +313,9 @@ router.post(`${basePath}/create`, async (req, res) => {
 		}
 	}
 	// check resource approval
-	if (!await approveResources(req, userObj, request, params.node)) { // check resource approval
-		res.status(500).send({ request, error: "Not enough resources to satisfy request." });
+	const { approved, reason } = await approveResources(req, userObj, request, params.node);
+	if (!approved) {
+		res.status(400).send({ request, error: "Not enough resources to satisfy request.", reason });
 		res.end();
 		return;
 	}

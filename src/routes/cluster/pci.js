@@ -100,7 +100,8 @@ router.post("/:hostpci/modify", async (req, res) => {
 			return;
 		}
 		// check resource approval
-		if (!await approveResources(req, userObj, request, params.node)) {
+		const { approved } = await approveResources(req, userObj, request, params.node);
+		if (!approved) {
 			res.status(500).send({ request, error: `Could not fulfil request for ${requestedDevice.device_name}.` });
 			res.end();
 			return;
@@ -172,7 +173,8 @@ router.post("/:hostpci/create", async (req, res) => {
 	const request = { pci: requestedDevice.device_name };
 	// check resource approval
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	if (!await approveResources(req, userObj, request, params.node)) {
+	const { approved } = await approveResources(req, userObj, request, params.node);
+	if (!approved) {
 		res.status(500).send({ request, error: `Could not fulfil request for ${requestedDevice.device_name}.` });
 		res.end();
 		return;
