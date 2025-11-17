@@ -180,7 +180,6 @@ router.post("/:hostpci/create", async (req, res) => {
 		return;
 	}
 	// check node availability
-	// const node = await global.pve.getNode(params.node);
 	if (!Object.values(node.devices).some(element => element.device_bus.split(".")[0] === params.device && element.reserved === false)) {
 		res.status(500).send({ error: `Device ${params.device} is already in use on ${params.node}.` });
 		res.end();

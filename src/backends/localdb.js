@@ -87,7 +87,6 @@ export default class LocalDB extends DB_BACKEND {
 				}
 			}
 			else {
-				// return false;
 				return new AtomicChange(false, {}, doNothingCallback, { ok: false, status: 400, message: `${username} was not found in localdb` });
 			}
 		}
