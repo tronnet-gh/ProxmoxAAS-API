@@ -5,7 +5,7 @@ import { AtomicChange, DB_BACKEND, doNothingCallback } from "./backends.js";
 export default class LocalDB extends DB_BACKEND {
 	#path = null;
 	#data = null;
-	#defaultuser = null;
+	//#defaultuser = null;
 
 	constructor (config) {
 		super();
@@ -13,7 +13,7 @@ export default class LocalDB extends DB_BACKEND {
 		try {
 			this.#path = path;
 			this.#load();
-			this.#defaultuser = global.config.defaultuser;
+			//this.#defaultuser = global.config.defaultuser;
 		}
 		catch {
 			console.log(`error: ${path} was not found. Please follow the directions in the README to initialize localdb.json.`);
