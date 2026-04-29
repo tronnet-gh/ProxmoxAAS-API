@@ -20,6 +20,11 @@ export default defineConfig([{
 		"linebreak-style": ["error", "unix"],
 		quotes: ["error", "double"],
 		semi: ["error", "always"],
-		"brace-style": ["error", "stroustrup", { allowSingleLine: false }]
+		"brace-style": ["error", "stroustrup", { allowSingleLine: false }],
+		"no-unused-vars": ["warn", { 
+			"argsIgnorePattern": "^_",
+			"varsIgnorePattern": "^_",
+			"caughtErrorsIgnorePattern": "^_"
+		}]
 	}
 }]);

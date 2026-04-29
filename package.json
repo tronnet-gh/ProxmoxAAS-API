@@ -23,6 +23,6 @@
 		"globals": "^17.4.0"
 	},
 	"scripts": {
-		"lint": "npx eslint . --fix"
+		"lint": "DEBUG=eslint:cli-engine eslint --config dev_config/eslint.config.mjs --fix ."
 	}
 }
