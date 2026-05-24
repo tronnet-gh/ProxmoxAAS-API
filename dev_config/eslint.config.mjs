@@ -25,6 +25,7 @@ export default defineConfig([{
 			"argsIgnorePattern": "^_",
 			"varsIgnorePattern": "^_",
 			"caughtErrorsIgnorePattern": "^_"
-		}]
+		}],
+		"prefer-const": ["error"]
 	}
 }]);

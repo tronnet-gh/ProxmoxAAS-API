@@ -3,7 +3,8 @@ export const router = Router({ mergeParams: true });
 
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;
-const getUserResources = global.utils.getUserResources;
+const getPoolResources = global.utils.getPoolResources;
+const checkUserInPool = global.utils.checkUserInPool;
 
 const nodeRegexP = "[\\w-]+";
 const typeRegexP = "qemu|lxc";
@@ -12,33 +13,6 @@ const vmidRegexP = "\\d+";
 const basePath = `/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})`;
 
 global.utils.recursiveImportRoutes(router, basePath, "cluster", import.meta.url);
-
-/**
- * GET - get all available cluster pools
- * returns only pool IDs
- * responses:
- * - 200: List of pools
- * - PVE error
- */
-router.get("/pools", async (req, res) => {
-	// check auth
-	const auth = await checkAuth(req.cookies, res);
-	if (!auth) {
-		return;
-	}
-
-	const allPools = await global.pve.requestPVE("/pools", "GET", { token: true });
-
-	if (allPools.status === 200) {
-		const allPoolsIDs = Array.from(allPools.data.data, (x) => x.poolid);
-		res.status(allPools.status).send({ pools: allPoolsIDs });
-		res.end();
-	}
-	else {
-		res.status(allPools.status).send({ error: allPools.statusText });
-		res.end();
-	}
-});
 
 /**
  * GET - get all available cluster nodes
@@ -58,7 +32,7 @@ router.get("/nodes", async (req, res) => {
 	const allNodes = await global.pve.requestPVE("/nodes", "GET", { cookies: req.cookies });
 
 	if (allNodes.status === 200) {
-		const allNodesIDs = Array.from(allNodes.data.data, (x) => x.node);
+		const allNodesIDs = Array.from(allNodes.data, (x) => x.node);
 		res.status(allNodes.status).send({ nodes: allNodesIDs });
 		res.end();
 	}
@@ -89,7 +63,7 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	const userNodes = (await global.userManager.getUser(userObj, req.cookies)).cluster.nodes;
+	const userNodes = (await global.access.getPool(userObj, req.cookies)).cluster.nodes;
 	if (userNodes[params.node] !== true) { // user does not have access to the node
 		res.status(401).send({ auth: false, path: params.node });
 		res.end();
@@ -97,7 +71,7 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	}
 
 	// get remaining user resources
-	const userAvailPci = (await getUserResources(req, userObj)).pci.nodes[params.node]; // we assume that the node list is used. TODO support global lists
+	const userAvailPci = (await getPoolResources(req, userObj)).pci.nodes[params.node]; // we assume that the node list is used. TODO support global lists
 	if (userAvailPci === undefined) { // user has no available devices on this node, so send an empty list
 		res.status(200).send([]);
 		res.end();
@@ -201,7 +175,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		request.cpu = params.proctype;
 	}
 	// check resource approval
-	const { approved, reason } = await approveResources(req, userObj, request, params.node);
+	const { approved, reason } = await approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(400).send({ request, error: "Not enough resources to satisfy request.", reason });
 		res.end();
@@ -269,11 +243,11 @@ router.post(`${basePath}/create`, async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	// get user db config
-	const user = await global.userManager.getUser(userObj, req.cookies);
+	// get pool config
+	const pool = (await global.access.getPool(params.pool, req.cookies)).pool;
 	const vmid = Number.parseInt(params.vmid);
-	const vmidMin = user.cluster.vmid.min;
-	const vmidMax = user.cluster.vmid.max;
+	const vmidMin = pool["vmid-allowed"].min;
+	const vmidMax = pool["vmid-allowed"].max;
 	// check vmid is within allowed range
 	if (vmid < vmidMin || vmid > vmidMax) {
 		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmidMin},${vmidMax}].` });
@@ -281,14 +255,14 @@ router.post(`${basePath}/create`, async (req, res) => {
 		return;
 	}
 	// check node is within allowed list
-	if (user.cluster.nodes[params.node] !== true) {
-		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${user.cluster.nodes}].` });
+	if (pool["nodes-allowed"][params.node] !== true) {
+		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${pool["nodes-allowed"]}].` });
 		res.end();
 		return;
 	}
-	// check if pool is in user allowed pools
-	if (user.cluster.pools[params.pool] !== true) {
-		res.status(500).send({ error: `Requested pool ${params.pool} not in allowed pools [${user.pools}]` });
+	// check if user is in pool
+	if(checkUserInPool(pool, userObj) !== true) {
+		res.status(500).send({ error: `Requested pool ${params.pool} does not contain user ${req.cookies.username}]` });
 		res.end();
 		return;
 	}
@@ -301,9 +275,9 @@ router.post(`${basePath}/create`, async (req, res) => {
 		request.swap = Number(params.swap) * 1024 ** 2;
 		request[params.rootfslocation] = params.rootfssize * 1024 ** 3;
 	}
-	for (const key of Object.keys(user.templates.instances[params.type])) {
-		const item = user.templates.instances[params.type][key];
-		if (item.resource) {
+	for (const key of Object.keys(pool.templates.instances[params.type])) {
+		const item = pool.templates.instances[params.type][key];
+		if (item.resource.enabled) {
 			if (request[item.resource.name]) {
 				request[item.resource.name] += item.resource.amount;
 			}
@@ -313,7 +287,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 		}
 	}
 	// check resource approval
-	const { approved, reason } = await approveResources(req, userObj, request, params.node);
+	const { approved, reason } = await await approveResources(req, userObj, params.node, params.pool, request);
 	if (!approved) {
 		res.status(400).send({ request, error: "Not enough resources to satisfy request.", reason });
 		res.end();
@@ -326,8 +300,8 @@ router.post(`${basePath}/create`, async (req, res) => {
 		memory: Number(params.memory),
 		pool: params.pool
 	};
-	for (const key of Object.keys(user.templates.instances[params.type])) {
-		action[key] = user.templates.instances[params.type][key].value;
+	for (const key of Object.keys(pool.templates.instances[params.type])) {
+		action[key] = pool.templates.instances[params.type][key].value;
 	}
 	if (params.type === "lxc") {
 		action.swap = params.swap;

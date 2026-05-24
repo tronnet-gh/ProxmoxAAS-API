@@ -52,7 +52,7 @@ if (schemes.hash.enabled) {
 			return;
 		}
 		// get current cluster resources - do not use fabric here because fabric is not always updated to changes like up/down state changes
-		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
+		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data;
 		// filter out just state information of resources that are needed
 		const state = extractClusterState(status, resourceTypes);
 		res.status(200).send(getObjectHash(state));
@@ -166,11 +166,10 @@ if (schemes.interrupt.enabled) {
 		}
 		else {
 			wsServer.handleUpgrade(req, socket, head, async (socket) => {
-				// get the user pools
-				const userObj = global.utils.getUserObjFromUsername(cookies.username);
-				const pools = Object.keys((await global.userManager.getUser(userObj, cookies)).cluster.pools);
+				// use user cookies to determine which pools they can see, lazily assume that if a user can audit a pool they are also can audit pool member state
+				const pools = await global.pve.requestPVE("/pools", "GET", { cookies });
 				// emit the connection to initialize socket
-				wsServer.emit("connection", socket, cookies.username, pools);
+				wsServer.emit("connection", socket, cookies.username, Object.keys(pools.data));
 			});
 		}
 	});
@@ -190,7 +189,7 @@ if (schemes.interrupt.enabled) {
 			return;
 		}
 		// get current cluster resources
-		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { token: true })).data.data;
+		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { token: true })).data;
 		// filter out just state information of resources that are needed, and hash each one
 		const currState = extractClusterState(status, resourceTypes, true);
 		// get a map of users to send sync notifications

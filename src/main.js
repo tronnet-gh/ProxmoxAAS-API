@@ -41,12 +41,3 @@ global.utils.recursiveImportRoutes(app, "/api", "routes");
 app.get("/api/version", (req, res) => {
 	res.status(200).send({ version: global.package.version });
 });
-
-/**
- * GET - echo request
- * responses:
- * - 200: {body: request.body, cookies: request.cookies}
- */
-app.get("/api/echo", (req, res) => {
-	res.status(200).send({ body: req.body, cookies: req.cookies });
-});

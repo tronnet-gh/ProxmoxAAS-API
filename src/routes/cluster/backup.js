@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
 	const storage = global.config.backups.storage;
 	const backups = await global.pve.requestPVE(`/nodes/${params.node}/storage/${storage}/content?content=backup&vmid=${params.vmid}`, "GET", { token: true });
 	if (backups.status === 200) {
-		res.status(backups.status).send(backups.data.data);
+		res.status(backups.status).send(backups.data);
 	}
 	else {
 		res.status(backups.status).send({ error: backups.statusText });
@@ -72,9 +72,9 @@ router.post("/", async (req, res) => {
 	// check if number of backups is less than the allowed number
 	const storage = global.config.backups.storage;
 	const backups = await global.pve.requestPVE(`/nodes/${params.node}/storage/${storage}/content?content=backup&vmid=${params.vmid}`, "GET", { token: true });
-	const numBackups = backups.data.data.length;
+	const numBackups = backups.data.length;
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	const maxAllowed = (await global.userManager.getUser(userObj, req.cookies)).cluster.backups.max;
+	const maxAllowed = (await global.access.getUser(userObj, req.cookies)).cluster.backups.max;
 	if (backups.status !== 200) {
 		res.status(backups.status).send({ error: backups.statusText });
 		return;
@@ -94,7 +94,7 @@ router.post("/", async (req, res) => {
 		"notes-template": params.notes
 	};
 	const result = await global.pve.requestPVE(`/nodes/${params.node}/vzdump`, "POST", { token: true }, body);
-	res.status(result.status).send(result.data.data);
+	res.status(result.status).send(result.data);
 });
 
 /**
@@ -136,7 +136,7 @@ router.post("/notes", async (req, res) => {
 		return;
 	}
 	let found = false;
-	for (const volume of backups.data.data) {
+	for (const volume of backups.data) {
 		if (volume.subtype === params.type && String(volume.vmid) === params.vmid && volume.content === "backup" && volume.volid === params.volid) {
 			found = true;
 		}
@@ -196,7 +196,7 @@ router.delete("/", async (req, res) => {
 		return;
 	}
 	let found = false;
-	for (const volume of backups.data.data) {
+	for (const volume of backups.data) {
 		if (volume.subtype === params.type && String(volume.vmid) === params.vmid && volume.content === "backup" && volume.volid === params.volid) {
 			found = true;
 		}
@@ -208,7 +208,7 @@ router.delete("/", async (req, res) => {
 
 	// found a valid backup with matching vmid and volid
 	const result = await global.pve.requestPVE(`/nodes/${params.node}/storage/${storage}/content/${params.volid}?delay=5`, "DELETE", { token: true });
-	res.status(result.status).send(result.data.data);
+	res.status(result.status).send(result.data);
 });
 
 /**
@@ -248,7 +248,7 @@ router.post("/restore", async (req, res) => {
 		return;
 	}
 	let found = false;
-	for (const volume of backups.data.data) {
+	for (const volume of backups.data) {
 		if (volume.subtype === params.type && String(volume.vmid) === params.vmid && volume.content === "backup" && volume.volid === params.volid) {
 			found = true;
 		}
@@ -281,7 +281,6 @@ router.post("/restore", async (req, res) => {
 		}
 
 		const result = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}/`, "POST", { token: true }, body);
-		console.log(result);
 		if (result.status === 200) {
 			res.status(result.status).send();
 		}

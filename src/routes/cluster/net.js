@@ -36,6 +36,8 @@ router.post("/:netid/create", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get instance config for pool membership
+	const instance = await global.pve.getInstance(params.node, params.vmid);
 	// net interface must not exist
 	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
 	if (net) {
@@ -53,14 +55,14 @@ router.post("/:netid/create", async (req, res) => {
 	};
 	// check resource approval
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	const { approved } = await approveResources(req, userObj, request, params.node);
+	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
 	}
 	// setup action
-	const nc = (await global.userManager.getUser(userObj, req.cookies)).templates.network[params.type];
+	const nc = (await global.access.getUser(userObj, req.cookies)).templates.network[params.type];
 	const action = {};
 	if (params.type === "lxc") {
 		action[`${params.netid}`] = `name=${params.name},bridge=${nc.bridge},ip=${nc.ip},ip6=${nc.ip6},tag=${nc.vlan},type=${nc.type},rate=${params.rate}`;
@@ -105,6 +107,8 @@ router.post("/:netid/modify", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get instance config for pool membership
+	const instance = await global.pve.getInstance(params.node, params.vmid);
 	// net interface must already exist
 	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
 	if (!net) {
@@ -117,7 +121,7 @@ router.post("/:netid/modify", async (req, res) => {
 	};
 	// check resource approval
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	const { approved } = await approveResources(req, userObj, request, params.node);
+	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();

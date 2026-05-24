@@ -17,42 +17,9 @@ export default async () => {
 		global.backends[name] = new Backend(config);
 		console.log(`backends: initialized backend ${name} from ${importPath}`);
 	}
-	global.pve = global.backends[global.config.handlers.instance.pve];
-	global.userManager = new USER_BACKEND_MANAGER(global.config.handlers.users);
+	global.pve = global.backends[global.config.handlers.instance];
+	global.access = global.backends[global.config.handlers.users];
 };
-
-/**
- * Interface for all backend types. Contains only two methods for opening and closing a session with the backend.
- * Users will recieve tokens from all backends when first authenticating and will delete tokens when logging out.
- */
-class BACKEND {
-	/**
-	 * Opens a session with the backend and creates session tokens if needed
-	 * @param {{id: string, realm: string}} user object containing id and realm
-	 * @param {string} password
-	 * @returns {{ok: boolean, status: number, message: string, cookies: {name: string, value: string}[]}} response like object with list of session token objects with token name and value
-	 */
-	openSession (user, password) {
-		return {
-			ok: true,
-			status: 200,
-			message: "",
-			cookies: []
-		};
-	}
-
-	/**
-	 * Closes an opened session with the backend if needed
-	 * @param {{name: string, value: string}[]} token list of session token objects with token name and value, may include irrelevant tokens for a specific backend
-	 * @returns {boolean} true if session was closed successfully, false otherwise
-	 */
-	closeSession (tokens) {
-		return {
-			ok: true,
-			status: 200
-		};
-	}
-}
 
 export class AtomicChange {
 	constructor (valid, delta, callback, status = { ok: true, status: 200, message: "" }) {
@@ -76,10 +43,43 @@ export function doNothingCallback (delta) {
 }
 
 /**
- * Interface for backend types that store/interact with user & group data.
+ * Interface for all backend types. Contains only two methods for opening and closing a session with the backend.
+ * Users will recieve tokens from all backends when first authenticating and will delete tokens when logging out.
+ */
+export class BACKEND {
+	/**
+	 * Opens a session with the backend and creates session tokens if needed
+	 * @param {{id: string, realm: string}} user object containing id and realm
+	 * @param {string} password
+	 * @returns {{ok: boolean, status: number, message: string, cookies: {name: string, value: string}[]}} response like object with list of session token objects with token name and value
+	 */
+	async openSession (user, password) {
+		return {
+			ok: true,
+			status: 200,
+			message: "",
+			cookies: []
+		};
+	}
+
+	/**
+	 * Closes an opened session with the backend if needed
+	 * @param {{name: string, value: string}[]} token list of session token objects with token name and value, may include irrelevant tokens for a specific backend
+	 * @returns {boolean} true if session was closed successfully, false otherwise
+	 */
+	async closeSession (tokens) {
+		return {
+			ok: true,
+			status: 200
+		};
+	}
+}
+
+/**
+ * Interface for backend types that store/interact with user, group, and pool data.
  * Not all backends need to implement all interface methods.
  */
-class USER_BACKEND extends BACKEND {
+export class ACCESS_BACKEND extends BACKEND {
 	/**
 	 * Validate an add user operation with the following parameters.
 	 * Returns whether the change is valid and a delta object to be used in the operation.
@@ -88,7 +88,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	addUser (user, attributes, params) {}
+	async addUser (user, attributes, params) {}
 
 	/**
 	 * Get user from backend
@@ -96,14 +96,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Object} containing user data from this backend, null if user does not exist
 	 */
-	getUser (user, params) {}
-
-	/**
-	 * Get all users from backend
-	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {Array} containing each user data from this backend
-	 */
-	getAllUsers (params) {}
+	async getUser (user, params) {}
 
 	/**
 	 * Validate a set user operation with the following parameters.
@@ -113,7 +106,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	setUser (user, attributes, params) {}
+	async setUser (user, attributes, params) {}
 
 	/**
 	 * Validate a delete user operation with the following parameters.
@@ -122,7 +115,7 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	delUser (user, params) {}
+	async delUser (user, params) {}
 
 	/**
 	 * Validate an add group operation with the following parameters.
@@ -132,22 +125,15 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	addGroup (group, attributes, params) {}
+	async addGroup (group, attributes, params) {}
 
 	/**
 	 * Get group from backend
-	 * @param {{id: string}} group
+	 * @param {{id: string, realm: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Object} containing group data from this backend, null if user does not exist
 	 */
-	getGroup (group, params) {}
-
-	/**
-	 * Get all users from backend
-	 * @param {Object} params authentication params, usually req.cookies
-	 * @returns {Array} containing each group data from this backend
-	 */
-	getAllGroups (params) {}
+	async getGroup (group, params) {}
 
 	/**
 	 * Validate a set group operation with the following parameters.
@@ -157,35 +143,93 @@ class USER_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	setGroup (group, attributes, params) {}
+	async setGroup (group, attributes, params) {}
+
 	/**
 	 * Validate a del group operation with the following parameters.
 	 * Returns whether the change is valid and a delta object to be used in the operation.
 	 * @param {{id: string, realm: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
-	* @returns {AtomicChange} atomic change object
+	 * @returns {AtomicChange} atomic change object
 	 */
-	delGroup (group, attributes, params) {}
+	async delGroup (group, attributes, params) {}
 
 	/**
 	 * Validate an add user to group operation with the following parameters.
 	 * Returns whether the change is valid and a delta object to be used in the operation.
 	 * @param {{id: string, realm: string}} user
-	 * @param {{id: string}} group
+	 * @param {{id: string, realm: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	addUserToGroup (user, group, params) {}
+	async addUserToGroup (user, group, params) {}
 
 	/**
 	 * Validate a remove user from group operation with the following parameters.
 	 * Returns whether the change is valid and a delta object to be used in the operation.
 	 * @param {{id: string, realm: string}} user
-	 * @param {{id: string}} group
+	 * @param {{id: string, realm: string}} group
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	delUserFromGroup (user, group, params) {}
+	async delUserFromGroup (user, group, params) {}
+
+	/**
+	 * Validate an add pool operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
+	 * @param {{id: string, realm: string}} pool
+	 * @param {Object} attributes pool attributes
+	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {AtomicChange} atomic change object
+	 */
+	async addPool (pool, attributes, params) {}
+	
+	/**
+	 * Get pool from backend
+	 * @param {string} pool
+	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {Object} containing pool data from this backend, null if poll does not exist
+	 */
+	async getPool (pool, params) {}
+
+	/**
+	 * Validate a set pool operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
+	 * @param {string} pool
+	 * @param {Object} attributes pool attributes
+	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {AtomicChange} atomic change object
+	 */
+	async setPool (pool, attributes, params) {}
+
+	/**
+	 * Validate a del pool operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
+	 * @param {string} pool
+	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {AtomicChange} atomic change object
+	 */
+	async delPool (pool, params) {}
+
+	/**
+	 * Validate an add group to pool operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
+	 * @param {{id: string, realm: string}} group
+	 * @param {string} pool
+	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {AtomicChange} atomic change object
+	 */
+	async addGroupToPool (group, pool, params) {}
+	
+	/**
+	 * Validate a remove group from pool operation with the following parameters.
+	 * Returns whether the change is valid and a delta object to be used in the operation.
+	 * @param {{id: string, realm: string}} group
+	 * @param {string} pool
+	 * @param {Object} params authentication params, usually req.cookies
+	 * @returns {AtomicChange} atomic change object
+	 */
+	async delGroupFromPool (group, pool, params) {}
 }
 
 /**
@@ -198,13 +242,13 @@ export class PVE_BACKEND extends BACKEND {
 	 * @param {string} node node id
 	 * @returns {}
 	 */
-	getNode (node) {}
+	async getNode (node) {}
 
 	/**
 	 * Send a signal to synchronize a node after some change has been made.
 	 * * @param {string} node node id
 	 */
-	syncNode (node) {}
+	async syncNode (node) {}
 
 	/**
 	 * Get and return instance data.
@@ -213,14 +257,14 @@ export class PVE_BACKEND extends BACKEND {
 	 * @param {string} type instance type
 	 * @param {string} vmid instance id
 	 */
-	getInstance (node, type, instance) {}
+	async getInstance (node, type, instance) {}
 
 	/**
 	 * Send a signal to synchronize an instance after some change has been made.
 	 * @param {string} node node id
 	 * @param {string} instance instance id
 	 */
-	syncInstance (node, instance) {}
+	async syncInstance (node, instance) {}
 
 	/**
 	 * Get meta data for a specific disk. Adds info that is not normally available in a instance's config.
@@ -250,122 +294,10 @@ export class PVE_BACKEND extends BACKEND {
 	async getDevice (node, instance, deviceid) {}
 
 	/**
-	 * Get user resource data including used, available, and maximum resources.
-	 * @param {{id: string, realm: string}} user object of user to get resource data.
+	 * Get pool resource data including used, available, and maximum resources.
+	 * @param {string} pool 
 	 * @param {Object} cookies object containing k-v store of cookies
 	 * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
 	 */
-	getUserResources (user, cookies) {}
-}
-
-/**
- * Interface for user database backends.
- */
-export class DB_BACKEND extends USER_BACKEND {}
-
-/**
- * Interface for user auth backends.
- */
-export class AUTH_BACKEND extends USER_BACKEND {}
-
-/**
- * Interface combining all user backends into a single interface
- * Calling methods will also call sub handler methods
- */
-class USER_BACKEND_MANAGER extends USER_BACKEND {
-	#config = null;
-
-	constructor (config) {
-		super();
-		this.#config = config;
-	}
-
-	getBackendsByUser (user) {
-		if (user != null) {
-			return this.#config.realm[user.realm];
-		}
-		else {
-			return null;
-		}
-	}
-
-	addUser (user, attributes, params) {}
-
-	async getUser (user, params) {
-		let userData = {};
-		for (const backend of this.#config.realm[user.realm]) {
-			const backendData = await global.backends[backend].getUser(user, params);
-			if (backendData) {
-				userData = { ...backendData, ...userData };
-			}
-		}
-		return userData;
-	}
-
-	async getAllUsers (params) {
-		const userData = {};
-		for (const backend of this.#config.any) {
-			const backendData = await global.backends[backend].getAllUsers(params);
-			if (backendData) {
-				for (const user of Object.keys(backendData)) {
-					userData[user] = { ...backendData[user], ...userData[user] };
-				}
-			}
-		}
-		return userData;
-	}
-
-	async setUser (user, attributes, params) {
-		const atomicChanges = [];
-		for (const backend of this.#config.realm[user.realm]) {
-			const atomicChange = await global.backends[backend].setUser(user, attributes, params);
-			if (atomicChange.valid === false) { // if any fails, preemptively exit
-				return atomicChange.status;
-			}
-			atomicChanges.push(atomicChange); // queue callback into array
-		}
-		const response = {
-			ok: true,
-			status: 200,
-			message: "",
-			allResponses: []
-		};
-		for (const atomicChange of atomicChanges) {
-			const atomicResponse = await atomicChange.commit();
-			if (atomicResponse.ok === false) {
-				response.ok = false;
-				response.status = atomicResponse.status;
-				response.message = atomicResponse.message;
-			}
-			response.allResponses.push(); // execute callback
-		}
-		return response;
-	}
-
-	delUser (user, params) {}
-
-	addGroup (group, attributes, params) {}
-
-	getGroup (group, params) {}
-
-	async getAllGroups (params) {
-		const groupData = {};
-		for (const backend of this.#config.any) {
-			const backendData = await global.backends[backend].getAllGroups(params);
-			if (backendData) {
-				for (const group of Object.keys(backendData)) {
-					groupData[group] = { ...backendData[group], ...groupData[group] };
-				}
-			}
-		}
-		return groupData;
-	}
-
-	setGroup (group, attributes, params) {}
-
-	delGroup (group, params) {}
-
-	addUserToGroup (user, group, params) {}
-
-	delUserFromGroup (user, group, params) {}
+	async getPoolResources (user, cookies) {}
 }

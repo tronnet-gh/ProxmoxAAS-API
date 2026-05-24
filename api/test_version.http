@@ -1,0 +1,2 @@
+### Get version
+GET {{baseUrl}}/version

@@ -145,6 +145,8 @@ router.post("/:disk/resize", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get instance config for pool membership
+	const instance = await global.pve.getInstance(params.node, params.vmid);
 	// check disk existence
 	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk); // get target disk
 	if (!disk) { // exit if disk does not exist
@@ -157,7 +159,7 @@ router.post("/:disk/resize", async (req, res) => {
 	const request = {};
 	request[storage] = Number(params.size * 1024 ** 3); // setup request object
 	// check request approval
-	const { approved } = await approveResources(req, userObj, request, params.node);
+	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Storage ${storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
@@ -205,6 +207,8 @@ router.post("/:disk/move", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get instance config for pool membership
+	const instance = await global.pve.getInstance(params.node, params.vmid);
 	// check disk existence
 	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk); // get target disk
 	if (!disk) { // exit if disk does not exist
@@ -220,7 +224,7 @@ router.post("/:disk/move", async (req, res) => {
 		request[dstStorage] = Number(size); // always decrease destination storage by size
 	}
 	// check request approval
-	const { approved } = await approveResources(req, userObj, request, params.node);
+	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
@@ -324,6 +328,8 @@ router.post("/:disk/create", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get instance config for pool membership
+	const instance = await global.pve.getInstance(params.node, params.vmid);
 	// disk must not exist
 	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk);
 	if (disk) {
@@ -337,7 +343,7 @@ router.post("/:disk/create", async (req, res) => {
 		// setup request
 		request[params.storage] = Number(params.size * 1024 ** 3);
 		// check request approval
-		const { approved } = await approveResources(req, userObj, request, params.node);
+		const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
 		if (!approved) {
 			res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 			res.end();

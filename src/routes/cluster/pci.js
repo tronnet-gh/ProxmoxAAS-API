@@ -78,6 +78,8 @@ router.post("/:hostpci/modify", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get instance config for pool membership
+	const instance = await global.pve.getInstance(params.node, params.vmid);
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// device must exist to be modified
@@ -100,7 +102,7 @@ router.post("/:hostpci/modify", async (req, res) => {
 			return;
 		}
 		// check resource approval
-		const { approved } = await approveResources(req, userObj, request, params.node);
+		const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
 		if (!approved) {
 			res.status(500).send({ request, error: `Could not fulfil request for ${requestedDevice.device_name}.` });
 			res.end();
@@ -158,6 +160,8 @@ router.post("/:hostpci/create", async (req, res) => {
 	if (!auth) {
 		return;
 	}
+	// get instance config for pool membership
+	const instance = await global.pve.getInstance(params.node, params.vmid);
 	// force all functions
 	params.device = params.device.split(".")[0];
 	// device must not exist to be added
@@ -173,7 +177,7 @@ router.post("/:hostpci/create", async (req, res) => {
 	const request = { pci: requestedDevice.device_name };
 	// check resource approval
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	const { approved } = await approveResources(req, userObj, request, params.node);
+	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Could not fulfil request for ${requestedDevice.device_name}.` });
 		res.end();

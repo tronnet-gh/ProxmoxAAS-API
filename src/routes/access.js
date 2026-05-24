@@ -64,12 +64,7 @@ router.post("/ticket", async (req, res) => {
 
 	const domain = global.config.application.domain;
 	const userObj = global.utils.getUserObjFromUsername(params.username);
-	let backends = global.userManager.getBackendsByUser(userObj);
-	if (backends == null) {
-		res.status(401).send({ auth: false, error: `${params.username} not found in any ProxmoxAAS backends` });
-		return;
-	}
-	backends = backends.concat(["pve"]);
+	const backends = [global.config.handlers.users, global.config.handlers.instance];
 	const cm = new CookieFetcher();
 	const error = await cm.fetchBackends(backends, userObj, params.password);
 	if (error) {
@@ -107,7 +102,7 @@ router.delete("/ticket", async (req, res) => {
 		res.cookie(cookie, "", { domain, path: "/", expires: expire, secure: true, sameSite: "none" });
 	}
 	await global.pve.closeSession(req.cookies);
-	await global.userManager.closeSession(req.cookies);
+	await global.access.closeSession(req.cookies);
 	res.status(200).send({ auth: false });
 });
 
@@ -134,6 +129,6 @@ router.post("/password", async (req, res) => {
 	const newAttributes = {
 		userpassword: params.password
 	};
-	const response = await global.userManager.setUser(userObj, newAttributes, req.cookies);
+	const response = await global.access.setUser(userObj, newAttributes, req.cookies);
 	res.status(response.status).send(response);
 });
