@@ -1,9 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
-const checkAuth = global.utils.checkAuth;
-const approveResources = global.utils.approveResources;
-
 /**
  * POST - detach mounted disk from instance
  * request:
@@ -25,12 +22,14 @@ router.post("/:disk/detach", async (req, res) => {
 		vmid: req.params.vmid,
 		disk: req.params.disk
 	};
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
+
 	// disk must exist
 	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk);
 	if (!disk) {
@@ -38,14 +37,19 @@ router.post("/:disk/detach", async (req, res) => {
 		res.end();
 		return;
 	}
+
 	// disk cannot be unused
 	if (params.disk.includes("unused")) {
 		res.status(500).send({ error: `Requested disk ${params.disk} cannot be unused. Use /disk/delete to permanently delete unused disks.` });
 		res.end();
 		return;
 	}
+
+	// setup detach action
 	const action = { delete: params.disk };
 	const method = params.type === "qemu" ? "POST" : "PUT";
+
+	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
 	await global.pve.syncInstance(params.node, params.vmid);
@@ -75,9 +79,10 @@ router.post("/:disk/attach", async (req, res) => {
 		source: req.body.source,
 		mp: req.body.mp
 	};
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
@@ -89,6 +94,7 @@ router.post("/:disk/attach", async (req, res) => {
 		res.end();
 		return;
 	}
+
 	// target disk must be allowed according to source disk's storage options
 	const resourceConfig = global.config.resources;
 	if (!resourceConfig[disk.storage].disks.some(diskPrefix => params.disk.startsWith(diskPrefix))) {
@@ -96,14 +102,10 @@ router.post("/:disk/attach", async (req, res) => {
 		res.end();
 		return;
 	}
+
 	// setup action using source disk info from vm config
 	const action = {};
-	if (params.type === "qemu") {
-		action[params.disk] = `${disk.file}`;
-	}
-	else if (params.type === "lxc") {
-		action[params.disk] = `${disk.file},mp=${params.mp},backup=1`;
-	}
+	action[params.disk] = params.type === "qemu" ? `${disk.file}` : `${disk.file},mp=${params.mp},backup=1`;
 	const method = params.type === "qemu" ? "POST" : "PUT";
 
 	// commit action
@@ -137,16 +139,22 @@ router.post("/:disk/resize", async (req, res) => {
 		size: req.body.size
 	};
 
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	// attempt to parse user from username
+	const userObj = global.utils.getUserObjFromUsername(params.username);
+	if (userObj == null) {
+		res.status(400).send({ auth:true, error:`username ${params.username} does not match format uid@realm.` });
+	}
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
+
 	// get instance config for pool membership
 	const instance = await global.pve.getInstance(params.node, params.vmid);
+
 	// check disk existence
 	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk); // get target disk
 	if (!disk) { // exit if disk does not exist
@@ -154,17 +162,20 @@ router.post("/:disk/resize", async (req, res) => {
 		res.end();
 		return;
 	}
+
 	// setup request
 	const storage = disk.storage; // get the storage
 	const request = {};
 	request[storage] = Number(params.size * 1024 ** 3); // setup request object
+
 	// check request approval
-	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
+	const { approved } = await global.utils.approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Storage ${storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
 		return;
 	}
+
 	// action approved, commit to action
 	const action = { disk: params.disk, size: `+${params.size}G` };
 	const result = await global.pve.requestPVE(`${vmpath}/resize`, "PUT", { token: true }, action);
@@ -199,11 +210,15 @@ router.post("/:disk/move", async (req, res) => {
 		delete: req.body.delete
 	};
 
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	// attempt to parse user from username
+	const userObj = global.utils.getUserObjFromUsername(params.username);
+	if (userObj == null) {
+		res.status(400).send({ auth:true, error:`username ${params.username} does not match format uid@realm.` });
+	}
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
@@ -224,7 +239,7 @@ router.post("/:disk/move", async (req, res) => {
 		request[dstStorage] = Number(size); // always decrease destination storage by size
 	}
 	// check request approval
-	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
+	const { approved } = await global.utils.approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 		res.end();
@@ -268,7 +283,7 @@ router.delete("/:disk/delete", async (req, res) => {
 	};
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
@@ -321,15 +336,23 @@ router.post("/:disk/create", async (req, res) => {
 		size: req.body.size,
 		iso: req.body.iso
 	};
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	
+	// attempt to parse user from username
+	const userObj = global.utils.getUserObjFromUsername(params.username);
+	if (userObj == null) {
+		res.status(400).send({ auth:true, error:`username ${params.username} does not match format uid@realm.` });
+	}
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
+
 	// get instance config for pool membership
 	const instance = await global.pve.getInstance(params.node, params.vmid);
+
 	// disk must not exist
 	const disk = await global.pve.getDisk(params.node, params.vmid, params.disk);
 	if (disk) {
@@ -337,13 +360,14 @@ router.post("/:disk/create", async (req, res) => {
 		res.end();
 		return;
 	}
+
 	// setup request
 	const request = {};
-	if (!params.disk.includes("ide")) {
+	if (!params.disk.includes("ide")) { // ignore resource request if the type is ide (iso file)
 		// setup request
 		request[params.storage] = Number(params.size * 1024 ** 3);
 		// check request approval
-		const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
+		const { approved } = await global.utils.approveResources(req, userObj, params.node, instance.pool, request);
 		if (!approved) {
 			res.status(500).send({ request, error: `Storage ${params.storage} could not fulfill request of size ${params.size}G.` });
 			res.end();
@@ -357,6 +381,7 @@ router.post("/:disk/create", async (req, res) => {
 			return;
 		}
 	}
+
 	// setup action
 	const action = {};
 	if (params.disk.includes("ide") && params.iso) {
@@ -369,6 +394,7 @@ router.post("/:disk/create", async (req, res) => {
 		action[params.disk] = `${params.storage}:${params.size},mp=/${params.disk}/,backup=1`;
 	}
 	const method = params.type === "qemu" ? "POST" : "PUT";
+	
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);

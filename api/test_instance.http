@@ -8,6 +8,9 @@ username={{username}}
 ### Get instance resources
 GET {{baseUrl}}/cluster/{{testvmpath}}
 
+### Get instance backups
+GET {{baseUrl}}/cluster/{{testvmpath}}/backup
+
 ### Test create instance
 
 POST {{baseUrl}}/cluster/{{testvmpath}}/create

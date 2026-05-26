@@ -2,11 +2,7 @@ import { WebSocketServer } from "ws";
 import * as cookie from "cookie";
 
 import { Router } from "express";
-export const router = Router({ mergeParams: true }); ;
-
-const checkAuth = global.utils.checkAuth;
-const getObjectHash = global.utils.getObjectHash;
-const getTimeLeft = global.utils.getTimeLeft;
+export const router = Router({ mergeParams: true });
 
 // maps usernames to socket object(s)
 const userSocketMap = {};
@@ -47,7 +43,7 @@ if (schemes.hash.enabled) {
 	 */
 	router.get("/hash", async (req, res) => {
 		// check auth
-		const auth = await checkAuth(req.cookies, res);
+		const auth = await global.utils.checkAuth(req.cookies, res);
 		if (!auth) {
 			return;
 		}
@@ -55,7 +51,7 @@ if (schemes.hash.enabled) {
 		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data;
 		// filter out just state information of resources that are needed
 		const state = extractClusterState(status, resourceTypes);
-		res.status(200).send(getObjectHash(state));
+		res.status(200).send(global.utils.getObjectHash(state));
 	});
 	console.log("clientsync: enabled hash sync");
 }
@@ -135,7 +131,7 @@ if (schemes.interrupt.enabled) {
 				// AND if the next event trigger is more than the new rate in the future,
 				// restart the timer with the new rate
 				// avoids a large requested rate preventing a faster rate from being fulfilled
-				else if (rate < Math.min.apply(null, Object.values(requestedRates)) && getTimeLeft(timer) > rate) {
+				else if (rate < Math.min.apply(null, Object.values(requestedRates)) && global.utils.getTimeLeft(timer) > rate) {
 					clearTimeout(timer);
 					timer = setTimeout(handleInterruptSync, rate);
 					const time = global.process.uptime();
@@ -259,7 +255,7 @@ function extractClusterState (status, resourceTypes, hashIndividual = false) {
 				pool: resource.pool || null
 			};
 			if (hashIndividual) {
-				const hash = getObjectHash(state[resource.id]);
+				const hash = global.utils.getObjectHash(state[resource.id]);
 				state[resource.id].hash = hash;
 			}
 		}

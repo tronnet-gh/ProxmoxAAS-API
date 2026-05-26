@@ -62,9 +62,11 @@ router.post("/ticket", async (req, res) => {
 		password: req.body.password
 	};
 
-	const domain = global.config.application.domain;
+	// get user and user backends from config
 	const userObj = global.utils.getUserObjFromUsername(params.username);
 	const backends = [global.config.handlers.users, global.config.handlers.instance];
+
+	// fetch cookies using cookie fetcher
 	const cm = new CookieFetcher();
 	const error = await cm.fetchBackends(backends, userObj, params.password);
 	if (error) {
@@ -72,6 +74,11 @@ router.post("/ticket", async (req, res) => {
 		return;
 	}
 	const cookies = cm.exportCookies();
+
+	// get global config domain name
+	const domain = global.config.application.domain;
+
+	// for each cookie, add the cookie to response and also compute the minimum across all cookies 
 	let minimumExpires = Infinity;
 	for (const cookie of cookies) {
 		const expiresDate = new Date(Date.now() + cookie.expiresMSFromNow);
@@ -80,6 +87,8 @@ router.post("/ticket", async (req, res) => {
 			minimumExpires = cookie.expiresMSFromNow;
 		}
 	}
+
+	// set username and auth cookie with the minimum cookie length
 	const expiresDate = new Date(Date.now() + minimumExpires);
 	res.cookie("username", params.username, { domain, path: "/", secure: true, expires: expiresDate, sameSite: "none" });
 	res.cookie("auth", 1, { domain, path: "/", secure: true, expires: expiresDate, sameSite: "none" });
@@ -92,15 +101,20 @@ router.post("/ticket", async (req, res) => {
  * - 200: {auth: false}
  */
 router.delete("/ticket", async (req, res) => {
+	// must have cookies to delete, otherwise just return ok
 	if (Object.keys(req.cookies).length === 0) {
 		res.status(200).send({ auth: false });
 		return;
 	}
+
+	// for each cookie, set the expire date to 0
 	const domain = global.config.application.domain;
 	const expire = new Date(0);
 	for (const cookie in req.cookies) {
 		res.cookie(cookie, "", { domain, path: "/", expires: expire, secure: true, sameSite: "none" });
 	}
+
+	// call close session on each backend, even if was not used
 	await global.pve.closeSession(req.cookies);
 	await global.access.closeSession(req.cookies);
 	res.status(200).send({ auth: false });

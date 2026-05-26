@@ -1,10 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
-const checkAuth = global.utils.checkAuth;
-const approveResources = global.utils.approveResources;
-const checkUserInPool = global.utils.checkUserInPool;
-
 const nodeRegexP = "[\\w-]+";
 const typeRegexP = "qemu|lxc";
 const vmidRegexP = "\\d+";
@@ -23,13 +19,13 @@ global.utils.recursiveImportRoutes(router, basePath, "cluster", import.meta.url)
  */
 router.get("/nodes", async (req, res) => {
 	// check auth
-	const auth = await checkAuth(req.cookies, res);
+	const auth = await global.utils.checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
 
+	// get all nodes
 	const allNodes = await global.pve.requestPVE("/nodes", "GET", { cookies: req.cookies });
-
 	if (allNodes.status === 200) {
 		const allNodesIDs = Array.from(allNodes.data, (x) => x.node);
 		res.status(allNodes.status).send({ nodes: allNodesIDs });
@@ -60,14 +56,13 @@ router.get(`${basePath}`, async (req, res) => {
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
 
 	// get current config
 	const instance = await global.pve.getInstance(params.node, params.vmid);
-
 	res.status(200).send(instance);
 });
 
@@ -99,11 +94,9 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		boot: req.body.boot
 	};
 
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
@@ -119,13 +112,16 @@ router.post(`${basePath}/resources`, async (req, res) => {
 	else if (params.type === "qemu") {
 		request.cpu = params.proctype;
 	}
+
 	// check resource approval
-	const { approved, reason } = await approveResources(req, userObj, params.node, instance.pool, request);
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	const { approved, reason } = await global.utils.approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(400).send({ request, error: "Not enough resources to satisfy request.", reason });
 		res.end();
 		return;
 	}
+
 	// setup action
 	const action = { cores: params.cores, memory: params.memory };
 	if (params.type === "lxc") {
@@ -136,6 +132,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		action.boot = `order=${params.boot.toString().replaceAll(",", ";")};`;
 	}
 	const method = params.type === "qemu" ? "POST" : "PUT";
+
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -181,36 +178,40 @@ router.post(`${basePath}/create`, async (req, res) => {
 		rootfssize: req.body.rootfssize
 	};
 
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-
 	// check auth
-	const auth = await checkAuth(req.cookies, res);
+	const auth = await global.utils.checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
+
 	// get pool config
 	const pool = (await global.access.getPool(params.pool, req.cookies)).pool;
 	const vmid = Number.parseInt(params.vmid);
 	const vmidMin = pool["vmid-allowed"].min;
 	const vmidMax = pool["vmid-allowed"].max;
+
 	// check vmid is within allowed range
 	if (vmid < vmidMin || vmid > vmidMax) {
 		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmidMin},${vmidMax}].` });
 		res.end();
 		return;
 	}
+
 	// check node is within allowed list
 	if (pool["nodes-allowed"][params.node] !== true) {
 		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${pool["nodes-allowed"]}].` });
 		res.end();
 		return;
 	}
+
 	// check if user is in pool
-	if(checkUserInPool(pool, userObj) !== true) {
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	if(global.utils.checkUserInPool(pool, userObj) !== true) {
 		res.status(500).send({ error: `Requested pool ${params.pool} does not contain user ${req.cookies.username}]` });
 		res.end();
 		return;
 	}
+
 	// setup request
 	const request = {
 		cores: Number(params.cores),
@@ -231,13 +232,15 @@ router.post(`${basePath}/create`, async (req, res) => {
 			}
 		}
 	}
+
 	// check resource approval
-	const { approved, reason } = await await approveResources(req, userObj, params.node, params.pool, request);
+	const { approved, reason } = await await global.utils.approveResources(req, userObj, params.node, params.pool, request);
 	if (!approved) {
 		res.status(400).send({ request, error: "Not enough resources to satisfy request.", reason });
 		res.end();
 		return;
 	}
+
 	// setup action by adding non resource values
 	const action = {
 		vmid: params.vmid,
@@ -260,6 +263,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 	else {
 		action.name = params.name;
 	}
+
 	// commit action
 	const result = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}`, "POST", { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -283,12 +287,14 @@ router.delete(`${basePath}/delete`, async (req, res) => {
 		type: req.params.type,
 		vmid: req.params.vmid
 	};
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
+
 	// commit action
 	const result = await global.pve.requestPVE(vmpath, "DELETE", { token: true });
 	await global.pve.handleResponse(params.node, result, res);

@@ -1,9 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
-const checkAuth = global.utils.checkAuth;
-const approveResources = global.utils.approveResources;
-
 /**
  * POST - create new virtual network interface
  * request:
@@ -30,14 +27,17 @@ router.post("/:netid/create", async (req, res) => {
 		rate: req.body.rate,
 		name: req.body.name
 	};
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
+
 	// get instance config for pool membership
 	const instance = await global.pve.getInstance(params.node, params.vmid);
+
 	// net interface must not exist
 	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
 	if (net) {
@@ -50,17 +50,21 @@ router.post("/:netid/create", async (req, res) => {
 		res.end();
 		return;
 	}
+
+	// setup request
 	const request = {
 		network: Number(params.rate)
 	};
+
 	// check resource approval
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
+	const { approved } = await global.utils.approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
 	}
+
 	// setup action
 	const nc = (await global.access.getUser(userObj, req.cookies)).templates.network[params.type];
 	const action = {};
@@ -71,6 +75,7 @@ router.post("/:netid/create", async (req, res) => {
 		action[`${params.netid}`] = `${nc.type},bridge=${nc.bridge},tag=${nc.vlan},rate=${params.rate}`;
 	}
 	const method = params.type === "qemu" ? "POST" : "PUT";
+
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -101,14 +106,17 @@ router.post("/:netid/modify", async (req, res) => {
 		netid: req.params.netid,
 		rate: req.body.rate
 	};
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
+
 	// get instance config for pool membership
 	const instance = await global.pve.getInstance(params.node, params.vmid);
+
 	// net interface must already exist
 	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
 	if (!net) {
@@ -116,21 +124,26 @@ router.post("/:netid/modify", async (req, res) => {
 		res.end();
 		return;
 	}
+
+	// setup request
 	const request = {
 		network: Number(params.rate) - Number(net.rate)
 	};
+
 	// check resource approval
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	const { approved } = await approveResources(req, userObj, params.node, instance.pool, request);
+	const { approved } = await global.utils.approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(500).send({ request, error: `Could not fulfil network request of ${params.rate}MB/s.` });
 		res.end();
 		return;
 	}
+
 	// setup action
 	const action = {};
 	action[`${params.netid}`] = net.value.replace(`rate=${net.rate}`, `rate=${params.rate}`);
 	const method = params.type === "qemu" ? "POST" : "PUT";
+
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -158,12 +171,14 @@ router.delete("/:netid/delete", async (req, res) => {
 		vmid: req.params.vmid,
 		netid: req.params.netid
 	};
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
+
 	// net interface must already exist
 	const net = await global.pve.getNet(params.node, params.vmid, params.netid);
 	if (!net) {
@@ -171,10 +186,13 @@ router.delete("/:netid/delete", async (req, res) => {
 		res.end();
 		return;
 	}
+
 	// setup action
+	const action = { delete: `${params.netid}` };
 	const method = params.type === "qemu" ? "POST" : "PUT";
+
 	// commit action
-	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, { delete: `${params.netid}` });
+	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
 	await global.pve.syncInstance(params.node, params.vmid);
 });

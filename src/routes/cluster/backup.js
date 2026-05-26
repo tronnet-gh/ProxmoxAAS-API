@@ -1,8 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
-const checkAuth = global.utils.checkAuth;
-
 /**
  * GET - get backups for an instance
  * request:
@@ -24,7 +22,7 @@ router.get("/", async (req, res) => {
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
@@ -32,11 +30,12 @@ router.get("/", async (req, res) => {
 	// get vm backups
 	const storage = global.config.backups.storage;
 	const backups = await global.pve.requestPVE(`/nodes/${params.node}/storage/${storage}/content?content=backup&vmid=${params.vmid}`, "GET", { token: true });
+	
 	if (backups.status === 200) {
 		res.status(backups.status).send(backups.data);
 	}
 	else {
-		res.status(backups.status).send({ error: backups.statusText });
+		res.status(backups.status).send({ auth: true, error: backups.statusText });
 	}
 });
 
@@ -64,22 +63,37 @@ router.post("/", async (req, res) => {
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
 
-	// check if number of backups is less than the allowed number
+	// get number of currently backups used
 	const storage = global.config.backups.storage;
 	const backups = await global.pve.requestPVE(`/nodes/${params.node}/storage/${storage}/content?content=backup&vmid=${params.vmid}`, "GET", { token: true });
-	const numBackups = backups.data.length;
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	const maxAllowed = (await global.access.getUser(userObj, req.cookies)).cluster.backups.max;
 	if (backups.status !== 200) {
 		res.status(backups.status).send({ error: backups.statusText });
 		return;
 	}
-	else if (numBackups >= maxAllowed) {
+	const numBackups = backups.data.length;
+
+	// get instance
+	const instance = await global.pve.getInstance(params.node, params.vmid);
+	if (instance === null) {
+		res.status(400).send({ error: `failed to get instance ${params.node}/${params.vmid}` });
+		return;
+	}
+
+	// get pool and pool allowed nodes
+	const pool = await global.access.getPool(instance.pool, req.cookies);
+	if (!pool.ok) {
+		res.status(pool.status).send({ error: `failed to get pool ${pool}` });
+		return;
+	}
+	const maxAllowed = pool.pool["backups-allowed"].max;
+
+	// check if used backups is more than maximum allowed, if so exit
+	if (numBackups >= maxAllowed) {
 		res.status(backups.status).send({ error: `${params.vmid} already has ${numBackups} >= ${maxAllowed} max backups allowed` });
 		return;
 	}
@@ -122,7 +136,7 @@ router.post("/notes", async (req, res) => {
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
@@ -146,7 +160,7 @@ router.post("/notes", async (req, res) => {
 		return;
 	}
 
-	// create backup using vzdump path
+	// modify backup notes
 	const body = {
 		notes: params.notes
 	};
@@ -182,7 +196,7 @@ router.delete("/", async (req, res) => {
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
@@ -234,7 +248,7 @@ router.post("/restore", async (req, res) => {
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}

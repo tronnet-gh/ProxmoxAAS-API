@@ -230,16 +230,13 @@ export async function getPoolResources (req, pool) {
 export async function approveResources (req, user, node, pool, request) {
 	const configResources = global.config.resources;
 	const poolResources = await getPoolResources(req, pool);
-	// let approved = true;
 	const reason = {};
 
 	for (const key in request) {
 		// if requested resource is not specified in user resources, assume it's not allowed
 		if (!(key in poolResources)) {
-			// approved = false;
 			reason[key] = { approved: false, reason: `${key} not allowed` };
 			continue;
-			// return;
 		}
 
 		// use node specific quota if there is one available, otherwise use the global resource quota
@@ -252,25 +249,21 @@ export async function approveResources (req, user, node, pool, request) {
 			// if no matching resource when index == -1, then remaining is -1 otherwise use the remaining value
 			const avail = index === -1 ? false : resourceData[index].avail > 0;
 			if (avail !== configResources[key].whitelist) {
-				// approved = false;
 				reason[key] = { approved: false, reason: `${key} ${configResources[key].whitelist ? "not in whitelist" : "in blacklist"}` };
-				// return;
 				continue;
 			}
 		}
+
 		// if either the requested or avail resource is not strictly a number, block
-		else if (typeof (resourceData.avail) !== "number" || typeof (request[key]) !== "number") {
-			// approved = false;
+		if (typeof (resourceData.avail) !== "number" || typeof (request[key]) !== "number") {
 			reason[key] = { approved: false, reason: `expected ${key} to be a number but got ${request[key]}` };
 			continue;
-			// return;
 		}
+
 		// if the avail resources is less than the requested resources, block
-		else if (resourceData.avail - request[key] < 0) {
-			// approved = false;
+		if (resourceData.avail - request[key] < 0) {
 			reason[key] = { approved: false, reason: `${key} requested ${request[key]} which is more than ${resourceData.avail} available` };
 			continue;
-			// return;
 		}
 
 		reason[key] = { approved: true, reason: "ok" };
@@ -340,7 +333,7 @@ export function readJSONFile (path) {
 };
 
 /**
- *
+ * Parse username into user object using the uid@realm format.
  * @param {*} username
  * @returns {Object | null} user object containing userid and realm or null if username format was invalid
  */
@@ -357,7 +350,7 @@ export function getUserObjFromUsername (username) {
 }
 
 /**
- *
+ * Parse groupname into group object using the gid-realm format.
  * @param {*} groupname
  * @returns {Object | null} user object containing groupid and realm or null if groupname format was invalid
  */
@@ -382,7 +375,7 @@ export function getGroupObjFromGroupname (groupname) {
 }
 
 /**
- * 
+ * Inspect pool object and return true if pool contains any groups which contain the user object.
  * @param {Object} poolObj pool data object
  * @param {Object} userObj user object containing id and realm
  * @returns {boolean} true if userObj in poolObj
