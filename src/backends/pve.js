@@ -95,7 +95,7 @@ export default class PVE extends PVE_BACKEND {
 			};
 		}
 		catch (error) {
-			console.log(`pve: error ocuured in pve.requestPVE: ${error}`);
+			console.log(`pve: error ocuured in pve.requestPVE: ${method} ${path} resulted in ${error}`);
 			const result = error.response;
 			result.ok = result.status === 200;
 			return result;
@@ -126,6 +126,7 @@ export default class PVE extends PVE_BACKEND {
 			return await axios.request(url, content);
 		}
 		catch (error) {
+			console.log(`pve: error ocuured in pve.requestFabric: ${method} ${path} resulted in ${error}`);
 			return error;
 		}
 	}

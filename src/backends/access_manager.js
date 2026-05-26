@@ -44,7 +44,7 @@ export default class ACCESS_MANAGER_API extends ACCESS_BACKEND {
 			};
 		}
 		catch (error) {
-			console.log(`access: error ocuured in access.requestAPI: ${error}`);
+			console.log(`access: error ocuured in access.requestAPI: ${method} ${path} resulted in ${error}`);
 			const result = error.response;
 			result.ok = result.status === 200;
 			return result;
