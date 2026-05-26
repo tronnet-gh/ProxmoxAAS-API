@@ -63,7 +63,10 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 	if (!auth) {
 		return;
 	}
-	const userNodes = (await global.access.getPool(userObj, req.cookies)).cluster.nodes;
+
+	/* todo this should check pool membership
+	pool = await global.access.getPool(instance.pool, req.cookies)
+	const userNodes = pool["nodes-allowed"];
 	if (userNodes[params.node] !== true) { // user does not have access to the node
 		res.status(401).send({ auth: false, path: params.node });
 		res.end();
@@ -76,24 +79,26 @@ router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
 		res.status(200).send([]);
 		res.end();
 	}
-	else {
-		// get node avail devices
-		const node = await global.pve.getNode(params.node);
-		let availableDevices = [];
-		// get each device and filter out only thise which are not reserved
-		for (const device of Object.values(node.devices)) {
-			if (device.reserved === false) {
-				availableDevices.push(device);
-			}
-		}
-		// further filter out only devices which the user has access to
-		availableDevices = availableDevices.filter(nodeAvail => userAvailPci.some((userAvail) => {
-			return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
-		}));
+	*/
 
-		res.status(200).send(availableDevices);
-		res.end();
+	//else {
+	// get node avail devices
+	const node = await global.pve.getNode(params.node);
+	const availableDevices = [];
+	// get each device and filter out only thise which are not reserved
+	for (const device of Object.values(node.devices)) {
+		if (device.reserved === false) {
+			availableDevices.push(device);
+		}
 	}
+	// further filter out only devices which the user has access to
+	//availableDevices = availableDevices.filter(nodeAvail => userAvailPci.some((userAvail) => {
+	//	return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
+	//}));
+
+	res.status(200).send(availableDevices);
+	res.end();
+	//}
 });
 
 /**
