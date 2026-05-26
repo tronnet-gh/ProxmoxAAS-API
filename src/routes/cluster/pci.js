@@ -2,7 +2,76 @@ import { Router } from "express";
 export const router = Router({ mergeParams: true }); ;
 
 const checkAuth = global.utils.checkAuth;
+const getPoolResources = global.utils.getPoolResources;
 const approveResources = global.utils.approveResources;
+
+/**
+ * GET - get available pcie devices for the given node and user
+ * request:
+ * - node: string - vm host node id
+ * responses:
+ * - 200: PVE PCI Device Object
+ * - 401: {auth: false}
+ * - 401: {auth: false, path: string}
+ * - 500: {error: string}
+ */
+router.get("/", async (req, res) => {
+	const params = {
+		node: req.params.node,
+		type: req.params.type,
+		vmid: req.params.vmid,
+	};
+	// check auth
+	const auth = await checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+
+	// get instance config for pool membership
+	const instance = await global.pve.getInstance(params.node, params.vmid);
+
+	// ensure that requested instance type is vmid
+	if (instance.type !== "VM") {
+		res.status(400).send({ auth: true, error: `actual instance type is ${instance.type} but must be VM` });
+	}
+	else if (params.type !== "qemu") {
+		res.status(400).send({ auth: true, error: `requested instance type is ${params.type} but must be qemu` });
+	}
+
+	// get pool and pool allowed nodes
+	const pool = await global.access.getPool(instance.pool, req.cookies);
+	const poolNodes = pool.pool["nodes-allowed"];
+	if (poolNodes[params.node] !== true) { // user does not have access to the node
+		res.status(401).send({ auth: false, path: params.node });
+		res.end();
+		return;
+	}
+
+	// get remaining user resources
+	const poolAvailPci = (await getPoolResources(req, instance.pool)).pci.nodes[params.node]; // we assume that the node list is used. TODO support global lists
+	if (poolAvailPci === undefined) { // user has no available devices on this node, so send an empty list
+		res.status(200).send([]);
+		res.end();
+	}
+	else {
+		// get node avail devices
+		const node = await global.pve.getNode(params.node);
+		let availableDevices = [];
+		// get each device and filter out only thise which are not reserved
+		for (const device of Object.values(node.devices)) {
+			if (device.reserved === false) {
+				availableDevices.push(device);
+			}
+		}
+		//further filter out only devices which the user has access to
+		availableDevices = availableDevices.filter(nodeAvail => poolAvailPci.some((userAvail) => {
+			return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
+		}));
+
+		res.status(200).send(availableDevices);
+		res.end();
+	}
+});
 
 /**
  * GET - get instance pcie device data

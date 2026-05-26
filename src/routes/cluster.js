@@ -3,7 +3,6 @@ export const router = Router({ mergeParams: true });
 
 const checkAuth = global.utils.checkAuth;
 const approveResources = global.utils.approveResources;
-const getPoolResources = global.utils.getPoolResources;
 const checkUserInPool = global.utils.checkUserInPool;
 
 const nodeRegexP = "[\\w-]+";
@@ -40,65 +39,6 @@ router.get("/nodes", async (req, res) => {
 		res.status(allNodes.status).send({ error: allNodes.statusText });
 		res.end();
 	}
-});
-
-/**
- * GET - get available pcie devices for the given node and user
- * request:
- * - node: string - vm host node id
- * responses:
- * - 200: PVE PCI Device Object
- * - 401: {auth: false}
- * - 401: {auth: false, path: string}
- * - 500: {error: string}
- */
-router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
-	const params = {
-		node: req.params.node
-	};
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-
-	// check auth
-	const auth = await checkAuth(req.cookies, res);
-	if (!auth) {
-		return;
-	}
-
-	/* todo this should check pool membership
-	pool = await global.access.getPool(instance.pool, req.cookies)
-	const userNodes = pool["nodes-allowed"];
-	if (userNodes[params.node] !== true) { // user does not have access to the node
-		res.status(401).send({ auth: false, path: params.node });
-		res.end();
-		return;
-	}
-
-	// get remaining user resources
-	const userAvailPci = (await getPoolResources(req, userObj)).pci.nodes[params.node]; // we assume that the node list is used. TODO support global lists
-	if (userAvailPci === undefined) { // user has no available devices on this node, so send an empty list
-		res.status(200).send([]);
-		res.end();
-	}
-	*/
-
-	//else {
-	// get node avail devices
-	const node = await global.pve.getNode(params.node);
-	const availableDevices = [];
-	// get each device and filter out only thise which are not reserved
-	for (const device of Object.values(node.devices)) {
-		if (device.reserved === false) {
-			availableDevices.push(device);
-		}
-	}
-	// further filter out only devices which the user has access to
-	//availableDevices = availableDevices.filter(nodeAvail => userAvailPci.some((userAvail) => {
-	//	return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
-	//}));
-
-	res.status(200).send(availableDevices);
-	res.end();
-	//}
 });
 
 /**
