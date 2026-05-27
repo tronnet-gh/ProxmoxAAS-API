@@ -255,13 +255,13 @@ export async function approveResources (req, user, node, pool, request) {
 		}
 
 		// if either the requested or avail resource is not strictly a number, block
-		if (typeof (resourceData.avail) !== "number" || typeof (request[key]) !== "number") {
+		else if (typeof (resourceData.avail) !== "number" || typeof (request[key]) !== "number") {
 			reason[key] = { approved: false, reason: `expected ${key} to be a number but got ${request[key]}` };
 			continue;
 		}
 
 		// if the avail resources is less than the requested resources, block
-		if (resourceData.avail - request[key] < 0) {
+		else if (resourceData.avail - request[key] < 0) {
 			reason[key] = { approved: false, reason: `${key} requested ${request[key]} which is more than ${resourceData.avail} available` };
 			continue;
 		}
