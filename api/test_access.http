@@ -16,6 +16,3 @@ GET {{baseUrl}}/access/pools/
 
 ### Get pool
 GET {{baseUrl}}/access/pools/{{poolname}}
-
-### Get all nodes
-GET {{baseUrl}}/cluster/nodes
