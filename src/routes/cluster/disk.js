@@ -336,8 +336,6 @@ router.post("/:disk/create", async (req, res) => {
 		size: req.body.size,
 		iso: req.body.iso
 	};
-
-	console.log(req.cookies)
 	
 	// attempt to parse user from username
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);

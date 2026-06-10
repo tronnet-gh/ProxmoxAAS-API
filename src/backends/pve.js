@@ -254,7 +254,10 @@ export default class PVE extends PVE_BACKEND {
 			// only add type if it is vm or ct (ie has vmid)
 			if (resource.vmid) {
 				const instance = await this.getInstance(resource.node, resource.vmid);
-				if (instance) {
+				if (instance === null) {
+					return null;
+				}
+				else {
 					instance.node = resource.node;
 					resources[resource.vmid] = instance;
 				}

@@ -123,6 +123,9 @@ export async function getPoolResources (req, pool) {
 	}
 
 	const configs = await global.pve.getPoolResources(req.cookies, pool);
+	if (configs === null) {
+		return null;
+	}
 
 	for (const vmid in configs) {
 		const config = configs[vmid];
@@ -231,6 +234,11 @@ export async function approveResources (req, user, node, pool, request) {
 	const configResources = global.config.resources;
 	const poolResources = await getPoolResources(req, pool);
 	const reason = {};
+
+	if (poolResources === null) {
+		reason["server"] = "error in retrieving pool resource state";
+		return {approved: false, reason};
+	}
 
 	for (const key in request) {
 		// if requested resource is not specified in user resources, assume it's not allowed
