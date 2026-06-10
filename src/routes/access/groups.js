@@ -21,7 +21,7 @@ router.get("/:groupname", async (req, res) => {
 
 	// attempt to parse group from groupname
 	const groupObj = global.utils.getGroupObjFromGroupname(params.groupname);
-	if (groupObj == null) {
+	if (groupObj === null) {
 		res.status(400).send({ auth: true, error:`Groupname ${params.groupname} does not match format gid-realm or gid.` });
 	}
 	

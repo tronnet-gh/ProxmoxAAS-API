@@ -141,7 +141,7 @@ router.post("/:disk/resize", async (req, res) => {
 
 	// attempt to parse user from username
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	if (userObj == null) {
+	if (userObj === null) {
 		res.status(400).send({ auth:true, error:`username ${req.cookies.username} does not match format uid@realm.` });
 	}
 
@@ -212,7 +212,7 @@ router.post("/:disk/move", async (req, res) => {
 
 	// attempt to parse user from username
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	if (userObj == null) {
+	if (userObj === null) {
 		res.status(400).send({ auth:true, error:`username ${req.cookies.username} does not match format uid@realm.` });
 	}
 
@@ -339,7 +339,7 @@ router.post("/:disk/create", async (req, res) => {
 	
 	// attempt to parse user from username
 	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-	if (userObj == null) {
+	if (userObj === null) {
 		res.status(400).send({ auth:true, error:`username ${req.cookies.username} does not match format uid@realm.` });
 		return;
 	}

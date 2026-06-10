@@ -203,7 +203,7 @@ export default class PVE extends PVE_BACKEND {
 
 	async getDisk (node, instance, disk) {
 		const config = await this.getInstance(node, instance);
-		if (config != null && config.volumes[disk] != null) {
+		if (config !== null && config.volumes[disk] !== null) {
 			return config.volumes[disk];
 		}
 		else {
@@ -213,7 +213,7 @@ export default class PVE extends PVE_BACKEND {
 
 	async getNet (node, instance, netid) {
 		const config = await this.getInstance(node, instance);
-		if (config != null && config.nets[netid] != null) {
+		if (config !== null && config.nets[netid] !== null) {
 			return config.nets[netid];
 		}
 		else {
@@ -223,7 +223,7 @@ export default class PVE extends PVE_BACKEND {
 
 	async getDevice (node, instance, deviceid) {
 		const config = await this.getInstance(node, instance);
-		if (config != null && config.devices[deviceid] != null) {
+		if (config !== null && config.devices[deviceid] !== null) {
 			return config.devices[deviceid];
 		}
 		else {
@@ -238,11 +238,11 @@ export default class PVE extends PVE_BACKEND {
 			return null;
 		}
 		const data = res.data;
-		if (data.length != 1) {
+		if (data.length !== 1) {
 			return null;
 		}
 		const poolPVE = data[0];
-		if (poolPVE.poolid != pool) {
+		if (poolPVE.poolid !== pool) {
 			return null;
 		}
 

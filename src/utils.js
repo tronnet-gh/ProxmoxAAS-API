@@ -254,7 +254,7 @@ export async function approveResources (req, user, node, pool, request) {
 		// if the resource type is list, check if the requested resource exists in the list
 		if (configResources[key].type === "list") {
 			const index = resourceData.findIndex((availElement) => request[key].includes(availElement.match));
-			// if no matching resource when index == -1, then remaining is -1 otherwise use the remaining value
+			// if no matching resource when index === -1, then remaining is -1 otherwise use the remaining value
 			const avail = index === -1 ? false : resourceData[index].avail > 0;
 			if (avail !== configResources[key].whitelist) {
 				reason[key] = { approved: false, reason: `${key} ${configResources[key].whitelist ? "not in whitelist" : "in blacklist"}` };

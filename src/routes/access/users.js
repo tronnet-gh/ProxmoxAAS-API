@@ -21,7 +21,7 @@ router.get("/:username", async (req, res) => {
 
 	// attempt to parse user from username
 	const userObj = global.utils.getUserObjFromUsername(params.username);
-	if (userObj == null) {
+	if (userObj === null) {
 		res.status(400).send({ auth:true, error:`username ${params.username} does not match format uid@realm.` });
 	}
 
