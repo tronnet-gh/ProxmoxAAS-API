@@ -31,7 +31,7 @@
 	},
 	"handlers": {
 		"instance": "pve",
-		"users": ["access_manager"]
+		"users": "access_manager"
 	},
 	"useriso": {
 		"node": "examplenode1",
@@ -44,7 +44,8 @@
 		"cpu": {
 			"type": "list",
 			"whitelist": true,
-			"display": false
+			"display": false,
+			"category": ""
 		},
 		"cores": {
 			"name": "vCPU",
@@ -53,7 +54,8 @@
 			"base": 1024,
 			"compact": false,
 			"unit": "Cores",
-			"display": true
+			"display": true,
+			"category": ""
 		},
 		"memory": {
 			"name": "RAM",
@@ -62,7 +64,8 @@
 			"base": 1024,
 			"compact": true,
 			"unit": "B",
-			"display": true
+			"display": true,
+			"category": ""
 		},
 		"swap": {
 			"name": "SWAP",
@@ -71,7 +74,8 @@
 			"base": 1024,
 			"compact": true,
 			"unit": "B",
-			"display": true
+			"display": true,
+			"category": ""
 		},
 		"local": {
 			"name": "local",
@@ -84,9 +88,11 @@
 				"rootfs",
 				"mp",
 				"sata",
+				"scsi",
 				"unused"
 			],
-			"display": true
+			"display": true,
+			"category": "Storage"
 		},
 		"cephpl": {
 			"name": "cephpl",
@@ -99,9 +105,11 @@
 				"rootfs",
 				"mp",
 				"sata",
+				"scsi",
 				"unused"
 			],
-			"display": true
+			"display": true,
+			"category": "Storage"
 		},
 		"network": {
 			"name": "Network",
@@ -110,12 +118,14 @@
 			"base": 1000,
 			"compact": true,
 			"unit": "B/s",
-			"display": true
+			"display": true,
+			"category": ""
 		},
 		"pci": {
 			"type": "list",
 			"whitelist": true,
-			"display": true
+			"display": true,
+			"category": "Devices"
 		}
 	},
 	"clientsync": {
