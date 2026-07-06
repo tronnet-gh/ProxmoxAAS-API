@@ -118,9 +118,14 @@ if (schemes.interrupt.enabled) {
 			const parsed = message.toString().split(" ");
 			const cmd = parsed[0];
 			// command is rate and the value is valid
-			if (cmd === "rate" && parsed[1] >= schemes.interrupt["min-rate"] && parsed[1] <= schemes.interrupt["max-rate"]) {
+			if (cmd === "rate" && parsed.length === 2 && parsed[1] >= schemes.interrupt["min-rate"] && parsed[1] <= schemes.interrupt["max-rate"]) {
 				// get requested rate in ms
 				const rate = Number(parsed[1]) * 1000;
+				if (isNaN(rate)) {
+					socket.send("error: rate <rate> must be a number");
+					socket.terminate();
+					return;
+				}
 				// if timer has not started, start it with requested rate
 				if (!timer) {
 					timer = setTimeout(handleInterruptSync, rate);
@@ -142,12 +147,12 @@ if (schemes.interrupt.enabled) {
 			}
 			// command is rate but the requested value is out of bounds, terminate socket
 			else if (cmd === "rate") {
-				socket.send(`error: rate must be in range [${schemes.interrupt["min-rate"]}, ${schemes.interrupt["max-rate"]}].`);
+				socket.send(`error: rate <rate> must be in range [${schemes.interrupt["min-rate"]}, ${schemes.interrupt["max-rate"]}].`);
 				socket.terminate();
 			}
 			// otherwise, command is invalid, terminate socket
 			else {
-				socket.send(`error: ${cmd} command not found.`);
+				socket.send(`error: ${cmd} command not supported.`);
 				socket.terminate();
 			}
 		});
