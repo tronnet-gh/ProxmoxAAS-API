@@ -63,41 +63,44 @@ export async function checkAuth (cookies, res, vmpath = null) {
  * Get pool resource data including used, available, and maximum resources.
  * @param {Object} req ProxmoxAAS API request object.
  * @param {{id: string, realm: string}} user object of user to get resource data.
- * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
+ * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified pool or null if an error occured
  */
 export async function getPoolResources (req, pool) {
 	const configResources = global.config.resources;
 	const poolConfig = await global.access.getPool(pool, req.cookies);
-	const poolResources = poolConfig.pool.resources;
+	if (poolConfig.ok !== true) {
+		return null;
+	}
+	const poolConfigResources = poolConfig.pool.resources;
 
 	// setup the pool resource object with used and avail for each resource and each resource pool
 	// also add a total counter for each resource (only used for display, not used to check requests)
-	for (const resourceName of Object.keys(poolResources)) {
+	for (const resourceName of Object.keys(poolConfigResources)) {
 		if (configResources[resourceName].type === "list") {
-			poolResources[resourceName].total = [];
-			poolResources[resourceName].global.forEach((e) => {
+			poolConfigResources[resourceName].total = [];
+			poolConfigResources[resourceName].global.forEach((e) => {
 				e.used = 0;
 				e.avail = e.max;
-				const index = poolResources[resourceName].total.findIndex((availEelement) => e.match === availEelement.match);
+				const index = poolConfigResources[resourceName].total.findIndex((availEelement) => e.match === availEelement.match);
 				if (index === -1) {
-					poolResources[resourceName].total.push(structuredClone(e));
+					poolConfigResources[resourceName].total.push(structuredClone(e));
 				}
 				else {
-					poolResources[resourceName].total[index].max += e.max;
-					poolResources[resourceName].total[index].avail += e.avail;
+					poolConfigResources[resourceName].total[index].max += e.max;
+					poolConfigResources[resourceName].total[index].avail += e.avail;
 				}
 			});
-			for (const nodeName of Object.keys(poolResources[resourceName].nodes)) {
-				poolResources[resourceName].nodes[nodeName].forEach((e) => {
+			for (const nodeName of Object.keys(poolConfigResources[resourceName].nodes)) {
+				poolConfigResources[resourceName].nodes[nodeName].forEach((e) => {
 					e.used = 0;
 					e.avail = e.max;
-					const index = poolResources[resourceName].total.findIndex((availEelement) => e.match === availEelement.match);
+					const index = poolConfigResources[resourceName].total.findIndex((availEelement) => e.match === availEelement.match);
 					if (index === -1) {
-						poolResources[resourceName].total.push(structuredClone(e));
+						poolConfigResources[resourceName].total.push(structuredClone(e));
 					}
 					else {
-						poolResources[resourceName].total[index].max += e.max;
-						poolResources[resourceName].total[index].avail += e.avail;
+						poolConfigResources[resourceName].total[index].max += e.max;
+						poolConfigResources[resourceName].total[index].avail += e.avail;
 					}
 				});
 			}
@@ -108,27 +111,27 @@ export async function getPoolResources (req, pool) {
 				used: 0,
 				avail: 0
 			};
-			poolResources[resourceName].global.used = 0;
-			poolResources[resourceName].global.avail = poolResources[resourceName].global.max;
-			total.max += poolResources[resourceName].global.max;
-			total.avail += poolResources[resourceName].global.avail;
-			for (const nodeName of Object.keys(poolResources[resourceName].nodes)) {
-				poolResources[resourceName].nodes[nodeName].used = 0;
-				poolResources[resourceName].nodes[nodeName].avail = poolResources[resourceName].nodes[nodeName].max;
-				total.max += poolResources[resourceName].nodes[nodeName].max;
-				total.avail += poolResources[resourceName].nodes[nodeName].avail;
+			poolConfigResources[resourceName].global.used = 0;
+			poolConfigResources[resourceName].global.avail = poolConfigResources[resourceName].global.max;
+			total.max += poolConfigResources[resourceName].global.max;
+			total.avail += poolConfigResources[resourceName].global.avail;
+			for (const nodeName of Object.keys(poolConfigResources[resourceName].nodes)) {
+				poolConfigResources[resourceName].nodes[nodeName].used = 0;
+				poolConfigResources[resourceName].nodes[nodeName].avail = poolConfigResources[resourceName].nodes[nodeName].max;
+				total.max += poolConfigResources[resourceName].nodes[nodeName].max;
+				total.avail += poolConfigResources[resourceName].nodes[nodeName].avail;
 			}
-			poolResources[resourceName].total = total;
+			poolConfigResources[resourceName].total = total;
 		}
 	}
 
-	const configs = await global.pve.getPoolResources(req.cookies, pool);
-	if (configs === null) {
+	const resources = await global.pve.getPoolResources(req.cookies, pool);
+	if (resources === null) {
 		return null;
 	}
 
-	for (const vmid in configs) {
-		const config = configs[vmid];
+	for (const vmid in resources) {
+		const config = resources[vmid];
 		const nodeName = config.node;
 		// count basic numeric resources
 		for (const resourceName of Object.keys(config)) {
@@ -136,17 +139,17 @@ export async function getPoolResources (req, pool) {
 			if (resourceName in configResources && configResources[resourceName].type === "numeric") {
 				const val = Number(config[resourceName]);
 				// if the instance's node is restricted by this resource, add it to the instance's used value
-				if (nodeName in poolResources[resourceName].nodes) {
-					poolResources[resourceName].nodes[nodeName].used += val;
-					poolResources[resourceName].nodes[nodeName].avail -= val;
+				if (nodeName in poolConfigResources[resourceName].nodes) {
+					poolConfigResources[resourceName].nodes[nodeName].used += val;
+					poolConfigResources[resourceName].nodes[nodeName].avail -= val;
 				}
 				// otherwise add the resource to the global pool
 				else {
-					poolResources[resourceName].global.used += val;
-					poolResources[resourceName].global.avail -= val;
+					poolConfigResources[resourceName].global.used += val;
+					poolConfigResources[resourceName].global.avail -= val;
 				}
-				poolResources[resourceName].total.used += val;
-				poolResources[resourceName].total.avail -= val;
+				poolConfigResources[resourceName].total.used += val;
+				poolConfigResources[resourceName].total.avail -= val;
 			}
 		}
 		// count disk resources in volumes
@@ -155,38 +158,38 @@ export async function getPoolResources (req, pool) {
 			const storage = disk.storage;
 			const size = disk.size;
 			// only process disk if its storage is in the user resources to be counted
-			if (storage in poolResources) {
+			if (storage in poolConfigResources) {
 				// if the instance's node is restricted by this resource, add it to the instance's used value
-				if (nodeName in poolResources[storage].nodes) {
-					poolResources[storage].nodes[nodeName].used += size;
-					poolResources[storage].nodes[nodeName].avail -= size;
+				if (nodeName in poolConfigResources[storage].nodes) {
+					poolConfigResources[storage].nodes[nodeName].used += size;
+					poolConfigResources[storage].nodes[nodeName].avail -= size;
 				}
 				// otherwise add the resource to the global pool
 				else {
-					poolResources[storage].global.used += size;
-					poolResources[storage].global.avail -= size;
+					poolConfigResources[storage].global.used += size;
+					poolConfigResources[storage].global.avail -= size;
 				}
-				poolResources[storage].total.used += size;
-				poolResources[storage].total.avail -= size;
+				poolConfigResources[storage].total.used += size;
+				poolConfigResources[storage].total.avail -= size;
 			}
 		}
 		// count net resources in nets
 		for (const netid in config.nets) {
 			const net = config.nets[netid];
 			const rate = net.rate;
-			if (poolResources.network) {
+			if (poolConfigResources.network) {
 				// if the instance's node is restricted by this resource, add it to the instance's used value
-				if (nodeName in poolResources.network.nodes) {
-					poolResources.network.nodes[nodeName].used += rate;
-					poolResources.network.nodes[nodeName].avail -= rate;
+				if (nodeName in poolConfigResources.network.nodes) {
+					poolConfigResources.network.nodes[nodeName].used += rate;
+					poolConfigResources.network.nodes[nodeName].avail -= rate;
 				}
 				// otherwise add the resource to the global pool
 				else {
-					poolResources.network.global.used += rate;
-					poolResources.network.global.avail -= rate;
+					poolConfigResources.network.global.used += rate;
+					poolConfigResources.network.global.avail -= rate;
 				}
-				poolResources.network.total.used += rate;
-				poolResources.network.total.avail -= rate;
+				poolConfigResources.network.total.used += rate;
+				poolConfigResources.network.total.avail -= rate;
 			}
 		}
 		// count pci device resources in devices
@@ -194,31 +197,31 @@ export async function getPoolResources (req, pool) {
 			const device = config.devices[deviceid];
 			const name = device.device_name;
 			// if the node has a node specific rule, add it there
-			if (nodeName in poolResources.pci.nodes) {
-				const index = poolResources.pci.nodes[nodeName].findIndex((availEelement) => name.includes(availEelement.match));
+			if (nodeName in poolConfigResources.pci.nodes) {
+				const index = poolConfigResources.pci.nodes[nodeName].findIndex((availEelement) => name.includes(availEelement.match));
 				if (index >= 0) {
-					poolResources.pci.nodes[nodeName][index].used++;
-					poolResources.pci.nodes[nodeName][index].avail--;
+					poolConfigResources.pci.nodes[nodeName][index].used++;
+					poolConfigResources.pci.nodes[nodeName][index].avail--;
 				}
 			}
 			// otherwise try to add the resource to the global pool
 			else {
-				const index = poolResources.pci.global.findIndex((availEelement) => name.includes(availEelement.match));
+				const index = poolConfigResources.pci.global.findIndex((availEelement) => name.includes(availEelement.match));
 				if (index >= 0) { // device resource is in the user's global list then increment it by 1
-					poolResources.pci.global[index].used++;
-					poolResources.pci.global[index].avail--;
+					poolConfigResources.pci.global[index].used++;
+					poolConfigResources.pci.global[index].avail--;
 				}
 			}
 			// finally, add the device to the total map
-			const index = poolResources.pci.total.findIndex((availEelement) => name.includes(availEelement.match));
+			const index = poolConfigResources.pci.total.findIndex((availEelement) => name.includes(availEelement.match));
 			if (index >= 0) {
-				poolResources.pci.total[index].used++;
-				poolResources.pci.total[index].avail--;
+				poolConfigResources.pci.total[index].used++;
+				poolConfigResources.pci.total[index].avail--;
 			}
 		}
 	}
 
-	return poolResources;
+	return poolConfigResources;
 }
 
 /**
@@ -228,7 +231,8 @@ export async function getPoolResources (req, pool) {
  * @param {string} node name of node hosting requested resource(s)
  * @param {string} pool name of pool hosting requested resource(s)
  * @param {Object} request k-v pairs of resources and requested amounts
- * @returns {boolean, Object} true if the available resources can fullfill the requested resources, false otherwise.
+ * @returns {boolean} true if the available resources can fullfill the requested resources, false otherwise.
+ * @returns {Object} map of key values and reason for success or failure
  */
 export async function approveResources (req, user, node, pool, request) {
 	const configResources = global.config.resources;
