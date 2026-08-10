@@ -12,11 +12,15 @@ router.get("/config/:key", async (req, res) => {
 	const params = {
 		key: req.params.key
 	};
+
 	// check auth
 	const auth = await checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
+
+	// check if users are allowed to get the config value
+	// return the value if so, otherwise send unauthorized
 	const allowKeys = ["resources"];
 	if (allowKeys.includes(params.key)) {
 		const config = global.config;

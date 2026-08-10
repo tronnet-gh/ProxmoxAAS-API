@@ -26,8 +26,8 @@ export default class PVE extends PVE_BACKEND {
 				cookies: []
 			};
 		}
-		const ticket = response.data.data.ticket;
-		const csrftoken = response.data.data.CSRFPreventionToken;
+		const ticket = response.data.ticket;
+		const csrftoken = response.data.CSRFPreventionToken;
 		return {
 			ok: true,
 			status: response.status,
@@ -66,73 +66,39 @@ export default class PVE extends PVE_BACKEND {
 			data: body
 		};
 
-		if (auth && auth.cookies) {
+		if (auth && auth.cookies) { // user cookie credentials
 			content.headers.CSRFPreventionToken = auth.cookies.CSRFPreventionToken;
 			content.headers.Cookie = `PVEAuthCookie=${auth.cookies.PVEAuthCookie}; CSRFPreventionToken=${auth.cookies.CSRFPreventionToken}`;
 		}
-		else if (auth && auth.token) {
+		else if (auth && auth.token) { // upgraded request as api
 			const token = this.#pveAPIToken;
 			content.headers.Authorization = `PVEAPIToken=${token.user}@${token.realm}!${token.id}=${token.uuid}`;
 		}
-		else if (auth && auth.root) {
-			const rootauth = await global.pve.requestPVE("/access/ticket", "POST", null, this.#pveRoot);
+		else if (auth && auth.root) { // upgraded request as root
+			const rootauth = await this.requestPVE("/access/ticket", "POST", null, this.#pveRoot);
 			if (!(rootauth.status === 200)) {
 				return rootauth.response;
 			}
-			const rootcookie = rootauth.data.data.ticket;
-			const rootcsrf = rootauth.data.data.CSRFPreventionToken;
+			const rootcookie = rootauth.data.ticket;
+			const rootcsrf = rootauth.data.CSRFPreventionToken;
 			content.headers.CSRFPreventionToken = rootcsrf;
 			content.headers.Cookie = `PVEAuthCookie=${rootcookie}; CSRFPreventionToken=${rootcsrf}`;
 		}
 
 		try {
-			return await axios.request(url, content);
+			const result = await axios.request(url, content);
+			return {
+				ok: result.ok,
+				status: result.status,
+				data: result.data.data, // pve returns {data: {data: {...}}}, unwrap here to conform to standard {data: {...}} format
+				headers: result.headers
+			};
 		}
 		catch (error) {
-			console.log(`backends: error ocuured in pve.requestPVE: ${error}`);
-			return error.response;
-		}
-	}
-
-	/**
-	 * Handle various proxmox API responses. Handles sync and async responses.
-	 * In sync responses, responses are completed when the response arrives. Method returns the response directly.
-	 * In async responses, proxmox sends responses with a UPID to track process completion. Method returns the status of the proxmox process once it completes.
-	 * @param {string} node response originates from.
-	 * @param {Object} result response from proxmox.
-	 * @param {Object} res response object of ProxmoxAAS API call.
-	 */
-	async handleResponse (node, result, res) {
-		const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
-		if (result.status !== 200) {
-			res.status(result.status).send({ error: result.statusText });
-			res.end();
-		}
-		else if (result.data.data && typeof (result.data.data) === "string" && result.data.data.startsWith("UPID:")) {
-			const upid = result.data.data;
-			let taskStatus = await this.requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: true });
-			while (taskStatus.data.data.status !== "stopped") {
-				await waitFor(100);
-				taskStatus = await this.requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: true });
-			}
-			if (taskStatus.data.data.exitstatus === "OK") {
-				const result = taskStatus.data.data;
-				const taskLog = await this.requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", { token: true });
-				result.log = taskLog.data.data;
-				res.status(200).send(result);
-				res.end();
-			}
-			else {
-				const result = taskStatus.data.data;
-				const taskLog = await this.requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", { token: true });
-				result.log = taskLog.data.data;
-				res.status(500).send(result);
-				res.end();
-			}
-		}
-		else {
-			res.status(result.status).send(result.data);
-			res.end();
+			console.log(`pve: error ocuured in pve.requestPVE: ${method} ${path} resulted in ${error}`);
+			const result = error.response;
+			result.ok = result.status === 200;
+			return result;
 		}
 	}
 
@@ -160,7 +126,50 @@ export default class PVE extends PVE_BACKEND {
 			return await axios.request(url, content);
 		}
 		catch (error) {
+			console.log(`pve: error ocuured in pve.requestFabric: ${method} ${path} resulted in ${error}`);
 			return error;
+		}
+	}
+
+	/**
+	 * Handle various proxmox API responses. Handles sync and async responses.
+	 * In sync responses, responses are completed when the response arrives. Method returns the response directly.
+	 * In async responses, proxmox sends responses with a UPID to track process completion. Method returns the status of the proxmox process once it completes.
+	 * @param {string} node response originates from.
+	 * @param {Object} result response from proxmox.
+	 * @param {Object} res response object of ProxmoxAAS API call.
+	 */
+	async handleResponse (node, result, res) {
+		const waitFor = delay => new Promise(resolve => setTimeout(resolve, delay));
+		if (result.status !== 200) {
+			res.status(result.status).send({ error: result.statusText });
+			res.end();
+		}
+		else if (result.data && typeof (result.data) === "string" && result.data.startsWith("UPID:")) {
+			const upid = result.data;
+			let taskStatus = await this.requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: true });
+			while (taskStatus.data.status !== "stopped") {
+				await waitFor(100);
+				taskStatus = await this.requestPVE(`/nodes/${node}/tasks/${upid}/status`, "GET", { token: true });
+			}
+			if (taskStatus.data.exitstatus === "OK") {
+				const result = taskStatus.data;
+				const taskLog = await this.requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", { token: true });
+				result.log = taskLog.data;
+				res.status(200).send(result);
+				res.end();
+			}
+			else {
+				const result = taskStatus.data;
+				const taskLog = await this.requestPVE(`/nodes/${node}/tasks/${upid}/log`, "GET", { token: true });
+				result.log = taskLog.data;
+				res.status(500).send(result);
+				res.end();
+			}
+		}
+		else {
+			res.status(result.status).send(result.data);
+			res.end();
 		}
 	}
 
@@ -194,7 +203,7 @@ export default class PVE extends PVE_BACKEND {
 
 	async getDisk (node, instance, disk) {
 		const config = await this.getInstance(node, instance);
-		if (config != null && config.volumes[disk] != null) {
+		if (config !== null && config.volumes[disk] !== null) {
 			return config.volumes[disk];
 		}
 		else {
@@ -204,7 +213,7 @@ export default class PVE extends PVE_BACKEND {
 
 	async getNet (node, instance, netid) {
 		const config = await this.getInstance(node, instance);
-		if (config != null && config.nets[netid] != null) {
+		if (config !== null && config.nets[netid] !== null) {
 			return config.nets[netid];
 		}
 		else {
@@ -214,7 +223,7 @@ export default class PVE extends PVE_BACKEND {
 
 	async getDevice (node, instance, deviceid) {
 		const config = await this.getInstance(node, instance);
-		if (config != null && config.devices[deviceid] != null) {
+		if (config !== null && config.devices[deviceid] !== null) {
 			return config.devices[deviceid];
 		}
 		else {
@@ -222,26 +231,39 @@ export default class PVE extends PVE_BACKEND {
 		}
 	}
 
-	async getUserResources (user, cookies) {
-		// get user resources with vm filter
-		const res = await this.requestPVE("/cluster/resources?type=vm", "GET", { cookies });
+	async getPoolResources (cookies, pool) {
+		// get pool resources
+		const res = await this.requestPVE(`/pools/?poolid=${pool}`, "GET", { cookies });
 		if (res.status !== 200) {
 			return null;
 		}
+		const data = res.data;
+		if (data.length !== 1) {
+			return null;
+		}
+		const poolPVE = data[0];
+		if (poolPVE.poolid !== pool) {
+			return null;
+		}
 
-		const userPVEResources = res.data.data;
-
+		const poolPVEResources = poolPVE.members;
 		const resources = {};
 
 		// for each resource, add to the object
-		for (const resource of userPVEResources) {
-			const instance = await this.getInstance(resource.node, resource.vmid);
-			if (instance) {
-				instance.node = resource.node;
-				resources[resource.vmid] = instance;
+		for (const resource of poolPVEResources) {
+			// only add type if it is vm or ct (ie has vmid)
+			if (resource.vmid) {
+				const instance = await this.getInstance(resource.node, resource.vmid);
+				if (instance === null) {
+					return null;
+				}
+				else {
+					instance.node = resource.node;
+					resources[resource.vmid] = instance;
+				}
 			}
 		}
-
+		
 		return resources;
 	}
 }

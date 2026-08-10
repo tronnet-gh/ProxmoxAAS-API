@@ -1,24 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
-const checkAuth = global.utils.checkAuth;
-
-/**
- * GET - get all users
- * responses:
- * - 200: {auth:true, users: Array}
- * - 401: {auth: false}
- */
-router.get("/", async (req, res) => {
-	// check auth
-	const auth = await checkAuth(req.cookies, res);
-	if (!auth) {
-		return;
-	}
-	const users = await global.userManager.getAllUsers(req.cookies);
-	res.status(200).send({ users });
-});
-
 /**
  * GET - get specific user
  * request:
@@ -32,11 +14,24 @@ router.get("/:username", async (req, res) => {
 		username: req.params.username
 	};
 	// check auth
-	const auth = await checkAuth(req.cookies, res);
+	const auth = await global.utils.checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
+
+	// attempt to parse user from username
 	const userObj = global.utils.getUserObjFromUsername(params.username);
-	const user = await global.userManager.getUser(userObj, req.cookies);
+	if (userObj === null) {
+		res.status(400).send({ auth:true, error:`username ${params.username} does not match format uid@realm.` });
+	}
+
+	// get user
+	const u = await global.access.getUser(userObj, req.cookies);
+	if (u.ok !== true) {
+		res.status(u.status).send({ auth: true, error: u });
+		return;
+	}
+	const user = u.user;
+
 	res.status(200).send({ user });
 });

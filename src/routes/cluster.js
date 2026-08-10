@@ -1,10 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
-const checkAuth = global.utils.checkAuth;
-const approveResources = global.utils.approveResources;
-const getUserResources = global.utils.getUserResources;
-
 const nodeRegexP = "[\\w-]+";
 const typeRegexP = "qemu|lxc";
 const vmidRegexP = "\\d+";
@@ -12,33 +8,6 @@ const vmidRegexP = "\\d+";
 const basePath = `/:node(${nodeRegexP})/:type(${typeRegexP})/:vmid(${vmidRegexP})`;
 
 global.utils.recursiveImportRoutes(router, basePath, "cluster", import.meta.url);
-
-/**
- * GET - get all available cluster pools
- * returns only pool IDs
- * responses:
- * - 200: List of pools
- * - PVE error
- */
-router.get("/pools", async (req, res) => {
-	// check auth
-	const auth = await checkAuth(req.cookies, res);
-	if (!auth) {
-		return;
-	}
-
-	const allPools = await global.pve.requestPVE("/pools", "GET", { token: true });
-
-	if (allPools.status === 200) {
-		const allPoolsIDs = Array.from(allPools.data.data, (x) => x.poolid);
-		res.status(allPools.status).send({ pools: allPoolsIDs });
-		res.end();
-	}
-	else {
-		res.status(allPools.status).send({ error: allPools.statusText });
-		res.end();
-	}
-});
 
 /**
  * GET - get all available cluster nodes
@@ -50,74 +19,20 @@ router.get("/pools", async (req, res) => {
  */
 router.get("/nodes", async (req, res) => {
 	// check auth
-	const auth = await checkAuth(req.cookies, res);
+	const auth = await global.utils.checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
 
+	// get all nodes
 	const allNodes = await global.pve.requestPVE("/nodes", "GET", { cookies: req.cookies });
-
 	if (allNodes.status === 200) {
-		const allNodesIDs = Array.from(allNodes.data.data, (x) => x.node);
+		const allNodesIDs = Array.from(allNodes.data, (x) => x.node);
 		res.status(allNodes.status).send({ nodes: allNodesIDs });
 		res.end();
 	}
 	else {
 		res.status(allNodes.status).send({ error: allNodes.statusText });
-		res.end();
-	}
-});
-
-/**
- * GET - get available pcie devices for the given node and user
- * request:
- * - node: string - vm host node id
- * responses:
- * - 200: PVE PCI Device Object
- * - 401: {auth: false}
- * - 401: {auth: false, path: string}
- * - 500: {error: string}
- */
-router.get(`/:node(${nodeRegexP})/pci`, async (req, res) => {
-	const params = {
-		node: req.params.node
-	};
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-
-	// check auth
-	const auth = await checkAuth(req.cookies, res);
-	if (!auth) {
-		return;
-	}
-	const userNodes = (await global.userManager.getUser(userObj, req.cookies)).cluster.nodes;
-	if (userNodes[params.node] !== true) { // user does not have access to the node
-		res.status(401).send({ auth: false, path: params.node });
-		res.end();
-		return;
-	}
-
-	// get remaining user resources
-	const userAvailPci = (await getUserResources(req, userObj)).pci.nodes[params.node]; // we assume that the node list is used. TODO support global lists
-	if (userAvailPci === undefined) { // user has no available devices on this node, so send an empty list
-		res.status(200).send([]);
-		res.end();
-	}
-	else {
-		// get node avail devices
-		const node = await global.pve.getNode(params.node);
-		let availableDevices = [];
-		// get each device and filter out only thise which are not reserved
-		for (const device of Object.values(node.devices)) {
-			if (device.reserved === false) {
-				availableDevices.push(device);
-			}
-		}
-		// further filter out only devices which the user has access to
-		availableDevices = availableDevices.filter(nodeAvail => userAvailPci.some((userAvail) => {
-			return nodeAvail.device_name && nodeAvail.device_name.includes(userAvail.match) && userAvail.avail > 0;
-		}));
-
-		res.status(200).send(availableDevices);
 		res.end();
 	}
 });
@@ -141,14 +56,13 @@ router.get(`${basePath}`, async (req, res) => {
 
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
 
 	// get current config
 	const instance = await global.pve.getInstance(params.node, params.vmid);
-
 	res.status(200).send(instance);
 });
 
@@ -180,11 +94,9 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		boot: req.body.boot
 	};
 
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
@@ -200,13 +112,16 @@ router.post(`${basePath}/resources`, async (req, res) => {
 	else if (params.type === "qemu") {
 		request.cpu = params.proctype;
 	}
+
 	// check resource approval
-	const { approved, reason } = await approveResources(req, userObj, request, params.node);
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	const { approved, reason } = await global.utils.approveResources(req, userObj, params.node, instance.pool, request);
 	if (!approved) {
 		res.status(400).send({ request, error: "Not enough resources to satisfy request.", reason });
 		res.end();
 		return;
 	}
+
 	// setup action
 	const action = { cores: params.cores, memory: params.memory };
 	if (params.type === "lxc") {
@@ -217,6 +132,7 @@ router.post(`${basePath}/resources`, async (req, res) => {
 		action.boot = `order=${params.boot.toString().replaceAll(",", ";")};`;
 	}
 	const method = params.type === "qemu" ? "POST" : "PUT";
+
 	// commit action
 	const result = await global.pve.requestPVE(`${vmpath}/config`, method, { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -262,36 +178,40 @@ router.post(`${basePath}/create`, async (req, res) => {
 		rootfssize: req.body.rootfssize
 	};
 
-	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
-
 	// check auth
-	const auth = await checkAuth(req.cookies, res);
+	const auth = await global.utils.checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
-	// get user db config
-	const user = await global.userManager.getUser(userObj, req.cookies);
+
+	// get pool config
+	const pool = (await global.access.getPool(params.pool, req.cookies)).pool;
 	const vmid = Number.parseInt(params.vmid);
-	const vmidMin = user.cluster.vmid.min;
-	const vmidMax = user.cluster.vmid.max;
+	const vmidMin = pool["vmid-allowed"].min;
+	const vmidMax = pool["vmid-allowed"].max;
+
 	// check vmid is within allowed range
 	if (vmid < vmidMin || vmid > vmidMax) {
 		res.status(500).send({ error: `Requested vmid ${vmid} is out of allowed range [${vmidMin},${vmidMax}].` });
 		res.end();
 		return;
 	}
+
 	// check node is within allowed list
-	if (user.cluster.nodes[params.node] !== true) {
-		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${user.cluster.nodes}].` });
+	if (pool["nodes-allowed"][params.node] !== true) {
+		res.status(500).send({ error: `Requested node ${params.node} is not in allowed nodes [${pool["nodes-allowed"]}].` });
 		res.end();
 		return;
 	}
-	// check if pool is in user allowed pools
-	if (user.cluster.pools[params.pool] !== true) {
-		res.status(500).send({ error: `Requested pool ${params.pool} not in allowed pools [${user.pools}]` });
+
+	// check if user is in pool
+	const userObj = global.utils.getUserObjFromUsername(req.cookies.username);
+	if(global.utils.checkUserInPool(pool, userObj) !== true) {
+		res.status(500).send({ error: `Requested pool ${params.pool} does not contain user ${req.cookies.username}]` });
 		res.end();
 		return;
 	}
+
 	// setup request
 	const request = {
 		cores: Number(params.cores),
@@ -301,9 +221,9 @@ router.post(`${basePath}/create`, async (req, res) => {
 		request.swap = Number(params.swap) * 1024 ** 2;
 		request[params.rootfslocation] = params.rootfssize * 1024 ** 3;
 	}
-	for (const key of Object.keys(user.templates.instances[params.type])) {
-		const item = user.templates.instances[params.type][key];
-		if (item.resource) {
+	for (const key of Object.keys(pool.templates.instances[params.type])) {
+		const item = pool.templates.instances[params.type][key];
+		if (item.resource.enabled) {
 			if (request[item.resource.name]) {
 				request[item.resource.name] += item.resource.amount;
 			}
@@ -312,13 +232,15 @@ router.post(`${basePath}/create`, async (req, res) => {
 			}
 		}
 	}
+
 	// check resource approval
-	const { approved, reason } = await approveResources(req, userObj, request, params.node);
+	const { approved, reason } = await await global.utils.approveResources(req, userObj, params.node, params.pool, request);
 	if (!approved) {
 		res.status(400).send({ request, error: "Not enough resources to satisfy request.", reason });
 		res.end();
 		return;
 	}
+
 	// setup action by adding non resource values
 	const action = {
 		vmid: params.vmid,
@@ -326,8 +248,8 @@ router.post(`${basePath}/create`, async (req, res) => {
 		memory: Number(params.memory),
 		pool: params.pool
 	};
-	for (const key of Object.keys(user.templates.instances[params.type])) {
-		action[key] = user.templates.instances[params.type][key].value;
+	for (const key of Object.keys(pool.templates.instances[params.type])) {
+		action[key] = pool.templates.instances[params.type][key].value;
 	}
 	if (params.type === "lxc") {
 		action.swap = params.swap;
@@ -341,6 +263,7 @@ router.post(`${basePath}/create`, async (req, res) => {
 	else {
 		action.name = params.name;
 	}
+
 	// commit action
 	const result = await global.pve.requestPVE(`/nodes/${params.node}/${params.type}`, "POST", { token: true }, action);
 	await global.pve.handleResponse(params.node, result, res);
@@ -364,12 +287,14 @@ router.delete(`${basePath}/delete`, async (req, res) => {
 		type: req.params.type,
 		vmid: req.params.vmid
 	};
+
 	// check auth for specific instance
 	const vmpath = `/nodes/${params.node}/${params.type}/${params.vmid}`;
-	const auth = await checkAuth(req.cookies, res, vmpath);
+	const auth = await global.utils.checkAuth(req.cookies, res, vmpath);
 	if (!auth) {
 		return;
 	}
+
 	// commit action
 	const result = await global.pve.requestPVE(vmpath, "DELETE", { token: true });
 	await global.pve.handleResponse(params.node, result, res);

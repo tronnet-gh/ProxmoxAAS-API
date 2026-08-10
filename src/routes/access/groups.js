@@ -1,24 +1,6 @@
 import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
-const checkAuth = global.utils.checkAuth;
-
-/**
- * GET - get all groups
- * responses:
- * - 200: {auth: true, groups: Array}
- * - 401: {auth: false}
- */
-router.get("/", async (req, res) => {
-	// check auth
-	const auth = await checkAuth(req.cookies, res);
-	if (!auth) {
-		return;
-	}
-	const groups = await global.userManager.getAllGroups(req.cookies);
-	res.status(200).send({ groups });
-});
-
 /**
  * GET - get specific group
  * request:
@@ -32,10 +14,24 @@ router.get("/:groupname", async (req, res) => {
 		groupname: req.params.groupname
 	};
 	// check auth
-	const auth = await checkAuth(req.cookies, res);
+	const auth = await global.utils.checkAuth(req.cookies, res);
 	if (!auth) {
 		return;
 	}
-	const group = await global.userManager.getGroup(params.groupname, req.cookies);
-	res.status(200).send({ group });
+
+	// attempt to parse group from groupname
+	const groupObj = global.utils.getGroupObjFromGroupname(params.groupname);
+	if (groupObj === null) {
+		res.status(400).send({ auth: true, error:`Groupname ${params.groupname} does not match format gid-realm or gid.` });
+	}
+	
+	// get group
+	const g = await global.access.getGroup(groupObj, req.cookies);
+	if (g.ok !== true) {
+		res.status(g.status).send({ auth:true, error:g });
+		return;
+	}
+	const group = g.group;
+
+	res.status(200).send({ auth:true, group });
 });

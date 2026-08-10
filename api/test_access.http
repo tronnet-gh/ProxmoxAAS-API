@@ -1,0 +1,18 @@
+### Get ticket
+POST {{baseUrl}}/access/ticket
+Content-Type: application/x-www-form-urlencoded
+
+username={{username}}
+&password={{password}}
+
+### Get user
+GET {{baseUrl}}/access/users/{{username}}
+
+### Get group
+GET {{baseUrl}}/access/groups/{{groupname}}
+
+### Get all pools
+GET {{baseUrl}}/access/pools/
+
+### Get pool
+GET {{baseUrl}}/access/pools/{{poolname}}

@@ -1,4 +1,9 @@
 {
+	"application": {
+		"hostname": "paas.mydomain.example",
+		"domain": "mydomain.example",
+		"listenPort": 8081
+	},
 	"backends": {
 		"pve": {
 			"import": "pve.js",
@@ -17,44 +22,16 @@
 				}
 			}
 		},
-		"localdb": {
-			"import": "localdb.js",
+		"access_manager": {
+			"import": "access_manager.js",
 			"config": {
-				"dbfile": "localdb.json"
-			}
-		},
-		"paasldap": {
-			"import": "paasldap.js",
-			"config": {
-				"url": "http://paasldap.mydomain.example",
-				"realm": "ldap"
+				"url": "http://localhost:8083"
 			}
 		}
 	},
 	"handlers": {
-		"instance": {
-			"pve": "pve"
-		},
-		"users": {
-			"realm": {
-				"pve": [
-					"localdb"
-				],
-				"ldap": [
-					"localdb",
-					"paasldap"
-				]
-			},
-			"any": [
-				"localdb",
-				"paasldap"
-			]
-		}
-	},
-	"application": {
-		"hostname": "paas.mydomain.example",
-		"domain": "mydomain.example",
-		"listenPort": 8081
+		"instance": "pve",
+		"users": "access_manager"
 	},
 	"useriso": {
 		"node": "examplenode1",
@@ -67,7 +44,8 @@
 		"cpu": {
 			"type": "list",
 			"whitelist": true,
-			"display": false
+			"display": false,
+			"category": ""
 		},
 		"cores": {
 			"name": "vCPU",
@@ -76,7 +54,8 @@
 			"base": 1024,
 			"compact": false,
 			"unit": "Cores",
-			"display": true
+			"display": true,
+			"category": ""
 		},
 		"memory": {
 			"name": "RAM",
@@ -85,7 +64,8 @@
 			"base": 1024,
 			"compact": true,
 			"unit": "B",
-			"display": true
+			"display": true,
+			"category": ""
 		},
 		"swap": {
 			"name": "SWAP",
@@ -94,7 +74,8 @@
 			"base": 1024,
 			"compact": true,
 			"unit": "B",
-			"display": true
+			"display": true,
+			"category": ""
 		},
 		"local": {
 			"name": "local",
@@ -107,9 +88,11 @@
 				"rootfs",
 				"mp",
 				"sata",
+				"scsi",
 				"unused"
 			],
-			"display": true
+			"display": true,
+			"category": "Storage"
 		},
 		"cephpl": {
 			"name": "cephpl",
@@ -122,9 +105,11 @@
 				"rootfs",
 				"mp",
 				"sata",
+				"scsi",
 				"unused"
 			],
-			"display": true
+			"display": true,
+			"category": "Storage"
 		},
 		"network": {
 			"name": "Network",
@@ -133,12 +118,14 @@
 			"base": 1000,
 			"compact": true,
 			"unit": "B/s",
-			"display": true
+			"display": true,
+			"category": ""
 		},
 		"pci": {
 			"type": "list",
 			"whitelist": true,
-			"display": true
+			"display": true,
+			"category": "Devices"
 		}
 	},
 	"clientsync": {
@@ -158,82 +145,6 @@
 				"min-rate": 1,
 				"max-rate": 60,
 				"enabled": true
-			}
-		}
-	},
-	"defaultuser": {
-		"resources": {
-			"cpu": {
-				"global": [],
-				"nodes": {}
-			},
-			"cores": {
-				"global": {
-					"max": 0
-				},
-				"nodes": {}
-			},
-			"memory": {
-				"global": {
-					"max": 0
-				},
-				"nodes": {}
-			},
-			"swap": {
-				"global": {
-					"max": 0
-				},
-				"nodes": {}
-			},
-			"local": {
-				"global": {
-					"max": 0
-				},
-				"nodes": {}
-			},
-			"cephpl": {
-				"global": {
-					"max": 0
-				},
-				"nodes": {}
-			},
-			"network": {
-				"global": {
-					"max": 0
-				},
-				"nodes": {}
-			},
-			"pci": {
-				"global": [],
-				"nodes": {}
-			}
-		},
-		"nodes": [],
-		"cluster": {
-			"vmid": {
-				"min": -1,
-				"max": -1
-			},
-			"pool": ""
-		},
-		"templates": {
-			"instances": {
-				"lxc": {},
-				"qemu": {}
-			}
-		},
-		"network": {
-			"lxc": {
-				"type": "veth",
-				"bridge": "vmbr0",
-				"vlan": 10,
-				"ip": "dhcp",
-				"ip6": "dhcp"
-			},
-			"qemu": {
-				"type": "virtio",
-				"bridge": "vmbr0",
-				"vlan": 10
 			}
 		}
 	}

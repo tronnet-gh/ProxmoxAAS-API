@@ -36,7 +36,7 @@ export async function checkAuth (cookies, res, vmpath = null) {
 		return false;
 	}
 
-	if ((await global.userManager.getUser(userObj, cookies)) === null) { // check if user exists in database
+	if ((await global.access.getUser(userObj, cookies)) === null) { // check if user exists in database
 		res.status(401).send({ auth, path: vmpath ? `${vmpath}/config` : "/version", error: `User ${cookies.username} not found in database.` });
 		res.end();
 		return false;
@@ -60,43 +60,47 @@ export async function checkAuth (cookies, res, vmpath = null) {
 }
 
 /**
- * Get user resource data including used, available, and maximum resources.
+ * Get pool resource data including used, available, and maximum resources.
  * @param {Object} req ProxmoxAAS API request object.
  * @param {{id: string, realm: string}} user object of user to get resource data.
- * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
+ * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified pool or null if an error occured
  */
-export async function getUserResources (req, user) {
-	const dbResources = global.config.resources;
-	const userResources = (await global.userManager.getUser(user, req.cookies)).resources;
+export async function getPoolResources (req, pool) {
+	const configResources = global.config.resources;
+	const poolConfig = await global.access.getPool(pool, req.cookies);
+	if (poolConfig.ok !== true) {
+		return null;
+	}
+	const poolConfigResources = poolConfig.pool.resources;
 
-	// setup the user resource object with used and avail for each resource and each resource pool
+	// setup the pool resource object with used and avail for each resource and each resource pool
 	// also add a total counter for each resource (only used for display, not used to check requests)
-	for (const resourceName of Object.keys(userResources)) {
-		if (dbResources[resourceName].type === "list") {
-			userResources[resourceName].total = [];
-			userResources[resourceName].global.forEach((e) => {
+	for (const resourceName of Object.keys(poolConfigResources)) {
+		if (configResources[resourceName].type === "list") {
+			poolConfigResources[resourceName].total = [];
+			poolConfigResources[resourceName].global.forEach((e) => {
 				e.used = 0;
 				e.avail = e.max;
-				const index = userResources[resourceName].total.findIndex((availEelement) => e.match === availEelement.match);
+				const index = poolConfigResources[resourceName].total.findIndex((availEelement) => e.match === availEelement.match);
 				if (index === -1) {
-					userResources[resourceName].total.push(structuredClone(e));
+					poolConfigResources[resourceName].total.push(structuredClone(e));
 				}
 				else {
-					userResources[resourceName].total[index].max += e.max;
-					userResources[resourceName].total[index].avail += e.avail;
+					poolConfigResources[resourceName].total[index].max += e.max;
+					poolConfigResources[resourceName].total[index].avail += e.avail;
 				}
 			});
-			for (const nodeName of Object.keys(userResources[resourceName].nodes)) {
-				userResources[resourceName].nodes[nodeName].forEach((e) => {
+			for (const nodeName of Object.keys(poolConfigResources[resourceName].nodes)) {
+				poolConfigResources[resourceName].nodes[nodeName].forEach((e) => {
 					e.used = 0;
 					e.avail = e.max;
-					const index = userResources[resourceName].total.findIndex((availEelement) => e.match === availEelement.match);
+					const index = poolConfigResources[resourceName].total.findIndex((availEelement) => e.match === availEelement.match);
 					if (index === -1) {
-						userResources[resourceName].total.push(structuredClone(e));
+						poolConfigResources[resourceName].total.push(structuredClone(e));
 					}
 					else {
-						userResources[resourceName].total[index].max += e.max;
-						userResources[resourceName].total[index].avail += e.avail;
+						poolConfigResources[resourceName].total[index].max += e.max;
+						poolConfigResources[resourceName].total[index].avail += e.avail;
 					}
 				});
 			}
@@ -107,42 +111,45 @@ export async function getUserResources (req, user) {
 				used: 0,
 				avail: 0
 			};
-			userResources[resourceName].global.used = 0;
-			userResources[resourceName].global.avail = userResources[resourceName].global.max;
-			total.max += userResources[resourceName].global.max;
-			total.avail += userResources[resourceName].global.avail;
-			for (const nodeName of Object.keys(userResources[resourceName].nodes)) {
-				userResources[resourceName].nodes[nodeName].used = 0;
-				userResources[resourceName].nodes[nodeName].avail = userResources[resourceName].nodes[nodeName].max;
-				total.max += userResources[resourceName].nodes[nodeName].max;
-				total.avail += userResources[resourceName].nodes[nodeName].avail;
+			poolConfigResources[resourceName].global.used = 0;
+			poolConfigResources[resourceName].global.avail = poolConfigResources[resourceName].global.max;
+			total.max += poolConfigResources[resourceName].global.max;
+			total.avail += poolConfigResources[resourceName].global.avail;
+			for (const nodeName of Object.keys(poolConfigResources[resourceName].nodes)) {
+				poolConfigResources[resourceName].nodes[nodeName].used = 0;
+				poolConfigResources[resourceName].nodes[nodeName].avail = poolConfigResources[resourceName].nodes[nodeName].max;
+				total.max += poolConfigResources[resourceName].nodes[nodeName].max;
+				total.avail += poolConfigResources[resourceName].nodes[nodeName].avail;
 			}
-			userResources[resourceName].total = total;
+			poolConfigResources[resourceName].total = total;
 		}
 	}
 
-	const configs = await global.pve.getUserResources(user, req.cookies);
+	const resources = await global.pve.getPoolResources(req.cookies, pool);
+	if (resources === null) {
+		return null;
+	}
 
-	for (const vmid in configs) {
-		const config = configs[vmid];
+	for (const vmid in resources) {
+		const config = resources[vmid];
 		const nodeName = config.node;
 		// count basic numeric resources
 		for (const resourceName of Object.keys(config)) {
 			// numeric resource type
-			if (resourceName in dbResources && dbResources[resourceName].type === "numeric") {
+			if (resourceName in configResources && configResources[resourceName].type === "numeric") {
 				const val = Number(config[resourceName]);
 				// if the instance's node is restricted by this resource, add it to the instance's used value
-				if (nodeName in userResources[resourceName].nodes) {
-					userResources[resourceName].nodes[nodeName].used += val;
-					userResources[resourceName].nodes[nodeName].avail -= val;
+				if (nodeName in poolConfigResources[resourceName].nodes) {
+					poolConfigResources[resourceName].nodes[nodeName].used += val;
+					poolConfigResources[resourceName].nodes[nodeName].avail -= val;
 				}
 				// otherwise add the resource to the global pool
 				else {
-					userResources[resourceName].global.used += val;
-					userResources[resourceName].global.avail -= val;
+					poolConfigResources[resourceName].global.used += val;
+					poolConfigResources[resourceName].global.avail -= val;
 				}
-				userResources[resourceName].total.used += val;
-				userResources[resourceName].total.avail -= val;
+				poolConfigResources[resourceName].total.used += val;
+				poolConfigResources[resourceName].total.avail -= val;
 			}
 		}
 		// count disk resources in volumes
@@ -151,38 +158,38 @@ export async function getUserResources (req, user) {
 			const storage = disk.storage;
 			const size = disk.size;
 			// only process disk if its storage is in the user resources to be counted
-			if (storage in userResources) {
+			if (storage in poolConfigResources) {
 				// if the instance's node is restricted by this resource, add it to the instance's used value
-				if (nodeName in userResources[storage].nodes) {
-					userResources[storage].nodes[nodeName].used += size;
-					userResources[storage].nodes[nodeName].avail -= size;
+				if (nodeName in poolConfigResources[storage].nodes) {
+					poolConfigResources[storage].nodes[nodeName].used += size;
+					poolConfigResources[storage].nodes[nodeName].avail -= size;
 				}
 				// otherwise add the resource to the global pool
 				else {
-					userResources[storage].global.used += size;
-					userResources[storage].global.avail -= size;
+					poolConfigResources[storage].global.used += size;
+					poolConfigResources[storage].global.avail -= size;
 				}
-				userResources[storage].total.used += size;
-				userResources[storage].total.avail -= size;
+				poolConfigResources[storage].total.used += size;
+				poolConfigResources[storage].total.avail -= size;
 			}
 		}
 		// count net resources in nets
 		for (const netid in config.nets) {
 			const net = config.nets[netid];
 			const rate = net.rate;
-			if (userResources.network) {
+			if (poolConfigResources.network) {
 				// if the instance's node is restricted by this resource, add it to the instance's used value
-				if (nodeName in userResources.network.nodes) {
-					userResources.network.nodes[nodeName].used += rate;
-					userResources.network.nodes[nodeName].avail -= rate;
+				if (nodeName in poolConfigResources.network.nodes) {
+					poolConfigResources.network.nodes[nodeName].used += rate;
+					poolConfigResources.network.nodes[nodeName].avail -= rate;
 				}
 				// otherwise add the resource to the global pool
 				else {
-					userResources.network.global.used += rate;
-					userResources.network.global.avail -= rate;
+					poolConfigResources.network.global.used += rate;
+					poolConfigResources.network.global.avail -= rate;
 				}
-				userResources.network.total.used += rate;
-				userResources.network.total.avail -= rate;
+				poolConfigResources.network.total.used += rate;
+				poolConfigResources.network.total.avail -= rate;
 			}
 		}
 		// count pci device resources in devices
@@ -190,84 +197,85 @@ export async function getUserResources (req, user) {
 			const device = config.devices[deviceid];
 			const name = device.device_name;
 			// if the node has a node specific rule, add it there
-			if (nodeName in userResources.pci.nodes) {
-				const index = userResources.pci.nodes[nodeName].findIndex((availEelement) => name.includes(availEelement.match));
+			if (nodeName in poolConfigResources.pci.nodes) {
+				const index = poolConfigResources.pci.nodes[nodeName].findIndex((availEelement) => name.includes(availEelement.match));
 				if (index >= 0) {
-					userResources.pci.nodes[nodeName][index].used++;
-					userResources.pci.nodes[nodeName][index].avail--;
+					poolConfigResources.pci.nodes[nodeName][index].used++;
+					poolConfigResources.pci.nodes[nodeName][index].avail--;
 				}
 			}
 			// otherwise try to add the resource to the global pool
 			else {
-				const index = userResources.pci.global.findIndex((availEelement) => name.includes(availEelement.match));
+				const index = poolConfigResources.pci.global.findIndex((availEelement) => name.includes(availEelement.match));
 				if (index >= 0) { // device resource is in the user's global list then increment it by 1
-					userResources.pci.global[index].used++;
-					userResources.pci.global[index].avail--;
+					poolConfigResources.pci.global[index].used++;
+					poolConfigResources.pci.global[index].avail--;
 				}
 			}
 			// finally, add the device to the total map
-			const index = userResources.pci.total.findIndex((availEelement) => name.includes(availEelement.match));
+			const index = poolConfigResources.pci.total.findIndex((availEelement) => name.includes(availEelement.match));
 			if (index >= 0) {
-				userResources.pci.total[index].used++;
-				userResources.pci.total[index].avail--;
+				poolConfigResources.pci.total[index].used++;
+				poolConfigResources.pci.total[index].avail--;
 			}
 		}
 	}
 
-	return userResources;
+	return poolConfigResources;
 }
 
 /**
  * Check approval for user requesting additional resources. Generally, subtracts the request from available resources and ensures request can be fulfilled by the available resources.
  * @param {Object} req ProxmoxAAS API request object.
  * @param {{id: string, realm: string}} user object of user requesting additional resources.
+ * @param {string} node name of node hosting requested resource(s)
+ * @param {string} pool name of pool hosting requested resource(s)
  * @param {Object} request k-v pairs of resources and requested amounts
- * @returns {boolean, Object} true if the available resources can fullfill the requested resources, false otherwise.
+ * @returns {boolean} true if the available resources can fullfill the requested resources, false otherwise.
+ * @returns {Object} map of key values and reason for success or failure
  */
-export async function approveResources (req, user, request, node) {
-	const dbResources = global.config.resources;
-	const userResources = await getUserResources(req, user);
-	// let approved = true;
+export async function approveResources (req, user, node, pool, request) {
+	const configResources = global.config.resources;
+	const poolResources = await getPoolResources(req, pool);
 	const reason = {};
+
+	if (poolResources === null) {
+		reason["server"] = "error in retrieving pool resource state";
+		return {approved: false, reason};
+	}
 
 	for (const key in request) {
 		// if requested resource is not specified in user resources, assume it's not allowed
-		if (!(key in userResources)) {
-			// approved = false;
+		if (!(key in poolResources)) {
 			reason[key] = { approved: false, reason: `${key} not allowed` };
 			continue;
-			// return;
 		}
 
 		// use node specific quota if there is one available, otherwise use the global resource quota
-		const inNode = node in userResources[key].nodes;
-		const resourceData = inNode ? userResources[key].nodes[node] : userResources[key].global;
+		const inNode = node in poolResources[key].nodes;
+		const resourceData = inNode ? poolResources[key].nodes[node] : poolResources[key].global;
 
 		// if the resource type is list, check if the requested resource exists in the list
-		if (dbResources[key].type === "list") {
+		if (configResources[key].type === "list") {
 			const index = resourceData.findIndex((availElement) => request[key].includes(availElement.match));
-			// if no matching resource when index == -1, then remaining is -1 otherwise use the remaining value
+			// if no matching resource when index === -1, then remaining is -1 otherwise use the remaining value
 			const avail = index === -1 ? false : resourceData[index].avail > 0;
-			if (avail !== dbResources[key].whitelist) {
-				// approved = false;
-				reason[key] = { approved: false, reason: `${key} ${dbResources[key].whitelist ? "not in whitelist" : "in blacklist"}` };
-				// return;
+			if (avail !== configResources[key].whitelist) {
+				reason[key] = { approved: false, reason: `${key} ${configResources[key].whitelist ? "not in whitelist" : "in blacklist"}` };
 				continue;
 			}
 		}
+
 		// if either the requested or avail resource is not strictly a number, block
 		else if (typeof (resourceData.avail) !== "number" || typeof (request[key]) !== "number") {
-			// approved = false;
 			reason[key] = { approved: false, reason: `expected ${key} to be a number but got ${request[key]}` };
 			continue;
-			// return;
 		}
+
 		// if the avail resources is less than the requested resources, block
 		else if (resourceData.avail - request[key] < 0) {
-			// approved = false;
 			reason[key] = { approved: false, reason: `${key} requested ${request[key]} which is more than ${resourceData.avail} available` };
 			continue;
-			// return;
 		}
 
 		reason[key] = { approved: true, reason: "ok" };
@@ -331,15 +339,15 @@ export function readJSONFile (path) {
 		return JSON.parse(readFileSync(path));
 	}
 	catch (e) {
-		console.log(`error opening ${path}: ${e}`);
+		console.log(`json: error opening ${path}: ${e}`);
 		exit(1);
 	}
 };
 
 /**
- *
+ * Parse username into user object using the uid@realm format.
  * @param {*} username
- * @returns {Object | null} user object containing username and realm or null if user does not exist
+ * @returns {Object | null} user object containing userid and realm or null if username format was invalid
  */
 export function getUserObjFromUsername (username) {
 	if (username) {
@@ -351,4 +359,47 @@ export function getUserObjFromUsername (username) {
 	else {
 		return null;
 	}
+}
+
+/**
+ * Parse groupname into group object using the gid-realm format.
+ * @param {*} groupname
+ * @returns {Object | null} user object containing groupid and realm or null if groupname format was invalid
+ */
+export function getGroupObjFromGroupname (groupname) {
+	if (groupname) {
+		if (groupname.includes("-")) {
+			const groupRealm = groupname.split("-").at(-1);
+			const groupID = groupname.replace(`-${groupRealm}`, "");
+			const groupObj = { id: groupID, realm: groupRealm };
+			return groupObj;
+		}
+		else {
+			const groupRealm = "pve";
+			const groupID = groupname;
+			const groupObj = { id: groupID, realm: groupRealm };
+			return groupObj;
+		}
+	}
+	else {
+		return null;
+	}
+}
+
+/**
+ * Inspect pool object and return true if pool contains any groups which contain the user object.
+ * @param {Object} poolObj pool data object
+ * @param {Object} userObj user object containing id and realm
+ * @returns {boolean} true if userObj in poolObj
+ */
+export function checkUserInPool(poolObj, userObj) {
+	for (const group of poolObj.groups) {
+		// assumption: pool listed groups are all relevant memberships (ie are paas client role)
+		for (const user of group.users) {
+			if (user.username.uid === userObj.id && user.username.realm === userObj.realm) {
+				return true;
+			}
+		}
+	}
+	return false;
 }

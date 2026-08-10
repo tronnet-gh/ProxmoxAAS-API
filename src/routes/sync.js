@@ -2,11 +2,7 @@ import { WebSocketServer } from "ws";
 import * as cookie from "cookie";
 
 import { Router } from "express";
-export const router = Router({ mergeParams: true }); ;
-
-const checkAuth = global.utils.checkAuth;
-const getObjectHash = global.utils.getObjectHash;
-const getTimeLeft = global.utils.getTimeLeft;
+export const router = Router({ mergeParams: true });
 
 // maps usernames to socket object(s)
 const userSocketMap = {};
@@ -47,15 +43,15 @@ if (schemes.hash.enabled) {
 	 */
 	router.get("/hash", async (req, res) => {
 		// check auth
-		const auth = await checkAuth(req.cookies, res);
+		const auth = await global.utils.checkAuth(req.cookies, res);
 		if (!auth) {
 			return;
 		}
 		// get current cluster resources - do not use fabric here because fabric is not always updated to changes like up/down state changes
-		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data.data;
+		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { cookies: req.cookies })).data;
 		// filter out just state information of resources that are needed
 		const state = extractClusterState(status, resourceTypes);
-		res.status(200).send(getObjectHash(state));
+		res.status(200).send(global.utils.getObjectHash(state));
 	});
 	console.log("clientsync: enabled hash sync");
 }
@@ -122,9 +118,14 @@ if (schemes.interrupt.enabled) {
 			const parsed = message.toString().split(" ");
 			const cmd = parsed[0];
 			// command is rate and the value is valid
-			if (cmd === "rate" && parsed[1] >= schemes.interrupt["min-rate"] && parsed[1] <= schemes.interrupt["max-rate"]) {
+			if (cmd === "rate" && parsed.length === 2 && parsed[1] >= schemes.interrupt["min-rate"] && parsed[1] <= schemes.interrupt["max-rate"]) {
 				// get requested rate in ms
 				const rate = Number(parsed[1]) * 1000;
+				if (isNaN(rate)) {
+					socket.send("error: rate <rate> must be a number");
+					socket.terminate();
+					return;
+				}
 				// if timer has not started, start it with requested rate
 				if (!timer) {
 					timer = setTimeout(handleInterruptSync, rate);
@@ -135,7 +136,7 @@ if (schemes.interrupt.enabled) {
 				// AND if the next event trigger is more than the new rate in the future,
 				// restart the timer with the new rate
 				// avoids a large requested rate preventing a faster rate from being fulfilled
-				else if (rate < Math.min.apply(null, Object.values(requestedRates)) && getTimeLeft(timer) > rate) {
+				else if (rate < Math.min.apply(null, Object.values(requestedRates)) && global.utils.getTimeLeft(timer) > rate) {
 					clearTimeout(timer);
 					timer = setTimeout(handleInterruptSync, rate);
 					const time = global.process.uptime();
@@ -146,12 +147,12 @@ if (schemes.interrupt.enabled) {
 			}
 			// command is rate but the requested value is out of bounds, terminate socket
 			else if (cmd === "rate") {
-				socket.send(`error: rate must be in range [${schemes.interrupt["min-rate"]}, ${schemes.interrupt["max-rate"]}].`);
+				socket.send(`error: rate <rate> must be in range [${schemes.interrupt["min-rate"]}, ${schemes.interrupt["max-rate"]}].`);
 				socket.terminate();
 			}
 			// otherwise, command is invalid, terminate socket
 			else {
-				socket.send(`error: ${cmd} command not found.`);
+				socket.send(`error: ${cmd} command not supported.`);
 				socket.terminate();
 			}
 		});
@@ -166,11 +167,10 @@ if (schemes.interrupt.enabled) {
 		}
 		else {
 			wsServer.handleUpgrade(req, socket, head, async (socket) => {
-				// get the user pools
-				const userObj = global.utils.getUserObjFromUsername(cookies.username);
-				const pools = Object.keys((await global.userManager.getUser(userObj, cookies)).cluster.pools);
+				// use user cookies to determine which pools they can see, lazily assume that if a user can audit a pool they are also can audit pool member state
+				const pools = await global.pve.requestPVE("/pools", "GET", { cookies });
 				// emit the connection to initialize socket
-				wsServer.emit("connection", socket, cookies.username, pools);
+				wsServer.emit("connection", socket, cookies.username, Object.keys(pools.data));
 			});
 		}
 	});
@@ -190,7 +190,7 @@ if (schemes.interrupt.enabled) {
 			return;
 		}
 		// get current cluster resources
-		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { token: true })).data.data;
+		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { token: true })).data;
 		// filter out just state information of resources that are needed, and hash each one
 		const currState = extractClusterState(status, resourceTypes, true);
 		// get a map of users to send sync notifications
@@ -260,7 +260,7 @@ function extractClusterState (status, resourceTypes, hashIndividual = false) {
 				pool: resource.pool || null
 			};
 			if (hashIndividual) {
-				const hash = getObjectHash(state[resource.id]);
+				const hash = global.utils.getObjectHash(state[resource.id]);
 				state[resource.id].hash = hash;
 			}
 		}

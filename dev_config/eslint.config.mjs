@@ -16,15 +16,17 @@ export default defineConfig([{
 	},
 	rules: {
 		"no-tabs": ["error", { allowIndentationTabs: true }],
-		indent: ["error", "tab"],
+		"indent": ["error", "tab"],
 		"linebreak-style": ["error", "unix"],
-		quotes: ["error", "double"],
-		semi: ["error", "always"],
+		"quotes": ["error", "double"],
+		"semi": ["error", "always"],
 		"brace-style": ["error", "stroustrup", { allowSingleLine: false }],
 		"no-unused-vars": ["warn", { 
 			"argsIgnorePattern": "^_",
 			"varsIgnorePattern": "^_",
 			"caughtErrorsIgnorePattern": "^_"
-		}]
+		}],
+		"prefer-const": ["error"],
+		"eqeqeq": ["error"]
 	}
 }]);
