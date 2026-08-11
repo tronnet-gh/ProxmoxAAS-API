@@ -4,6 +4,7 @@ import url from "url";
 import * as fs from "fs";
 import { readFileSync } from "fs";
 import { exit } from "process";
+import { log } from "console";
 
 /**
  * Check if a user is authorized to access a specified vm, or the cluster in general.
@@ -76,7 +77,7 @@ export async function getPoolResources (req, pool) {
 	// setup the pool resource object with used and avail for each resource and each resource pool
 	// also add a total counter for each resource (only used for display, not used to check requests)
 	for (const resourceName of Object.keys(poolConfigResources)) {
-		if (configResources[resourceName].type === "list") {
+		if (resourceName in configResources && configResources[resourceName].type === "list") {
 			poolConfigResources[resourceName].total = [];
 			poolConfigResources[resourceName].global.forEach((e) => {
 				e.used = 0;
@@ -105,7 +106,7 @@ export async function getPoolResources (req, pool) {
 				});
 			}
 		}
-		else {
+		else if (resourceName in configResources){ // numeric or storage
 			const total = {
 				max: 0,
 				used: 0,
@@ -122,6 +123,13 @@ export async function getPoolResources (req, pool) {
 				total.avail += poolConfigResources[resourceName].nodes[nodeName].avail;
 			}
 			poolConfigResources[resourceName].total = total;
+		}
+		else {
+			// pool's resource config included a resource which was not in the metadata config
+			// delete it from the config
+			// remeber that a resource requested with no config limit is default deny
+			delete poolConfigResources[resourceName]
+			console.log(`utils: pool had resource key ${resourceName} which is not in the config.json`)
 		}
 	}
 
