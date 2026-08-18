@@ -3,4 +3,4 @@
 **/localdb.json
 **/docs
 **/config.json
-.vscode/settings.json
+.vscode/*
