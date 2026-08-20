@@ -25,7 +25,7 @@ export default class ACCESS_MANAGER_API extends ACCESS_BACKEND {
 			mode: "cors",
 			credentials: "include",
 			headers: {
-				"Content-Type": "application/x-www-form-urlencoded"
+				"Content-Type": "application/json"
 			},
 			data: body
 		};
