@@ -128,8 +128,8 @@ export async function getPoolResources (req, pool) {
 			// pool's resource config included a resource which was not in the metadata config
 			// delete it from the config
 			// remeber that a resource requested with no config limit is default deny
-			delete poolConfigResources[resourceName]
-			console.log(`utils: pool had resource key ${resourceName} which is not in the config.json`)
+			delete poolConfigResources[resourceName];
+			console.log(`utils: pool had resource key ${resourceName} which is not in the config.json`);
 		}
 	}
 
