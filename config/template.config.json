@@ -117,7 +117,7 @@
 			"multiplier": 1000000,
 			"base": 1000,
 			"compact": true,
-			"unit": "B/s",
+			"unit": "b/s",
 			"display": true,
 			"category": ""
 		},
