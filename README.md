@@ -39,12 +39,12 @@ In the Proxmox web GUI, perform the following steps:
 		- domain - the base domain for the dashboard and proxmox, ie `domain.net`
     	- listenPort - the port you want the API to listen on, ie `8081`
 	1. In `backends/pve/config`:
-		- url: the URI to the Proxmox API, ie `https://pve.domain.net/api2/json`
-		- fabric: the URL to the ProxmoxAAS-Fabric, ie `https://fabric.local`
+		- url: the URI to the **Proxmox API**, ie `https://pve.domain.net/api2/json`
+		- fabric: the URL to **ProxmoxAAS-Fabric**, ie `http://fabric.local:8082`
 		- token: the `proxmoxaas-api` user(name), authentication realm (pam), token id, and token secrey key (uuid)
 		- root (**Optional**): In order to allow users to customize instance pcie devices, the API must use the root credentials for privilege elevation. Provide the root username, ie. `root@pam`, and root user password
 	2. In `backends/access_manager/config`:
-		- url: url to a access-mamanger-api server API ie. `http://access.local`
+		- url: url to a access-mamanger-api server API ie. `http://access.local:8083`
 	4. In `useriso`:
 		- node: host of storage with user accessible iso files
 		- storage: name of storage with user accessible iso files
