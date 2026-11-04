@@ -9,6 +9,12 @@ export const router = Router({ mergeParams: true });
  * - PVE error
  */
 router.get("/", async (req, res) => {
+	const params = {
+		role: req.query.role
+	};
+	if (params.role === undefined) {
+		params.role = "client";
+	}
 	// check auth
 	const auth = await global.utils.checkAuth(req.cookies, res);
 	if (!auth) {
@@ -33,7 +39,12 @@ router.get("/", async (req, res) => {
 		}
 		const pool = p.pool;
 		// if user is in the pool, add it to pools (return value)
-		if (global.utils.checkUserInPool(pool, userObj)) {
+		if (params.role === "client" && global.utils.checkUserInPool(pool, userObj)) {
+			const resources = await global.utils.getPoolResources(req, poolname);
+			pool.resources = resources;
+			pools[poolname] = pool;
+		}
+		else if (params.role === "admin" && global.utils.checkAdminInPool(pool, userObj)) {
 			const resources = await global.utils.getPoolResources(req, poolname);
 			pool.resources = resources;
 			pools[poolname] = pool;

@@ -395,19 +395,42 @@ export function getGroupObjFromGroupname (groupname) {
 }
 
 /**
- * Inspect pool object and return true if pool contains any groups which contain the user object.
+ * Inspect pool object and return true if pool contains any groups without is-admin flag which contain the user object.
  * @param {Object} poolObj pool data object
  * @param {Object} userObj user object containing id and realm
- * @returns {boolean} true if userObj in poolObj
+ * @returns {boolean} true if userObj member of !is-admin group in poolObj
  */
 export function checkUserInPool(poolObj, userObj) {
+	if (poolObj.groups === null) {
+		return false;
+	}
 	for (const group of poolObj.groups) {
-		// assumption: pool listed groups are all relevant memberships (ie are paas client role)
 		for (const user of group.users) {
-			if (user.username.uid === userObj.id && user.username.realm === userObj.realm) {
+			if (group["is-admin"] === false && user.username.uid === userObj.id && user.username.realm === userObj.realm) {
 				return true;
 			}
 		}
 	}
 	return false;
 }
+
+/**
+ * Inspect pool object and return true if pool contains any groups with is-admin flag which contain the user object.
+ * @param {Object} poolObj pool data object
+ * @param {Object} userObj user object containing id and realm
+ * @returns {boolean} true if userObj member of is-admin group in poolObj
+ */
+export function checkAdminInPool(poolObj, userObj) {
+	if (poolObj.groups === null) {
+		return false;
+	}
+	for (const group of poolObj.groups) {
+		for (const user of group.users) {
+			if (group["is-admin"] === true && user.username.uid === userObj.id && user.username.realm === userObj.realm) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+

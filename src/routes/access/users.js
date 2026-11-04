@@ -5,6 +5,42 @@ const config = global.config;
 const checkAuth = global.utils.checkAuth;
 
 /**
+ * GET - get all groups
+ * responses:
+ * - 200: {auth: true, groups: {[groupname]: Object}}
+ * - 401: {auth: false}
+ * - PVE error: {auth: true, error: string}
+ */
+router.get("/", async (req, res) => {
+	// check auth
+	const auth = await global.utils.checkAuth(req.cookies, res);
+	if (!auth) {
+		return;
+	}
+
+	const pveusers= await global.pve.requestPVE("/access/users?full=1", "GET", { cookies: req.cookies });
+	if (pveusers.status !== 200) {
+		res.status(pveusers.status).send({ auth: true, error: pveusers.statusText });
+		return;
+	}
+
+	const users = {};
+	for (const user of pveusers.data) {
+		const userObj = global.utils.getUserObjFromUsername(user.userid);
+		users[user.userid] = {
+			username: {uid: userObj.id, realm: userObj.realm},
+			cn: user.firstname,
+			sn: user.lastname,
+			mail: user.email,
+			password: ""
+		}
+	}
+
+	res.status(200).send({ auth: true, users });
+});
+
+
+/**
  * GET - get specific user
  * request:
  * - username: username (id@realm) of user to get
