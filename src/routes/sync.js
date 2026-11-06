@@ -4,12 +4,8 @@ import * as cookie from "cookie";
 import { Router } from "express";
 export const router = Router({ mergeParams: true });
 
-// maps usernames to socket object(s)
-const userSocketMap = {};
-// maps pool ids to users
-const poolUserMap = {};
-// maps sockets to their requested rates
-const requestedRates = {};
+// open interrupt sockets, each socket stores the pools its user can see (socket.pools) and its requested rate in ms (socket.rate)
+const sockets = new Set();
 // stores the next queued interrupt handler
 let timer = null;
 // previous cluster state for interrupt handler
@@ -59,53 +55,20 @@ if (schemes.hash.enabled) {
 // setup interupt scheme
 if (schemes.interrupt.enabled) {
 	const wsServer = new WebSocketServer({ noServer: true, path: "/api/sync/interrupt" });
-	wsServer.on("connection", (socket, username, pools) => {
-		// add new socket to userSocketmap
-		if (userSocketMap[username]) {
-			const index = Object.keys(userSocketMap[username]).length;
-			userSocketMap[username][index] = socket;
-			socket.userIndex = index;
-		}
-		else {
-			userSocketMap[username] = { 0: socket };
-			socket.userIndex = 0;
-		}
-		// for each pool, add user to associated pool in poolUserMap
-		for (const pool of pools) {
-			if (poolUserMap[pool]) {
-				poolUserMap[pool][username] = true;
-			}
-			else {
-				poolUserMap[pool] = {};
-				poolUserMap[pool][username] = true;
-			}
-		}
-		// add socket entry into requestedRates
-		const index = Object.keys(requestedRates).length;
-		requestedRates[index] = Infinity;
-		socket.rateIndex = index;
+	// get the minimum rate requested by any open socket, Infinity if no socket has requested a rate
+	const getMinRequestedRate = () => Math.min(Infinity, ...Array.from(sockets, (s) => s.rate));
+	wsServer.on("connection", (socket, pools) => {
+		// register the socket with the pools its user can see, it has no requested rate until it sends one
+		socket.pools = pools;
+		socket.rate = Infinity;
+		sockets.add(socket);
 		// handle socket error
 		socket.on("error", console.error);
 		// handle socket close
 		socket.on("close", () => {
-			// remove closed socket from userSocketMap user entry
-			delete userSocketMap[username][socket.userIndex];
-			// if there are no more sockets for this user, delete the userSocketMap user entry and the poolUserMap user entry
-			if (Object.keys(userSocketMap[username]).length === 0) {
-				// delete the user entry
-				delete userSocketMap[username];
-				// remove user from poolUserMap entry for each pool
-				for (const pool of pools) {
-					delete poolUserMap[pool][username];
-					// if the poolUserMap pool entry is empty, delete the entry
-					if (Object.keys(poolUserMap[pool]).length === 0) {
-						delete poolUserMap[pool];
-					}
-				}
-			}
-			// remove socket entry from requestedRates
-			delete requestedRates[socket.rateIndex];
-			if (Object.keys(requestedRates).length === 0) { // if there are no requested rates left, clear the timer
+			// remove closed socket
+			sockets.delete(socket);
+			if (sockets.size === 0) { // if there are no sockets left, clear the timer
 				clearTimeout(timer);
 				timer = null;
 				targetMSTime = null;
@@ -136,14 +99,14 @@ if (schemes.interrupt.enabled) {
 				// AND if the next event trigger is more than the new rate in the future,
 				// restart the timer with the new rate
 				// avoids a large requested rate preventing a faster rate from being fulfilled
-				else if (rate < Math.min.apply(null, Object.values(requestedRates)) && global.utils.getTimeLeft(timer) > rate) {
+				else if (rate < getMinRequestedRate() && global.utils.getTimeLeft(timer) > rate) {
 					clearTimeout(timer);
 					timer = setTimeout(handleInterruptSync, rate);
 					const time = global.process.uptime();
 					targetMSTime = time - Math.floor(time);
 				}
 				// otherwise just add the rate to the list, when the next even trigger happens it will be requeued with the new requested rates
-				requestedRates[socket.rateIndex] = rate;
+				socket.rate = rate;
 			}
 			// command is rate but the requested value is out of bounds, terminate socket
 			else if (cmd === "rate") {
@@ -166,17 +129,20 @@ if (schemes.interrupt.enabled) {
 			socket.destroy();
 		}
 		else {
-			wsServer.handleUpgrade(req, socket, head, async (socket) => {
-				// use user cookies to determine which pools they can see, lazily assume that if a user can audit a pool they are also can audit pool member state
-				const pools = await global.pve.requestPVE("/pools", "GET", { cookies });
+			// use user cookies to determine which pools they can see, lazily assume that if a user can audit a pool they are also can audit pool member state
+			// fetch pools before upgrading so the connection handler attaches its listeners as soon as the socket opens,
+			// otherwise the client's rate message can arrive before the message listener exists and be dropped
+			const pools = await global.pve.requestPVE("/pools", "GET", { cookies });
+			const poolIDs = pools.status === 200 ? pools.data.map((p) => p.poolid) : [];
+			wsServer.handleUpgrade(req, socket, head, (socket) => {
 				// emit the connection to initialize socket
-				wsServer.emit("connection", socket, cookies.username, Object.keys(pools.data));
+				wsServer.emit("connection", socket, poolIDs);
 			});
 		}
 	});
 	const handleInterruptSync = async () => {
 		// queue timeout for next iteration with delay of minimum rate
-		const minRequestedRate = Math.min.apply(null, Object.values(requestedRates));
+		const minRequestedRate = getMinRequestedRate();
 		// if the minimum rate is not Infinity, schedule the next timer
 		if (minRequestedRate < Infinity) {
 			const time = global.process.uptime() - targetMSTime;
@@ -193,26 +159,20 @@ if (schemes.interrupt.enabled) {
 		const status = (await global.pve.requestPVE("/cluster/resources", "GET", { token: true })).data;
 		// filter out just state information of resources that are needed, and hash each one
 		const currState = extractClusterState(status, resourceTypes, true);
-		// get a map of users to send sync notifications
-		const syncUsers = {};
+		// a changed node syncs every socket, a changed qemu or lxc syncs sockets that can see its pool
+		let syncAll = false;
+		const syncPools = new Set();
 		// for each current resource in the cluster, check for state changes
 		Object.keys(currState).forEach((resource) => {
-			// if the resource's current state has changed, add all relevant users to syncUsers
 			const resourceCurrState = currState[resource];
 			const resourcePrevState = prevState[resource];
 			// if the previous state did not exist, or the status or pool have changed, then a resource state was added or modified
 			if (!resourcePrevState || resourceCurrState.hash !== resourcePrevState.hash) {
-				// if the resource is a node, send sync to all users
 				if (resourceCurrState.type === "node") {
-					Object.keys(userSocketMap).forEach((user) => {
-						syncUsers[user] = true;
-					});
+					syncAll = true;
 				}
-				// if the resource is qemu or lxc, send sync to users in the same pool if there is a pool and if the pool has users
-				else if (resourceCurrState.pool && poolUserMap[resourceCurrState.pool]) {
-					Object.keys(poolUserMap[resourceCurrState.pool]).forEach((user) => {
-						syncUsers[user] = true;
-					});
+				else if (resourceCurrState.pool) {
+					syncPools.add(resourceCurrState.pool);
 				}
 			}
 		});
@@ -222,24 +182,18 @@ if (schemes.interrupt.enabled) {
 			const resourcePrevState = prevState[resource];
 			// if the resource no longer exists in the current state, then it is lost or deleted
 			if (!resourceCurrState) {
-				// if the resource is a node, send sync to all users
 				if (resourcePrevState.type === "node") {
-					Object.keys(userSocketMap).forEach((user) => {
-						syncUsers[user] = true;
-					});
+					syncAll = true;
 				}
-				// if the resource is qemu or lxc, send sync to users in the same pool if there is a pool and if the pool has users
-				else if (resourcePrevState.pool && poolUserMap[resourcePrevState.pool]) {
-					Object.keys(poolUserMap[resourcePrevState.pool]).forEach((user) => {
-						syncUsers[user] = true;
-					});
+				else if (resourcePrevState.pool) {
+					syncPools.add(resourcePrevState.pool);
 				}
 			}
 		});
-		// for each user in syncUsers, send a sync message over their registered sockets
-		for (const user of Object.keys(syncUsers)) {
-			for (const socket of Object.keys(userSocketMap[user])) {
-				userSocketMap[user][socket].send("sync");
+		// send a sync message over each socket whose user can see a changed resource
+		for (const socket of sockets) {
+			if (syncAll || socket.pools.some((pool) => syncPools.has(pool))) {
+				socket.send("sync");
 			}
 		}
 		// set prevState for next iteration
