@@ -81,7 +81,7 @@ export default class ACCESS_MANAGER_API extends ACCESS_BACKEND {
 		return response;
 	}
 
-	async addUser (user, attributes, params) {}
+	async addUser (_user, _attributes, _params) {}
 
 	async getUser (user, params) {
 		const response = await this.#requestAPI(`/users/${user.id}@${user.realm}`, "GET", params);
@@ -101,11 +101,11 @@ export default class ACCESS_MANAGER_API extends ACCESS_BACKEND {
 		}
 	}
 
-	async setUser (user, attributes, params) {}
+	async setUser (_user, _attributes, _params) {}
 
-	async delUser (user, params) {}
+	async delUser (_user, _params) {}
 
-	async addGroup (group, attributes, params) {}
+	async addGroup (_group, _attributes, _params) {}
 
 	async getGroup (group, params) {
 		const response = await this.#requestAPI(`/groups/${group.id}-${group.realm}`, "GET", params);
@@ -125,15 +125,15 @@ export default class ACCESS_MANAGER_API extends ACCESS_BACKEND {
 		}
 	}
 
-	async setGroup (group, attributes, params) {}
+	async setGroup (_group, _attributes, _params) {}
 
-	async delGroup (group, attributes, params) {}
+	async delGroup (_group, _attributes, _params) {}
 
-	async addUserToGroup (user, group, params) {}
+	async addUserToGroup (_user, _group, _params) {}
 
-	async delUserFromGroup (user, group, params) {}
+	async delUserFromGroup (_user, _group, _params) {}
 
-	async addPool (pool, attributes, params) {}
+	async addPool (_pool, _attributes, _params) {}
 
 	async getPool (pool, params) {
 		const response = await this.#requestAPI(`/pools/${pool}`, "GET", params);
@@ -153,11 +153,11 @@ export default class ACCESS_MANAGER_API extends ACCESS_BACKEND {
 		}
 	}
 
-	async setPool (pool, attributes, params) {}
+	async setPool (_pool, _attributes, _params) {}
 
-	async delPool (pool, params) {}
+	async delPool (_pool, _params) {}
 
-	async addGroupToPool (group, pool, params) {}
+	async addGroupToPool (_group, _pool, _params) {}
 
-	async delGroupFromPool (group, pool, params) {}
+	async delGroupFromPool (_group, _pool, _params) {}
 }

@@ -4,7 +4,6 @@ import url from "url";
 import * as fs from "fs";
 import { readFileSync } from "fs";
 import { exit } from "process";
-import { log } from "console";
 
 /**
  * Check if a user is authorized to access a specified vm, or the cluster in general.

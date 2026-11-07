@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
 			sn: user.lastname,
 			mail: user.email,
 			password: ""
-		}
+		};
 	}
 
 	res.status(200).send({ auth: true, users });

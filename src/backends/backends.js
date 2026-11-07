@@ -38,7 +38,7 @@ export class AtomicChange {
 	}
 }
 
-export function doNothingCallback (delta) {
+export function doNothingCallback (_delta) {
 	return { ok: true, status: 200, message: "" };
 }
 
@@ -53,7 +53,7 @@ export class BACKEND {
 	 * @param {string} password
 	 * @returns {{ok: boolean, status: number, message: string, cookies: {name: string, value: string}[]}} response like object with list of session token objects with token name and value
 	 */
-	async openSession (user, password) {
+	async openSession (_user, _password) {
 		return {
 			ok: true,
 			status: 200,
@@ -67,7 +67,7 @@ export class BACKEND {
 	 * @param {{name: string, value: string}[]} token list of session token objects with token name and value, may include irrelevant tokens for a specific backend
 	 * @returns {boolean} true if session was closed successfully, false otherwise
 	 */
-	async closeSession (tokens) {
+	async closeSession (_tokens) {
 		return {
 			ok: true,
 			status: 200
@@ -88,7 +88,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async addUser (user, attributes, params) {}
+	async addUser (_user, _attributes, _params) {}
 
 	/**
 	 * Get user from backend
@@ -96,7 +96,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Object} containing user data from this backend, null if user does not exist
 	 */
-	async getUser (user, params) {}
+	async getUser (_user, _params) {}
 
 	/**
 	 * Validate a set user operation with the following parameters.
@@ -106,7 +106,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async setUser (user, attributes, params) {}
+	async setUser (_user, _attributes, _params) {}
 
 	/**
 	 * Validate a delete user operation with the following parameters.
@@ -115,7 +115,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async delUser (user, params) {}
+	async delUser (_user, _params) {}
 
 	/**
 	 * Validate an add group operation with the following parameters.
@@ -125,7 +125,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async addGroup (group, attributes, params) {}
+	async addGroup (_group, _attributes, _params) {}
 
 	/**
 	 * Get group from backend
@@ -133,7 +133,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Object} containing group data from this backend, null if user does not exist
 	 */
-	async getGroup (group, params) {}
+	async getGroup (_group, _params) {}
 
 	/**
 	 * Validate a set group operation with the following parameters.
@@ -143,7 +143,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async setGroup (group, attributes, params) {}
+	async setGroup (_group, _attributes, _params) {}
 
 	/**
 	 * Validate a del group operation with the following parameters.
@@ -152,7 +152,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async delGroup (group, attributes, params) {}
+	async delGroup (_group, _attributes, _params) {}
 
 	/**
 	 * Validate an add user to group operation with the following parameters.
@@ -162,7 +162,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async addUserToGroup (user, group, params) {}
+	async addUserToGroup (_user, _group, _params) {}
 
 	/**
 	 * Validate a remove user from group operation with the following parameters.
@@ -172,7 +172,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async delUserFromGroup (user, group, params) {}
+	async delUserFromGroup (_user, _group, _params) {}
 
 	/**
 	 * Validate an add pool operation with the following parameters.
@@ -182,7 +182,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async addPool (pool, attributes, params) {}
+	async addPool (_pool, _attributes, _params) {}
 	
 	/**
 	 * Get pool from backend
@@ -190,7 +190,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {Object} containing pool data from this backend, null if poll does not exist
 	 */
-	async getPool (pool, params) {}
+	async getPool (_pool, _params) {}
 
 	/**
 	 * Validate a set pool operation with the following parameters.
@@ -200,7 +200,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async setPool (pool, attributes, params) {}
+	async setPool (_pool, _attributes, _params) {}
 
 	/**
 	 * Validate a del pool operation with the following parameters.
@@ -209,7 +209,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async delPool (pool, params) {}
+	async delPool (_pool, _params) {}
 
 	/**
 	 * Validate an add group to pool operation with the following parameters.
@@ -219,7 +219,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async addGroupToPool (group, pool, params) {}
+	async addGroupToPool (_group, _pool, _params) {}
 	
 	/**
 	 * Validate a remove group from pool operation with the following parameters.
@@ -229,7 +229,7 @@ export class ACCESS_BACKEND extends BACKEND {
 	 * @param {Object} params authentication params, usually req.cookies
 	 * @returns {AtomicChange} atomic change object
 	 */
-	async delGroupFromPool (group, pool, params) {}
+	async delGroupFromPool (_group, _pool, _params) {}
 }
 
 /**
@@ -242,13 +242,13 @@ export class PVE_BACKEND extends BACKEND {
 	 * @param {string} node node id
 	 * @returns {}
 	 */
-	async getNode (node) {}
+	async getNode (_node) {}
 
 	/**
 	 * Send a signal to synchronize a node after some change has been made.
 	 * * @param {string} node node id
 	 */
-	async syncNode (node) {}
+	async syncNode (_node) {}
 
 	/**
 	 * Get and return instance data.
@@ -257,14 +257,14 @@ export class PVE_BACKEND extends BACKEND {
 	 * @param {string} type instance type
 	 * @param {string} vmid instance id
 	 */
-	async getInstance (node, type, instance) {}
+	async getInstance (_node, _type, _instance) {}
 
 	/**
 	 * Send a signal to synchronize an instance after some change has been made.
 	 * @param {string} node node id
 	 * @param {string} instance instance id
 	 */
-	async syncInstance (node, instance) {}
+	async syncInstance (_node, _instance) {}
 
 	/**
 	 * Get meta data for a specific disk. Adds info that is not normally available in a instance's config.
@@ -273,7 +273,7 @@ export class PVE_BACKEND extends BACKEND {
 	 * @param {string} disk name of the query disk, ie. sata0.
 	 * @returns {Objetc} k-v pairs of specific disk data, including storage and size of unused disks.
 	 */
-	async getDisk (node, instance, disk) {}
+	async getDisk (_node, _instance, _disk) {}
 
 	/**
 	 * Get meta data for a specific net. Adds info that is not normally available in a instance's config.
@@ -282,7 +282,7 @@ export class PVE_BACKEND extends BACKEND {
 	 * @param {string} netid id number of the query net, ie. 0 -> net0.
 	 * @returns {Objetc} k-v pairs of specific net data, including rate and vlan.
 	 */
-	async getNet (node, instance, netid) {}
+	async getNet (_node, _instance, _netid) {}
 
 	/**
 	 * Get meta data for a specific device. Adds info that is not normally available in a instance's config.
@@ -291,7 +291,7 @@ export class PVE_BACKEND extends BACKEND {
 	 * @param {string} deviceid id number of the query device, ie. 0 -> pci0.
 	 * @returns {Objetc} k-v pairs of specific device data, including name and manfacturer.
 	 */
-	async getDevice (node, instance, deviceid) {}
+	async getDevice (_node, _instance, _deviceid) {}
 
 	/**
 	 * Get pool resource data including used, available, and maximum resources.
@@ -299,5 +299,5 @@ export class PVE_BACKEND extends BACKEND {
 	 * @param {Object} cookies object containing k-v store of cookies
 	 * @returns {{used: Object, avail: Object, max: Object, resources: Object}} used, available, maximum, and resource metadata for the specified user.
 	 */
-	async getPoolResources (user, cookies) {}
+	async getPoolResources (_user, _cookies) {}
 }
